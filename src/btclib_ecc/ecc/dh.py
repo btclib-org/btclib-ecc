@@ -44,10 +44,16 @@ from hashlib import sha256
 # it is defined
 from btclib_ecc import kdf
 from btclib_ecc._libsecp256k1 import shared_point as libsecp256k1_shared_point
-from btclib_ecc.alias import HashF, Point
-from btclib_ecc.curves import Curve, bytes_from_point, mult, secp256k1
-from btclib_ecc.curves.curve import _assert_valid_ec, _libsecp256k1_serves
-from btclib_ecc.exceptions import BTClibEccRuntimeError
+from btclib_ecc.alias import HashF, Integer, Point
+from btclib_ecc.curves import (
+    Curve,
+    bytes_from_point,
+    mult,
+    scalar_from_prv_key,
+    secp256k1,
+)
+from btclib_ecc.curves.curve import _libsecp256k1_serves
+from btclib_ecc.exceptions import BTClibEccRuntimeError, BTClibEccValueError
 
 __all__ = [
     "diffie_hellman",
@@ -55,7 +61,7 @@ __all__ = [
 
 
 def diffie_hellman(
-    dU: int,
+    dU: Integer,
     QV: Point,
     size: int,
     shared_info: bytes | None = None,
@@ -86,15 +92,25 @@ def diffie_hellman(
     residue modulo that component's order (issue
     btclib-org/ellipticcurves#15). h == 1 on every curve without a
     cofactor, where this is QV unchanged.
-    """
-    _assert_valid_ec(ec)
-    d = dU % ec.n
 
-    # d == 0 is the infinity point, which the bindings reject as a
-    # scalar; so is a low-order QV on a curve with a cofactor, which
-    # they have no serialization for either. Both are the Python path's
-    # to answer, and it answers them below
-    if d and _libsecp256k1_serves(ec, None):
+    `dU` is read through `curves.scalar_from_prv_key`, which validates it
+    into 1..n-1 before either arithmetic arm sees it, so a bool, a float, a
+    negative int or a value at or above `ec.n` is refused identically
+    whichever arm ends up serving the call (issue
+    btclib-org/ellipticcurves#10). `QV` is refused the same way on both
+    arms when it is the infinity point: nothing here otherwise confines it
+    to a serializable point, but INF is the one value neither arm can turn
+    into a shared secret, and checking it once ahead of the dispatch is
+    what keeps the two arms agreeing on it.
+    """
+    d = scalar_from_prv_key(dU, ec)
+
+    ec.require_on_curve(QV)
+    if QV[1] == 0:
+        err_msg = "invalid (INF) public key"
+        raise BTClibEccValueError(err_msg)
+
+    if _libsecp256k1_serves(ec, None):
         # uncompressed, which is the cheap form to hand over: parsing 65
         # octets reads both coordinates where 33 are a field square root,
         # and the point is here to be written either way, so the
@@ -107,9 +123,10 @@ def diffie_hellman(
     # mult(ec.cofactor, ...)'s own reduction mod n leaves h untouched, and
     # only after it lands in ⟨G⟩ is reducing the second scalar mod n valid
     QV_in_subgroup = QV if ec.cofactor == 1 else mult(ec.cofactor, QV, ec)
-    shared_secret_point = mult(dU, QV_in_subgroup, ec)
-    # a degenerate dU, zero mod n, maps every QV here; so does a QV whose
-    # order divides the cofactor, h*QV having landed on INF already
+    shared_secret_point = mult(d, QV_in_subgroup, ec)
+    # QV is not INF, checked above, but a QV whose order divides the
+    # cofactor still lands h*QV on INF, and d, in 1..n-1, cannot recover
+    # from that
     if shared_secret_point[1] == 0:
         err_msg = "invalid (INF) key"
         raise BTClibEccRuntimeError(err_msg)

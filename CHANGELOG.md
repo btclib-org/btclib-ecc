@@ -84,6 +84,12 @@ public key is confined to the subgroup `G` generates (closes #15).
 package `-e --no-build-isolation`, its own backend built from that hash
 rather than the index (closes #24).
 
+### `dh.diffie_hellman` validates `dU` before either arithmetic arm sees it
+
+`dU` is read through `curves.scalar_from_prv_key`, and an infinity `QV` is
+refused, before the bindings or the Python arithmetic can disagree on
+either one (closes #10).
+
 ## v2026.9.26
 
 ### The repository opens
