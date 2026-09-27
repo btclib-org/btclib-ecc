@@ -596,7 +596,15 @@ class CurveGroup:
         # a two-torsion point, the one real point with y == 0, has no
         # affine form at all -- Jacobian coordinates do hold it, Z != 0
         # telling it from infinity, and add_jac doubles it to infinity
-        # correctly; none of the low-cardinality test curves has one.
+        # correctly; none of the low-cardinality test curves has one, and
+        # two catalogued curves of cofactor 4 do (issue
+        # btclib-org/ellipticcurves#16). This method still assumes its
+        # operands on the curve and reads either one's y == 0 as infinity
+        # whatever it stands for, as add_jac's own stand-ins do; on a
+        # Curve, add_var -- the validated entry point -- never reaches it
+        # with the real two-torsion point, Curve.is_on_curve refusing
+        # that one tuple ahead of this call for exactly this reason. A
+        # bare CurveGroup makes no such refusal, off ⟨G⟩ entirely.
         # The order is load-bearing too, and it is this one rather than
         # the doubling test first: INF is (5, 0), its x-coordinate
         # arbitrary, so a doubling test reading it ahead of here answers
@@ -681,7 +689,23 @@ class CurveGroup:
             raise BTClibEccTypeError(f"non-integer x-coordinate: {Q[0]}")
         if not is_integer(Q[1]):
             raise BTClibEccTypeError(f"non-integer y-coordinate: {Q[1]}")
+        # before the y==0 check too: _y2 reduces x mod p, so an x outside
+        # 0..p-1 would otherwise be accepted -- x + p and x - p read back
+        # as a second, third encoding of the same point (issue
+        # btclib-org/ellipticcurves#7)
+        if not 0 <= Q[0] < self.p:
+            err_msg = "x-coordinate not in 0..p-1: "
+            err_msg += f"{hex_string(Q[0])}" if Q[0] > HEX_THRESHOLD else f"{Q[0]}"
+            raise BTClibEccValueError(err_msg)
         if Q[1] == 0:  # Infinity point in affine coordinates
+            # true of every point this class enumerates on its own --
+            # find_all_points walks a bare CurveGroup with no G and no n,
+            # and a real order-2 point there is exactly as legitimate a
+            # member of the group as any other and is read as one. Curve
+            # overrides this method: ⟨G⟩ is what a cofactor makes
+            # ambiguous, a real two-torsion point outside it having no
+            # affine spelling distinct from INF's (issue
+            # btclib-org/ellipticcurves#16)
             return True
         if not 0 < Q[1] < self.p:  # y cannot be zero
             raise BTClibEccValueError(

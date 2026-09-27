@@ -1555,6 +1555,38 @@ def test_verify_infinity_point() -> None:
         )
 
 
+def test_verify_refuses_a_key_shifted_by_p_on_both_arithmetics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A tuple key whose x is x_Q + p is refused, not read as x_Q's.
+
+    `is_on_curve` used to reduce x mod p inside `_y2` with no range check
+    of its own, so `(x_Q + p, y_Q)` answered exactly as `(x_Q, y_Q)` did:
+    a second, silently accepted encoding of the same key on the Python
+    arithmetic. On the bindings arm the same tuple made `bytes_from_point`
+    raise a bare `OverflowError`, `x_Q + p` no longer fitting the
+    coordinate's own byte length, where every other refusal here is this
+    package's `BTClibEccValueError` (issue btclib-org/ellipticcurves#7).
+    Both arms now refuse the tuple the same way, before any point is
+    multiplied.
+    """
+    q, Q = dsa.gen_keys(0x1234567890ABCDEF)
+    msg = b"a message"
+    sig = dsa.sign(msg, q)
+    shifted = (Q[0] + secp256k1.p, Q[1])
+    err_msg = "x-coordinate not in 0..p-1"
+
+    def checks() -> None:
+        with pytest.raises(BTClibEccValueError, match=err_msg):
+            dsa.verify(msg, shifted, sig)
+        with pytest.raises(BTClibEccValueError, match=err_msg):
+            point_from_pub_key(shifted)
+
+    checks()
+    no_bindings(monkeypatch)
+    checks()
+
+
 @needs_bindings
 def test_verify_with_another_hash_function_on_both_arithmetics(
     monkeypatch: pytest.MonkeyPatch,

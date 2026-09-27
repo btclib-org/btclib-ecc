@@ -76,6 +76,16 @@ def diffie_hellman(
     a substitute: it hashes the compressed shared point with SHA256,
     where this derives through ANSI-X9.63-KDF. The module docstring above
     has that verdict for both of this package's ECDH-shaped computations.
+
+    Cofactor Diffie-Hellman (SEC 1 v.2, section 3.3.2) on a curve whose
+    cofactor is above 1: QV is multiplied by the cofactor before dU
+    multiplies the product, so a component of QV outside ⟨G⟩ -- one
+    `bytes_from_point` still serializes, nothing here confining QV to ⟨G⟩
+    the way `sec_point.point_from_pub_key` does -- is annihilated by h·QV
+    rather than surviving into the point dU multiplies and leaking dU's
+    residue modulo that component's order (issue
+    btclib-org/ellipticcurves#15). h == 1 on every curve without a
+    cofactor, where this is QV unchanged.
     """
     _assert_valid_ec(ec)
     d = dU % ec.n
@@ -93,8 +103,13 @@ def diffie_hellman(
         sec = libsecp256k1_shared_point(bytes_from_point(QV, ec, compressed=False), d)
         return kdf.ansi_x9_63_kdf(sec[1:], size, hf, shared_info)
 
-    shared_secret_point = mult(dU, QV, ec)
-    # a degenerate dU, zero mod n, maps every QV here
+    # the cofactor multiplication first and dU's second: h < n always, so
+    # mult(ec.cofactor, ...)'s own reduction mod n leaves h untouched, and
+    # only after it lands in ⟨G⟩ is reducing the second scalar mod n valid
+    QV_in_subgroup = QV if ec.cofactor == 1 else mult(ec.cofactor, QV, ec)
+    shared_secret_point = mult(dU, QV_in_subgroup, ec)
+    # a degenerate dU, zero mod n, maps every QV here; so does a QV whose
+    # order divides the cofactor, h*QV having landed on INF already
     if shared_secret_point[1] == 0:
         err_msg = "invalid (INF) key"
         raise BTClibEccRuntimeError(err_msg)

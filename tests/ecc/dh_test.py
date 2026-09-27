@@ -18,6 +18,7 @@ from btclib_ecc.exceptions import (
 )
 from btclib_ecc.kdf import ansi_x9_63_kdf
 from tests import needs_bindings
+from tests.curves.curve_test import secp112r2_order_4_point
 
 
 def test_ecdh() -> None:
@@ -197,3 +198,30 @@ def test_infinity_shared_secret() -> None:
     err_msg = r"invalid \(INF\) key"
     with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         diffie_hellman(0, ec.G, 32)
+
+
+def test_cofactor_dh_hides_a_low_order_key_parity() -> None:
+    """A peer's low-order key no longer leaks dU's parity.
+
+    T has order 4 on secp112r2, a curve of cofactor 4: before the cofactor
+    multiplication, `mult(dU, T, ec)` answered a point with x == T[0] for
+    every odd dU and INF for every even one, so a peer sending T learned
+    dU's parity from whether the call raised. Cofactor DH multiplies T by
+    the cofactor first, landing on INF regardless of dU, so every dU now
+    answers alike (issue btclib-org/ellipticcurves#15).
+    """
+    ec = CURVES["secp112r2"]
+    t = secp112r2_order_4_point()
+    err_msg = r"invalid \(INF\) key"
+    for d in range(1, 9):
+        with pytest.raises(BTClibEccRuntimeError, match=err_msg):
+            diffie_hellman(d, t, 8, ec=ec)
+
+
+def test_cofactor_dh_agrees_with_ordinary_dh_where_cofactor_is_1() -> None:
+    """The cofactor multiplication is a no-op on every curve without one."""
+    ec = CURVES["secp160r1"]
+    assert ec.cofactor == 1
+    a, A = dsa.gen_keys(ec=ec)
+    b, B = dsa.gen_keys(ec=ec)
+    assert diffie_hellman(a, B, 32, ec=ec) == diffie_hellman(b, A, 32, ec=ec)

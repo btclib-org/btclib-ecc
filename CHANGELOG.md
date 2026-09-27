@@ -72,6 +72,12 @@ A DER length octet at 0x80 or above, or an oversized r,s total, is refused
 under `strict` instead of CompactSize; errors now name the DER length, not
 `var_int` or a psbt caller this tree lacks (closes #8) (closes #14).
 
+### `is_on_curve` and the two cofactor-4 curves get their missing checks
+
+`is_on_curve` refuses an x outside `0..p-1` (closes #7) and a tuple
+`(x, 0)` ambiguous with `INF` on a cofactor curve (closes #16); every
+public key is confined to the subgroup `G` generates (closes #15).
+
 ## v2026.9.26
 
 ### The repository opens

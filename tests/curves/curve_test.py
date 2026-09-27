@@ -824,6 +824,19 @@ def test_is_on_curve() -> None:
         with pytest.raises(BTClibEccValueError, match="y-coordinate not in 1..p-1: "):
             ec.is_on_curve((Q[0], ec.p))
 
+        # x is reduced mod p by _y2, which read x + p and x - p back as
+        # the same point Q names, both a second SEC octet encoding of a
+        # key already accepted and, for x - p, a negative int no encoding
+        # can even carry (issue btclib-org/ellipticcurves#7)
+        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1: "):
+            ec.is_on_curve((Q[0] + ec.p, Q[1]))
+        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1: "):
+            ec.is_on_curve((Q[0] - ec.p, Q[1]))
+        # the x check ahead of the y == 0 shortcut too, an out-of-range x
+        # otherwise slipping through as a fourth spelling of infinity
+        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1: "):
+            ec.is_on_curve((Q[0] + ec.p, 0))
+
         # a bool coordinate before either check above: `Q[1] == 0` is how
         # infinity is recognized, and `False == 0` in Python, so a bool y used
         # to be read as infinity for any x (issue btclib-org/btclib#1249)
@@ -832,6 +845,61 @@ def test_is_on_curve() -> None:
                 ec.is_on_curve((y, Q[1]))
             with pytest.raises(BTClibEccTypeError, match="non-integer y-coordinate"):
                 ec.is_on_curve((Q[0], y))
+
+
+def secp112r2_order_4_point() -> Point:
+    """Return a point of secp112r2 whose order is exactly 4.
+
+    secp112r2 is cofactor 4, and gcd(4, n) == 1, n being an odd prime, so
+    n*P always lands in the curve's own 4-element subgroup {INF, T0, 2T0,
+    -T0} for any P on the curve -- the derivation the issue itself walks
+    through (issues btclib-org/ellipticcurves#15 and #16). Of those four,
+    only T0 and -T0 have y != 0: INF and 2T0, the real two-torsion point,
+    both have y == 0, a point of order 2 having no other affine shape. x
+    = 2 is a fixed, already-checked case of that: its own n*P lands on
+    T0, with y != 0, so no search over several x is needed to find one.
+    """
+    ec = CURVES["secp112r2"]
+    p = (2, ec.y_var(2))
+    return ec.add_var(mult(ec.n - 1, p, ec), p)  # n*p
+
+
+def secp128r2_order_4_point() -> Point:
+    """Return a point of secp128r2 whose order is exactly 4.
+
+    secp128r2's own cofactor is 4 too, and the same reasoning
+    `secp112r2_order_4_point` carries applies verbatim; x = 7 is that
+    curve's own fixed, already-checked case, its n*P landing on a point
+    with y != 0.
+    """
+    ec = CURVES["secp128r2"]
+    p = (7, ec.y_var(7))
+    return ec.add_var(mult(ec.n - 1, p, ec), p)  # n*p
+
+
+def test_is_on_curve_refuses_the_real_two_torsion_point() -> None:
+    """secp112r2's own order-2 point is (x, 0) for a genuine x, not INF's.
+
+    Doubling the order-4 point above lands on the curve's real two-torsion
+    point, which the affine y == 0 convention cannot tell apart from
+    infinity: is_on_curve refuses it rather than reading it either way
+    (issue btclib-org/ellipticcurves#16), and add_var, which validates its
+    operands through is_on_curve, refuses to add it to anything.
+    """
+    ec = CURVES["secp112r2"]
+    T = secp112r2_order_4_point()
+    T2 = ec.add_var(T, T)
+    assert T2[1] == 0
+    assert ec._y2(T2[0]) == 0  # a genuine root, not an arbitrary INF x
+
+    with pytest.raises(BTClibEccValueError, match="ambiguous point"):
+        ec.is_on_curve(T2)
+    with pytest.raises(BTClibEccValueError, match="ambiguous point"):
+        ec.add_var(T, T2)
+
+    # an x with no real two-torsion point at it is still read as INF, the
+    # convention this refusal narrows rather than replaces
+    assert ec.is_on_curve((T[0], 0)) is True
 
 
 def test_negate() -> None:
