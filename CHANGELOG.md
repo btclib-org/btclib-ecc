@@ -78,6 +78,12 @@ under `strict` instead of CompactSize; errors now name the DER length, not
 `(x, 0)` ambiguous with `INF` on a cofactor curve (closes #16); every
 public key is confined to the subgroup `G` generates (closes #15).
 
+### The fuzz build's own build backend installs from `uv.lock` too
+
+`requirements.txt`'s `fuzz` group hashes it, and `build.sh` installs the
+package `-e --no-build-isolation`, its own backend built from that hash
+rather than the index (closes #24).
+
 ## v2026.9.26
 
 ### The repository opens
