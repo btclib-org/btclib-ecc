@@ -1012,6 +1012,12 @@ def signed_odd_digits(m: int, w: int, size: int) -> list[int]:
     must fit the size asked for, which is `m < 2^(w*size)`: the last digit
     is what is left of m and is not reduced further.
     """
+    if not is_integer(m):
+        raise BTClibEccTypeError(f"non-integer m: {m}")
+    if not is_integer(w):
+        raise BTClibEccTypeError(f"non-integer w: {w}")
+    if not is_integer(size):
+        raise BTClibEccTypeError(f"non-integer size: {size}")
     if m < 0:
         raise BTClibEccValueError(f"negative m: {hex(m)}")
     # a number cannot be written in basis 1 (ie w=0)

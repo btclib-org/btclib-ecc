@@ -83,10 +83,11 @@ automatically for everything else (issue btclib-org/ellipticcurves#11).
 surface and into arithmetic this file has never gated:
 `number_theory.xgcd_var` and its neighbours take a bare `int` operand
 with no invalid value either -- `xgcd_var(-1, -1)` is a legitimate
-extended Euclid, not a malformed argument -- and
-`curves.curve_group.signed_odd_digits` leaks a bare `TypeError` on a
-non-integer `m` today, a real gap of the same shape this issue is about,
-in a module of its own (issue btclib-org/ellipticcurves#11).
+extended Euclid, not a malformed argument.
+`curves.curve_group.signed_odd_digits` refuses a non-integer `m`, `w` or
+`size` of its own accord, driven by hand in `curves/curve_group_test.py`
+rather than by this walk, in a module of its own (issue
+btclib-org/ellipticcurves#34).
 
 ## The two lists
 
