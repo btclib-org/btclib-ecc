@@ -812,7 +812,12 @@ def sign(
     docstring gives: a session that does not assemble raises before the
     nonce is touched, so the same bytearray may be used for the
     corrected session.
+
+    `sec_nonce` is checked exactly `bytearray` first, for the reason
+    `musig2.sign`'s own docstring gives (issue
+    btclib-org/ellipticcurves#11).
     """
+    assert_type(sec_nonce, bytearray, "sec_nonce")
     values = session_values(session_ctx)
     k_1_ = int.from_bytes(sec_nonce[:_SCALAR_SIZE], "big")
     k_2_ = int.from_bytes(sec_nonce[_SCALAR_SIZE : 2 * _SCALAR_SIZE], "big")

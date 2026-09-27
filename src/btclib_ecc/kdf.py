@@ -32,9 +32,10 @@ from __future__ import annotations
 import hmac
 from math import ceil
 
-from btclib_ecc._utils import is_integer
+from btclib_ecc._utils import assert_type, is_integer
 from btclib_ecc.alias import HashF
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
+from btclib_ecc.hashes import _assert_valid_hf
 
 __all__ = [
     "ansi_x9_63_kdf",
@@ -81,7 +82,16 @@ def ansi_x9_63_kdf(z: bytes, size: int, hf: HashF, shared_info: bytes | None) ->
 
     http://www.secg.org/sec1-v2.pdf,
     section 3.6.1
+
+    `z` and `shared_info` are `bytes` and not `Octets`: `assert_type` is
+    what refuses a caller's mistake here, `hf` never reaching a bare
+    `hf()` on something that is not callable (issue
+    btclib-org/ellipticcurves#11).
     """
+    _assert_valid_hf(hf)
+    assert_type(z, bytes, "z")
+    if shared_info is not None:
+        assert_type(shared_info, bytes, "shared_info")
     hf_size = hf().digest_size
     # the counter is four octets, so 2**32 - 1 blocks is what the
     # construction can number
@@ -129,7 +139,15 @@ def hkdf_extract(ikm: bytes, salt: bytes | None, hf: HashF) -> bytes:
     An `ikm` that is already a uniformly random key of full length does
     not need this step: RFC 5869 section 3.3 says to skip it and expand
     that key directly, which `hkdf_expand` is separately public for.
+
+    `ikm` and `salt` are `bytes` and not `Octets`, for the reason
+    `ansi_x9_63_kdf`'s docstring gives (issue
+    btclib-org/ellipticcurves#11).
     """
+    _assert_valid_hf(hf)
+    assert_type(ikm, bytes, "ikm")
+    if salt is not None:
+        assert_type(salt, bytes, "salt")
     # RFC 5869 sets an absent salt to HashLen zero octets, and b"" is the
     # same HMAC key: a key shorter than the block size is zero-padded to
     # it, so both spellings hash the same first block. Appendix A carries
@@ -151,7 +169,15 @@ def hkdf_expand(prk: bytes, size: int, hf: HashF, info: bytes | None) -> bytes:
     BTClibEccValueError too.
 
     https://www.rfc-editor.org/rfc/rfc5869.html, section 2.3
+
+    `prk` and `info` are `bytes` and not `Octets`, for the reason
+    `ansi_x9_63_kdf`'s docstring gives (issue
+    btclib-org/ellipticcurves#11).
     """
+    _assert_valid_hf(hf)
+    assert_type(prk, bytes, "prk")
+    if info is not None:
+        assert_type(info, bytes, "info")
     hf_size = hf().digest_size
     # the counter is a single octet, from 1, so 255 blocks is what the
     # construction can number -- 8160 octets under sha256

@@ -40,19 +40,53 @@ those is the hand-written thing this avoids.
 
 ## What it does not reach, and why that is not a hole to plug here
 
-A **parameter with a default** is never driven: to reach `hf` or `ec`
-the arguments before them would have to be valid, which is the table this
-design is built to do without. Those two are gated by hand where their
-own checks live, and the family of them that is large enough
-to be walked has a file: `tests/curve_parameter_test.py` for every
-parameter declaring a curve. It carries the table this walk avoids, and a
-walk of its own over the parameter it is about, so the table cannot go
-stale quietly.
+A **parameter with a default** is never driven: to reach it the
+arguments before it would have to be valid, which is the table this
+design is built to do without. `ec` is gated by hand this way at most of
+its call sites, and the family of it that is large enough to be walked
+has a file: `tests/curve_parameter_test.py` for every parameter
+declaring a curve. It carries the table this walk avoids, and a walk of
+its own over the parameter it is about, so the table cannot go stale
+quietly. A default is not the only reason a required parameter goes
+unreached, though: `ssa.challenge_` takes `ec` with none, and stays
+unreached anyway, for the reason below.
 
 A **method**, and a function taking a signature object or a callback,
 needs a valid instance the vocabulary cannot build, and stays hand-read.
 `test_the_walk_reaches_what_it_claims` pins what the walk does find, so a
 narrowing of it fails here rather than quietly running over less.
+
+A **plain `bytes`, `bytearray`, `int` or `HashF`** -- a builtin, rather
+than one of `alias.py`'s own names -- has no coercion the way `Octets`
+has `bytes_from_octets` or `Integer` has `int_from_integer`: `assert_type`
+(or, for `HashF`, `_assert_valid_hf`) refuses what is not the declared
+type, but refuses nothing on content, because there is no content a
+valid `bytes`, a valid `bytearray`, a valid `int` or a valid callable
+could not be. So there is no wrong *value* of one of these four that
+every caller of it agrees is wrong, only a wrong *type* -- and
+`hashes.tagged_hash`'s `tag` and `m`, both required and both nothing but
+`bytes`, are the case that makes this concrete: driving a wrong-value
+round over the two of them would find nothing to raise on and fail the
+walk over a call with nothing wrong with it. `_WRONG_TYPE` and
+`_WRONG_VALUE` are read together everywhere else in this file, so rather
+than carrying four keys through only one of the two dicts, these four
+stay out of both, and the functions they gate are validated and driven
+by hand instead: `kdf_test.py`, `hashes_test.py`, `ecc/ecies_test.py`,
+`ecc/commit_nonce_test.py`, `ecc/musig2_test.py` and `ecc/frost_test.py`
+hold `kdf.ansi_x9_63_kdf`, `kdf.hkdf`, `kdf.hkdf_expand`,
+`kdf.hkdf_extract`, `hashes.tagged_hash`, `ecies.encrypt`,
+`commit_nonce.commit_nonce_`, `musig2.sign` and `frost.sign` to the same
+`BTClibEccTypeError`/`BTClibEccValueError` contract this file drives
+automatically for everything else (issue btclib-org/ellipticcurves#11).
+
+`int` alone would also reach outside this package's input-validation
+surface and into arithmetic this file has never gated:
+`number_theory.xgcd_var` and its neighbours take a bare `int` operand
+with no invalid value either -- `xgcd_var(-1, -1)` is a legitimate
+extended Euclid, not a malformed argument -- and
+`curves.curve_group.signed_odd_digits` leaks a bare `TypeError` on a
+non-integer `m` today, a real gap of the same shape this issue is about,
+in a module of its own (issue btclib-org/ellipticcurves#11).
 
 ## The two lists
 
@@ -270,13 +304,16 @@ def test_the_vocabulary_is_the_libraries_input_types() -> None:
     assert all(_is_declared(alias) for alias in _WRONG_TYPE)
 
     without_a_wrong_value = {
-        # the hash-function type is always behind a default -- `hf` is
-        # the last parameter of everything that takes one -- so the walk
-        # cannot reach it for the reason the module docstring gives.
-        # `hashes._assert_valid_hf` is the check, and tests/hashes_test.py,
-        # dsa_test.py and ssa_test.py are where it is held to it
+        # not always behind a default: `ssa.challenge_` and four of
+        # `kdf`'s functions take it with none (issue
+        # btclib-org/ellipticcurves#11). What keeps it out of
+        # `_WRONG_TYPE`/`_WRONG_VALUE` is that it has no wrong value the
+        # module docstring's "What it does not reach" does not already
+        # give a shared reason for -- `hashes._assert_valid_hf` is the
+        # check, and tests/hashes_test.py, kdf_test.py, dsa_test.py and
+        # ssa_test.py are where it is held to it by hand
         "HashF",
-        # a callable, and the same again: its wrong values are the
+        # a callable, and the same reason again: its wrong values are the
         # non-callables, and it is never a required parameter
         "CipherF",
         # the internal coordinates: no public parameter takes them from a

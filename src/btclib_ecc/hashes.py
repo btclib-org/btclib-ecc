@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import hashlib
 
-from btclib_ecc._utils import bytes_from_octets
+from btclib_ecc._utils import assert_type, bytes_from_octets
 from btclib_ecc.alias import HashF, Octets
 from btclib_ecc.exceptions import BTClibEccTypeError
 
@@ -79,7 +79,16 @@ def tagged_hash(tag: bytes, m: bytes, hf: HashF = hashlib.sha256) -> bytes:
 
     The doubled tag digest is what makes a hash under one tag invalid
     under every other.
+
+    `tag` and `m` are `bytes` and not `Octets`: unlike every octets
+    parameter this package converts through `bytes_from_octets`, neither
+    is ever meant to be read as a hex-string, so `assert_type` is what
+    refuses a caller's mistake here rather than a coercion (issue
+    btclib-org/ellipticcurves#11).
     """
+    _assert_valid_hf(hf)
+    assert_type(tag, bytes, "tag")
+    assert_type(m, bytes, "m")
     # libsecp256k1 computes exactly this in hashes.tagged_sha256, and the
     # binding is not called because it is slower at every size, and by
     # more the larger the message: hashlib's SHA256 is OpenSSL's,

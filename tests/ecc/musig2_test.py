@@ -290,6 +290,28 @@ def test_sign_verify_valid_vectors(case: dict[str, Any]) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "sec_nonce",
+    [bytes(_SV_SEC_NONCES[0]), list(_SV_SEC_NONCES[0]), "not a nonce", None],
+    ids=["bytes", "list", "str", "None"],
+)
+def test_sign_refuses_a_secnonce_that_is_no_bytearray(sec_nonce: Any) -> None:
+    """A `bytes` secnonce used to leak "does not support item assignment".
+
+    A `list` used to sign silently instead, indexed the same way a
+    `bytearray` is: `sign` consumes the secnonce by slice assignment, so
+    any mutable sequence went untouched all the way to a signature, with
+    nothing in the type saying the caller had not built the one thing
+    this scheme's safety depends on (issue btclib-org/ellipticcurves#11).
+    """
+    pub_keys = [_SV_PUB_KEYS[i] for i in (0, 1, 2)]
+    agg_nonce = _SV_AGG_NONCES[0]
+    msg = _SV_MSGS[0]
+    session_ctx = musig2.SessionContext(agg_nonce, pub_keys, [], [], msg)
+    with pytest.raises(BTClibEccTypeError, match="invalid sec_nonce type"):
+        musig2.sign(sec_nonce, _SV_SK, session_ctx)
+
+
 def sign_error_vectors() -> list[Any]:
     """One param per sign error case of sign_verify_vectors.json."""
     return [

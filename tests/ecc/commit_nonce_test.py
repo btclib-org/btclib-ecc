@@ -192,6 +192,18 @@ def test_the_python_path_is_the_committing_one() -> None:
     )
 
 
+def test_a_tag_that_is_no_bytes_is_refused_as_such() -> None:
+    """A `str` tag used to leak a bare TypeError out of `tagged_hash`.
+
+    `commit_nonce_`, `commit_point_` and `commit_entropy_` all reach
+    `hashes.tagged_hash` with `tag` unconverted, so its own `bytes` check
+    is what refuses this rather than a check of its own (issue
+    btclib-org/ellipticcurves#11).
+    """
+    with pytest.raises(BTClibEccTypeError, match="invalid tag type"):
+        commit_nonce_(b"\x01" * 32, 1, "x")  # type: ignore[arg-type]
+
+
 # src/modules/ecdsa_s2c/tests_impl.h, test_ecdsa_s2c_fixed_vectors: the
 # key and the message of that fixture, and its two (s2c_data, opening)
 # pairs. The opening is the compressed original nonce point, which is
