@@ -34,6 +34,14 @@ btclib-org/btclib#1227 -- one input answered on one arm and raised on the
 other, two answers decided by `pip install`. A second child, built the
 same way, runs a table of inputs and compares what each arm refuses
 them with.
+
+`test_an_installed_but_too_old_package_is_not_read_as_absent` asks a
+different question: not "is the package findable at all", but "is a name
+this module asks of a *found* package missing". issue
+btclib-org/ellipticcurves#25 is that the two used to answer the same way.
+The meta path finder above cannot build that case -- it refuses to find
+`btclib_secp256k1` in the first place -- so that child stubs the package
+directly into `sys.modules`, present and one name short.
 """
 
 from __future__ import annotations
@@ -83,7 +91,13 @@ import json, sys
 class RefuseTheBindings:
     def find_spec(self, name, path=None, target=None):
         if name == "btclib_secp256k1" or name.startswith("btclib_secp256k1."):
-            raise ImportError("btclib_secp256k1 is out of reach")
+            # `ModuleNotFoundError` with `name` set to the module the
+            # import system was looking for: what a genuinely-uninstalled
+            # `btclib_secp256k1` raises with no finder in the way at all,
+            # and what `_libsecp256k1`'s own except clause reads to tell
+            # this apart from an installed package too old for a name it
+            # asks for (btclib-org/ellipticcurves#25)
+            raise ModuleNotFoundError(f"{{name}} is out of reach", name=name)
         return None
 
 
@@ -210,6 +224,76 @@ def test_the_environment_variable_refuses_the_installed_bindings() -> None:
     assert answered == ["True", "True", "True"]
 
 
+# `btclib-secp256k1` 0.8.0.6's own shape, from the issue: every name this
+# module takes from the package is there except
+# `btclib_secp256k1.ecdh.shared_point` -- the package is found, and one name
+# inside it is not. Built with `sys.modules` and not the meta path finder
+# above, because that finder answers a different question -- it refuses to
+# find the package at all, where this case needs the package found and one
+# attribute of it missing
+_STALE_BINDINGS_CHILD = """
+import sys, types
+
+parent = types.ModuleType("btclib_secp256k1")
+for name in ("dsa", "ellswift", "ffi", "musig", "recovery", "ssa"):
+    setattr(parent, name, types.ModuleType(f"btclib_secp256k1.{name}"))
+
+keys_module = types.ModuleType("btclib_secp256k1.keys")
+for name in (
+    "PubkeyTweakChain",
+    "pubkey_from_prvkey",
+    "pubkey_sum",
+    "pubkey_tweak_add",
+    "pubkey_tweak_mul_sum",
+):
+    setattr(keys_module, name, object())
+parent.keys = keys_module
+
+xonly_module = types.ModuleType("btclib_secp256k1.xonly")
+xonly_module.pubkey_verify = object()
+xonly_module.to_pubkey = object()
+
+# the module is there; the name this floor needs from it is not
+ecdh_module = types.ModuleType("btclib_secp256k1.ecdh")
+
+sys.modules["btclib_secp256k1"] = parent
+sys.modules["btclib_secp256k1.keys"] = keys_module
+sys.modules["btclib_secp256k1.xonly"] = xonly_module
+sys.modules["btclib_secp256k1.ecdh"] = ecdh_module
+
+try:
+    import btclib_ecc._libsecp256k1
+except ImportError as exc:
+    print("raised", type(exc).__name__)
+else:
+    print("swallowed")
+"""
+
+
+def test_an_installed_but_too_old_package_is_not_read_as_absent() -> None:
+    """A name missing from a *found* package raises, rather than reading absent.
+
+    issue btclib-org/ellipticcurves#25: catching every `ImportError` the
+    bindings' own import could raise, absent or merely too old, answered
+    `INSTALLED = False` for both -- `btclib-secp256k1` 0.8.0.6 lacking
+    `ecdh.shared_point` fell back to the Python arithmetic exactly as an
+    uninstalled package does, with nothing said about it.
+
+    A subprocess, for the same reason as the child above: `_libsecp256k1`
+    answers at import, so the question can only be put to an interpreter
+    that has not imported it yet.
+    """
+    completed = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", _STALE_BINDINGS_CHILD],
+        capture_output=True,
+        encoding="utf-8",
+        check=False,
+        timeout=120,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.split() == ["raised", "ImportError"]
+
+
 def test_the_switch_refuses_to_promise_bindings_that_are_not_there(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -304,7 +388,13 @@ import json, sys
 class RefuseTheBindings:
     def find_spec(self, name, path=None, target=None):
         if name == "btclib_secp256k1" or name.startswith("btclib_secp256k1."):
-            raise ImportError("btclib_secp256k1 is out of reach")
+            # `ModuleNotFoundError` with `name` set to the module the
+            # import system was looking for: what a genuinely-uninstalled
+            # `btclib_secp256k1` raises with no finder in the way at all,
+            # and what `_libsecp256k1`'s own except clause reads to tell
+            # this apart from an installed package too old for a name it
+            # asks for (btclib-org/ellipticcurves#25)
+            raise ModuleNotFoundError(f"{{name}} is out of reach", name=name)
         return None
 
 
