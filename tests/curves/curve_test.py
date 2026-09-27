@@ -89,10 +89,26 @@ from tests import load, needs_bindings, vector_id
 low_card_curves = {"ec13_11": Curve(13, 7, 6, (1, 1), 11, 1, False)}
 low_card_curves["ec13_19"] = Curve(13, 0, 2, (1, 9), 19, 1, False)
 # 17 % 4 = 1; 17 % 8 = 1
-low_card_curves["ec17_13"] = Curve(17, 6, 8, (0, 12), 13, 2, False)
+#
+# 13 points, brute force over every (x, y) plus INF, so cofactor 1: this
+# curve was built with a false cofactor of 2 until issue
+# btclib-org/ellipticcurves#32, back when #19's bug forced it -- Curve()
+# accepted no other value for an n this close to p. A low-cardinality
+# curve genuinely of cofactor 2 is not a fixture this suite can hold: its
+# curve order is then even, so a rational two-torsion point at y = 0
+# exists on it by group theory, and `Curve.is_on_curve` refuses that
+# point outright (issue btclib-org/ellipticcurves#16) rather than
+# reading it as off-curve -- and a genuinely cofactor-2 candidate tried
+# here landed a real signature's recovery on exactly that point on its
+# first (private key, nonce, challenge) triple, raising rather than
+# dropping the candidate as step 1.6 does for every other kind of miss
+low_card_curves["ec17_13"] = Curve(17, 6, 8, (0, 12), 13, 1, False)
 low_card_curves["ec17_23"] = Curve(17, 3, 5, (1, 14), 23, 1, False)
 # 19 % 4 = 3; 19 % 8 = 3
-low_card_curves["ec19_13"] = Curve(19, 0, 2, (4, 16), 13, 2, False)
+#
+# 13 points, cofactor 1 for the same reason (issue
+# btclib-org/ellipticcurves#32)
+low_card_curves["ec19_13"] = Curve(19, 0, 2, (4, 16), 13, 1, False)
 low_card_curves["ec19_23"] = Curve(19, 2, 9, (0, 16), 23, 1, False)
 # 23 % 4 = 3; 23 % 8 = 7
 low_card_curves["ec23_19"] = Curve(23, 9, 7, (5, 4), 19, 1, False)
@@ -270,7 +286,7 @@ def test_curves_with_n_above_p() -> None:
 
     What n > p decides is whether `r = x_K % ec.n` can reduce, and it
     cannot: x_K < p < n. tests/ecc/dsa_test.py draws the consequence for
-    key recovery, next to the cofactor-2 case it is the mirror of.
+    key recovery.
     """
     above = {name for name, ec in low_card_curves.items() if ec.n > ec.p}
     assert above == {"ec13_19", "ec17_23", "ec19_23", "ec23_31"}

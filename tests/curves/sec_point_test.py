@@ -35,10 +35,13 @@ from tests.curves.curve_test import secp112r2_order_4_point, secp128r2_order_4_p
 low_card_curves = {"ec13_11": Curve(13, 7, 6, (1, 1), 11, 1, False)}
 low_card_curves["ec13_19"] = Curve(13, 0, 2, (1, 9), 19, 1, False)
 # 17 % 4 = 1; 17 % 8 = 1
-low_card_curves["ec17_13"] = Curve(17, 6, 8, (0, 12), 13, 2, False)
+#
+# cofactor 1, not 2: tests/curves/curve_test.py's own copy of this dict
+# has the reason (issue btclib-org/ellipticcurves#32)
+low_card_curves["ec17_13"] = Curve(17, 6, 8, (0, 12), 13, 1, False)
 low_card_curves["ec17_23"] = Curve(17, 3, 5, (1, 14), 23, 1, False)
 # 19 % 4 = 3; 19 % 8 = 3
-low_card_curves["ec19_13"] = Curve(19, 0, 2, (4, 16), 13, 2, False)
+low_card_curves["ec19_13"] = Curve(19, 0, 2, (4, 16), 13, 1, False)
 low_card_curves["ec19_23"] = Curve(19, 2, 9, (0, 16), 23, 1, False)
 # 23 % 4 = 3; 23 % 8 = 7
 low_card_curves["ec23_19"] = Curve(23, 9, 7, (5, 4), 19, 1, False)

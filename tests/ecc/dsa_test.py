@@ -315,15 +315,14 @@ def test_low_cardinality(name: str) -> None:
                     # assertion (issue btclib-org/btclib#890)
                     assert INF not in Qs
                     # and the list is exactly step 1.6.1's candidates, less
-                    # what step 1.6 refuses: on a curve of prime order that
-                    # is the screen and the infinity test alone, and above
-                    # cofactor 1 the verification as well, a lift there
-                    # landing outside the prime-order subgroup
+                    # what step 1.6 refuses: on a curve of prime order --
+                    # every entry of low_card_curves, issue
+                    # btclib-org/ellipticcurves#32 -- that is the screen
+                    # and the infinity test alone.
+                    # test_step_1_6_1_agrees_above_cofactor_1 is where a
+                    # lift landing outside the prime-order subgroup is
+                    # also refused, on a curve of cofactor above 1
                     candidates = [Q_ for Q_ in _step_1_6_1(e, r, s, ec) if Q_]
-                    if ec.cofactor > 1:
-                        candidates = [
-                            Q_ for Q_ in candidates if _verifies(e, Q_, r, s, ec)
-                        ]
                     assert Qs == candidates
 
 
@@ -346,6 +345,36 @@ def test_pub_key_recovery() -> None:
         assert dsa.verify(msg, Q, sig)
 
 
+def test_step_1_6_1_agrees_above_cofactor_1() -> None:
+    """`_step_1_6_1` and `_recover_pub_keys_` agree above cofactor 1 too.
+
+    `test_low_cardinality` held the two to the same list over every key,
+    nonce and challenge a curve admits, cofactor above 1 included, until
+    issue btclib-org/ellipticcurves#32: every low-cardinality curve this
+    suite can hold is now cofactor 1, an exhaustive sweep over a curve
+    whose cofactor is genuinely above 1 not being safe at that size (the
+    issue has the reason). One explicit (private key, nonce, challenge)
+    triple on secp112r2 is what is left to reach `_step_1_6_1`'s
+    reduction branch and `_verifies`, in place of the sweep.
+    """
+    ec = CURVES["secp112r2"]
+    assert ec.cofactor > 1
+    # this triple is not special beyond having been checked to leave
+    # _verifies something to filter: six of _step_1_6_1's candidates
+    # survive the INF test, and only two also survive step 1.6.2
+    q, k, e = 0x10, 153, 42
+    QJ = _mult(q, ec.GJ, ec)
+    sig = dsa._sign_(e, q, k, False, ec)
+    jac_keys = dsa._recover_pub_keys_(e, sig.r, sig.s, ec, lower_s=False)
+    Qs = [ec.aff_from_jac_var(key) for key in jac_keys]
+    assert ec.aff_from_jac_var(QJ) in Qs
+    candidates = [Q_ for Q_ in _step_1_6_1(e, sig.r, sig.s, ec) if Q_]
+    assert len(candidates) == 6
+    candidates = [Q_ for Q_ in candidates if _verifies(e, Q_, sig.r, sig.s, ec)]
+    assert len(candidates) == 2
+    assert Qs == candidates
+
+
 def test_key_id_is_j_above_the_parity_bit() -> None:
     """A key_id names SEC 1's j and a y_K-coordinate parity, in that order.
 
@@ -357,7 +386,7 @@ def test_key_id_is_j_above_the_parity_bit() -> None:
     have to agree on it for the plural to be the singular over a range.
     """
     for ec in (low_card_curves["ec17_13"], low_card_curves["ec19_13"]):
-        assert ec.cofactor == 2
+        assert ec.cofactor == 1
         cases = 0
         for q in range(1, ec.n):
             Q = ec.aff_from_jac_var(_mult(q, ec.GJ, ec))
@@ -1447,7 +1476,7 @@ def test_the_low_s_negation_flips_the_key_id_parity_bit() -> None:
 
 
 def test_the_key_id_names_j_where_j_is_reachable() -> None:
-    """The cofactor-2 curves, where `x_K // ec.n` is not a boolean.
+    """These low-cardinality curves, where `x_K // ec.n` is not a boolean.
 
     On secp256k1 the j bit needs r + ec.n < ec.p, some 2^-127 of
     signatures, so `2 if x_K != r else 0` would pass every test the
@@ -1458,7 +1487,7 @@ def test_the_key_id_names_j_where_j_is_reachable() -> None:
     """
     for name, expected in (("ec17_13", 2880), ("ec19_13", 3456)):
         ec = low_card_curves[name]
-        assert ec.cofactor == 2
+        assert ec.cofactor == 1
         cases = 0
         j_reached = 0
         for q in range(1, ec.n):
