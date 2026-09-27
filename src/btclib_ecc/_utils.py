@@ -21,6 +21,7 @@ exceptions.
 
 from __future__ import annotations
 
+import string
 from collections.abc import Iterable
 from io import BytesIO
 from typing import Any, BinaryIO
@@ -367,6 +368,11 @@ def int_from_integer(i: Integer) -> int:
     length rather than evaluating to nine. A decimal representation is
     what int itself is for, so pass int("1234").
 
+    Only ASCII hex digits follow the "0x" prefix, and only ASCII
+    whitespace is stripped around the string: "0x1_0" and "0x" followed by
+    fullwidth or Arabic-Indic digits are refused, where Python's own int
+    reads them as numbers.
+
     The binary representation is not allowed because there is no way to
     discriminate it from a valid hex-string
     (e.g. "0b11011110101011011011111011101111").
@@ -383,14 +389,19 @@ def int_from_integer(i: Integer) -> int:
         return i
 
     if isinstance(i, str):
-        i = i.strip().lower()
+        # `string.whitespace`, not the bare `str.strip()`: that strips
+        # every character `isspace` counts, U+00A0 and U+3000 included
+        i = i.strip(string.whitespace).lower()
         if i.startswith(("0x", "-0x")):
-            # the same bare ValueError bytes_from_octets names below, out
-            # of the one spelling that does not reach it
-            try:
-                return int(i, 16)
-            except ValueError as e:
-                raise BTClibEccValueError(f"invalid hex integer: {i!r}") from e
+            # `int(i, 16)` alone reads "0x1_0" as 16, and so every Unicode
+            # decimal digit, U+0661 as readily as "1": what follows the
+            # prefix is checked against ASCII hex first. The refusal does
+            # not quote the string, which may be a private key
+            digits = i[3:] if i[0] == "-" else i[2:]
+            if not digits or not all(c in "0123456789abcdef" for c in digits):
+                err_msg = "invalid hex integer: what follows 0x is not ASCII hex digits"
+                raise BTClibEccValueError(err_msg)
+            return int(i, 16)
 
     # the hex string, and the refusal of what is neither that nor bytes,
     # both being bytes_from_octets's to give

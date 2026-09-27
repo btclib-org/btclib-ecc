@@ -61,6 +61,11 @@ maintainer's decision and its citation, rather than left unexplained
 dependencies exported with their hashes, with `--require-hashes --no-deps`
 before the package itself, instead of resolving off the index (closes #13).
 
+### `_utils.int_from_integer` reads only ASCII hex digits after `0x`
+
+Only ASCII whitespace is stripped, and the refusal no longer quotes the
+string, which may be a private key (closes #21).
+
 ## v2026.9.26
 
 ### The repository opens
