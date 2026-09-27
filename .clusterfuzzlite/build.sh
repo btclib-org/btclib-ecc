@@ -7,29 +7,28 @@
 # at $SRC/ellipticcurves (the Dockerfile's WORKDIR).
 #
 # What the install takes is uv.lock's and not the index's.
-# requirements.txt beside this file is uv.lock's own base dependencies
-# exported with their hashes:
-#   uv export --frozen --no-default-groups --no-emit-project \
-#     --output-file=.clusterfuzzlite/requirements.txt
-# run by hand whenever uv.lock's resolution of them moves --
-# .pre-commit-config.yaml wires no hook to redo this automatically, the
-# way btclib-org/btclib's own `uv-export` hook does for its equivalent
-# file (issue #24). --require-hashes refuses a file the lock does not
-# name.
+# requirements.txt beside this file is the lock exported -- the package's
+# runtime dependencies and the `fuzz` dependency group's build backend,
+# each with its hashes -- and the uv-export hook of
+# .pre-commit-config.yaml rewrites it whenever uv.lock moves.
+# --require-hashes refuses a file the lock does not name. The package
+# itself follows with --no-deps, so the bindings are absent and the
+# harnesses fuzz the Python arithmetic and codecs, which is the code this
+# package writes; --no-build-isolation builds it with the backend just
+# installed rather than one resolved off the index.
 #
-# The package itself installs with no extra, so the bindings are absent
-# and the harnesses fuzz the Python arithmetic and codecs, which is the
-# code this package writes; --no-deps is what stops this second install
-# from resolving typing-extensions off the index again. Its own build
-# backend is still an isolated build's, resolved off the index at
-# pyproject.toml's [build-system] version range rather than pinned by
-# hash (issue #24).
+# Editable, because OpenSSF Scorecard's Pinned-Dependencies check reads a
+# pip install as pinned only with --require-hashes, a wheel file, or `-e`
+# and --no-deps (isUnpinnedPipInstall, ossf/scorecard's
+# checks/raw/shell_download_validate.go), and pip refuses
+# --require-hashes for a directory. The tree `-e` points at is the one
+# the Dockerfile copied in, so pinned is what it is.
 #
 # The shape -- install, discover, compile -- is
 # docs/build-integration/python_lang.md's own example build.sh for a
 # Python project.
 pip3 install --require-hashes --no-deps -r .clusterfuzzlite/requirements.txt
-pip3 install --no-deps .
+pip3 install --no-deps --no-build-isolation -e .
 
 # compile_python_fuzzer forwards every extra argument straight to
 # pyinstaller, ahead of the fuzzer's own path (base-builder's own
