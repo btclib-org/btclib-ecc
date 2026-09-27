@@ -120,6 +120,12 @@ Only `ModuleNotFoundError` naming `btclib_secp256k1` itself means absent; a
 name an older, installed package lacks now raises instead of a silent
 fallback (closes #25).
 
+### `ec17_13` and `ec19_13`'s test fixtures carry their true cofactor, 1
+
+A genuinely cofactor-2 curve this small has a two-torsion point
+`is_on_curve` refuses outright, which an exhaustive sweep reaches;
+`secp112r2` carries the cofactor above 1 case now (closes #32).
+
 ## v2026.9.26
 
 ### The repository opens
