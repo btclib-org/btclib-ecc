@@ -69,14 +69,16 @@ def _read_der_length(data: bytes, offset: int) -> tuple[int, int]:
 
 
 def _independent_parse(der: bytes) -> tuple[int, int]:
-    """Return (r, s), read by X.690 alone rather than as CompactSize.
+    """Return (r, s), read by X.690 alone rather than as `Sig.parse` reads.
 
-    `Sig.parse` reads a length as CompactSize, which is X.690 only below
-    0x80, so it cannot read back what `Sig.serialize` writes at and above
-    it (issue btclib-org/btclib#2130). This re-derives every length octet with
-    `_der_length` and refuses trailing data instead -- a self-consistency
-    check on `serialize`'s output, not a check that the rule it and
-    `_der_length` share is the right one.
+    Under strict `Sig.parse` refuses a length at 0x80 and above outright
+    rather than reading it, and without strict it reads that octet as
+    CompactSize, which is X.690 only below 0x80 -- so neither reading of
+    `Sig.parse` reads back what `Sig.serialize` writes at and above it
+    (issue btclib-org/btclib#2130). This re-derives every length octet
+    with `_der_length` and refuses trailing data instead -- a
+    self-consistency check on `serialize`'s output, not a check that the
+    rule it and `_der_length` share is the right one.
     """
     assert der[0] == 0x30
     seq_len, offset = _read_der_length(der, 1)
@@ -183,8 +185,12 @@ def test_der_deserialize() -> None:
         with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig.parse(bad_sig_bin)
 
+        # issue #8: a length octet of 0x80 or above is refused outright
+        # under strict, before any attempt to read that many octets of
+        # value -- not read as CompactSize's own 0x80, a valid one-octet
+        # size of 128
         bad_sig_bin = sig_bin[: offset - 1] + b"\x80" + sig_bin[offset:]
-        err_msg = "invalid DER length: not enough binary data"
+        err_msg = "invalid DER length: long form 80"
         with pytest.raises(BTClibEccValueError, match=err_msg):
             Sig.parse(bad_sig_bin)
 

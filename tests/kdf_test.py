@@ -48,8 +48,8 @@ def test_a_size_that_is_no_integer_is_refused_as_such(size: object) -> None:
 
     A float reached the final slice and left through a bare `TypeError`
     about slice indices -- outside the exception contract of
-    src/btclib/exceptions.py, which is the contract tests/fuzz_test.py holds
-    every parser to. A bool is refused for the reason
+    src/btclib_ecc/exceptions.py, which is the contract tests/fuzz_test.py
+    holds every parser to. A bool is refused for the reason
     `btclib_ecc._utils.is_integer` gives: `True` would have derived a
     one-octet key.
     """
