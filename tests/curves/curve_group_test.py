@@ -45,7 +45,7 @@ from btclib_ecc.curves.curve_group import (
     signed_odd_digits,
 )
 from btclib_ecc.ecc import second_generator
-from btclib_ecc.exceptions import BTClibEccValueError
+from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
 from tests.curves.curve_test import all_curves, low_card_curves
 
 ec23_31 = low_card_curves["ec23_31"]
@@ -355,6 +355,15 @@ def test_signed_odd_digits() -> None:
     # negative as they can and the top one carries the whole value
     assert signed_odd_digits(1, 4, 3) == [-15, -15, 1]
     assert signed_odd_digits(1, 4, 1) == [1]
+
+    # issue btclib-org/ellipticcurves#34: None used to reach `m < 0` and
+    # leak Python's own bare TypeError instead of this package's
+    with pytest.raises(BTClibEccTypeError, match="non-integer m: None"):
+        signed_odd_digits(None, 4, 64)  # type: ignore[arg-type]
+    with pytest.raises(BTClibEccTypeError, match="non-integer w: None"):
+        signed_odd_digits(43, None, 64)  # type: ignore[arg-type]
+    with pytest.raises(BTClibEccTypeError, match="non-integer size: None"):
+        signed_odd_digits(43, 4, None)  # type: ignore[arg-type]
 
     err_msg = "negative m: "
     with pytest.raises(BTClibEccValueError, match=err_msg):

@@ -108,6 +108,12 @@ A bare `bytes`, `bytearray` or hash function used to leak a builtin
 `TypeError` for a malformed input in `kdf`, `hashes.tagged_hash`,
 `ecies.encrypt` and the two `sign`s; each now refuses it by name (issue #11).
 
+### `signed_odd_digits` refuses a non-integer `m`, `w` or `size`
+
+A non-integer used to leak a bare builtin `TypeError` from the comparisons
+guarding the recoding; each of the three is now checked and refused as a
+`BTClibEccTypeError` ahead of them (closes #34).
+
 ## v2026.9.26
 
 ### The repository opens
