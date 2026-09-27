@@ -69,6 +69,7 @@ from btclib_ecc.curves.curve_group import (
     _jac_from_aff,
     _mult,
     _mult_fixed_base,
+    _mult_jac_var,
     _multi_mult_var,
 )
 from btclib_ecc.curves.curve_group_2 import (
@@ -318,7 +319,28 @@ class Curve(CurveGroup):
         # whose n is not the order of G is accepted by every other check
         # here and then fails silently downstream, mult and sign
         # returning answers in a group nobody asked for
-        if order_check and _mult(n, self.GJ, self)[2] != 0:
+        #
+        # _mult_jac_var, not the windowed _mult that every multiplication
+        # elsewhere in this module reaches for: that one builds its table
+        # of odd multiples of G in affine coordinates and feeds one of
+        # them through _jac_from_aff (curve_group.py, _mult_regular_window)
+        # to seed its accumulator, which is exactly the encoding that reads
+        # (x, 0) as infinity. Where G's true order is 2n rather than n, n*G
+        # is the curve's own real two-torsion point -- an odd multiple of
+        # G, since n is odd -- so that table holds it, and _mult reports
+        # Z == 0 for it precisely because the table lookup passed it
+        # through the ambiguous conversion, not because the product is
+        # infinity. That is safe everywhere else _mult is used, because
+        # the rest of the package multiplies only inside ⟨G⟩ once this
+        # check has passed, and a subgroup of prime order n has no element
+        # of order 2 to collide with -- but it is unsafe for this one
+        # check, which is what establishes that invariant in the first
+        # place and cannot assume it. _mult_jac_var never leaves Jacobian
+        # coordinates -- double_jac and add_jac read only a coordinate's
+        # own Z, never an affine y -- so its Z is 0 exactly when n*G is
+        # infinity, whatever the curve's own two-torsion point is (issue
+        # btclib-org/ellipticcurves#39).
+        if order_check and _mult_jac_var(n, self.GJ, self)[2] != 0:
             err_msg = "n is not the group order: "
             err_msg += f"{hex_string(n)}" if n > HEX_THRESHOLD else f"{n}"
             raise BTClibEccValueError(err_msg)
