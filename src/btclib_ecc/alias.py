@@ -185,6 +185,17 @@ Point = tuple[int, int]
 # The x-coordinate is arbitrary: 5 is preferred
 # because it is not a valid x-coordinate in secp256k1
 # (and even 5 + secp256k1.n is not a valid x-coordinate)
+#
+# The parenthetical is false of a curve whose full order -- cofactor
+# times the prime n -- is even: such a curve has a real point at y=0,
+# the group's own element of order 2, and that point has no affine
+# spelling distinct from this one. curve.Curve.is_on_curve -- not the
+# CurveGroup method it overrides, which has no G and no n to be
+# ambiguous about -- refuses that one x-coordinate rather than reading
+# it as INF (issue btclib-org/ellipticcurves#16); every catalogued
+# curve of cofactor 1
+# still reads any other y=0 tuple as infinity exactly as this comment
+# describes.
 INF = 5, 0
 
 # Elliptic curve point in Jacobian coordinates.

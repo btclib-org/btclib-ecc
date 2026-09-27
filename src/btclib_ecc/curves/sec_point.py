@@ -20,6 +20,7 @@ from btclib_ecc.alias import Integer, Octets, Point
 from btclib_ecc.curves.curve import (
     Curve,
     PreparedPoint,
+    _assert_in_subgroup,
     _assert_valid_ec,
     _libsecp256k1_serves,
     _point_from_sec,
@@ -185,6 +186,11 @@ def point_from_octets(
     rather than read for its truth: its `True` is the permissive value, and a
     non-bool is true, so `hybrid="no"` would parse the very prefixes it was
     written down to keep out.
+
+    On a curve of cofactor above 1 a point on the curve need not be a
+    point of ⟨G⟩: `_assert_in_subgroup` refuses one that is not, after
+    the on-curve check every branch already makes and before either
+    coordinate leaves this function (issue btclib-org/ellipticcurves#15).
     """
     assert_type(hybrid, bool, "hybrid")
     _assert_valid_ec(ec)
@@ -200,11 +206,23 @@ def point_from_octets(
         x_Q = int.from_bytes(pub_key[1:], byteorder="big")
         try:
             y_Q = _y_even_var(x_Q, ec)  # also check x_Q validity
-            return x_Q, y_Q if prefix == 0x02 else ec.p - y_Q
+            Q = x_Q, y_Q if prefix == 0x02 else ec.p - y_Q
         except BTClibEccValueError as e:
             msg = f"invalid x-coordinate: '{hex_string(x_Q)}'"
             raise BTClibEccValueError(msg) from e
-    elif prefix == 0x04 or (hybrid and prefix in {0x06, 0x07}):  # both coordinates
+        # y_Q == 0 is possible here: x_Q is this curve's real two-torsion
+        # x on a curve of cofactor above 1, _y_even_var lifting it to 0
+        # without complaint, exactly the ambiguous tuple Curve.is_on_curve
+        # exists to refuse. require_on_curve (is_on_curve underneath) is
+        # asked before _assert_in_subgroup for that reason --
+        # _assert_in_subgroup's own precondition is a point already on the
+        # curve, and its Jacobian arithmetic reads y == 0 as infinity
+        # exactly as the affine convention does, so it does not catch what
+        # is_on_curve is what refuses (issue btclib-org/ellipticcurves#16)
+        ec.require_on_curve(Q)
+        _assert_in_subgroup(Q, ec)
+        return Q
+    if prefix == 0x04 or (hybrid and prefix in {0x06, 0x07}):  # both coordinates
         if bsize != 2 * ec.p_size + 1:
             err_msg = "invalid size for uncompressed point: "
             err_msg += f"{bsize} instead of {2 * ec.p_size + 1}"
@@ -224,12 +242,12 @@ def point_from_octets(
             err_msg += f", against the hybrid prefix 0x{prefix:02x}"
             raise BTClibEccValueError(err_msg)
         if ec.is_on_curve(Q):
+            _assert_in_subgroup(Q, ec)
             return Q
         raise BTClibEccValueError(f"point not on curve: {Q}")
-    else:
-        # never echo the octets: a 33-byte 0x00-prefixed input
-        # is the key field of an xprv, i.e. a private key
-        raise BTClibEccValueError(f"not a point: prefix 0x{pub_key[:1].hex()}")
+    # never echo the octets: a 33-byte 0x00-prefixed input
+    # is the key field of an xprv, i.e. a private key
+    raise BTClibEccValueError(f"not a point: prefix 0x{pub_key[:1].hex()}")
 
 
 def _assert_pub_key_type(pub_key: PubKey) -> None:
@@ -277,6 +295,10 @@ def point_from_pub_key(pub_key: PubKey, ec: Curve = secp256k1) -> Point:
     Nothing compares a curve on the way through: a prepared point of
     another curve fails the `is_on_curve` its tuple then faces, exactly
     as a bare `Point` of that curve does and with the same message.
+
+    A tuple is confined to ⟨G⟩ here as `point_from_octets` confines the
+    octets it parses, on a curve whose cofactor makes the two different
+    (issue btclib-org/ellipticcurves#15).
     """
     _assert_valid_ec(ec)
     _assert_pub_key_type(pub_key)
@@ -285,6 +307,7 @@ def point_from_pub_key(pub_key: PubKey, ec: Curve = secp256k1) -> Point:
 
     if isinstance(pub_key, tuple):
         if ec.is_on_curve(pub_key) and pub_key[1] != 0:
+            _assert_in_subgroup(pub_key, ec)
             return pub_key[0], pub_key[1]
         raise BTClibEccValueError(f"not a valid public key: {pub_key}")
     # it must be octets
