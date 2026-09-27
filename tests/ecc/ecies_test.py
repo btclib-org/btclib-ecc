@@ -280,6 +280,19 @@ def test_encrypt_refuses_a_cipher_that_does_not_pad() -> None:
         ecies.encrypt(bytes(32), pub_key, no_padding)
 
 
+def test_encrypt_refuses_a_message_that_is_no_bytes() -> None:
+    """A `str` plaintext used to reach `encrypt_f` and leak whatever it did.
+
+    `msg` is `bytes` alone, not `Octets` (the module docstring's own
+    "The plaintext is bytes and not Octets" says why), so a `str` is
+    refused by name rather than read as a hex-string or handed to
+    `encrypt_f` unchecked (issue btclib-org/ellipticcurves#11).
+    """
+    pub_key = mult(0xC28FCA386C7A227600B2FE50B7CAE11EC86D3BF1FBE471BE89827E19D72AA1D)
+    with pytest.raises(BTClibEccTypeError, match="invalid msg type"):
+        ecies.encrypt("hi", pub_key, aes_128_cbc_encrypt)  # type: ignore[arg-type]
+
+
 def test_magic_is_a_parameter() -> None:
     """Electrum varies the magic over an otherwise identical layout."""
     prv_key = 0xC28FCA386C7A227600B2FE50B7CAE11EC86D3BF1FBE471BE89827E19D72AA1D

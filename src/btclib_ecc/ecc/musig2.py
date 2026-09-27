@@ -821,7 +821,14 @@ def sign(sec_nonce: bytearray, prv_key: Integer, session_ctx: SessionContext) ->
     Nothing was signed with it, which is what makes reuse safe there and
     only there, and BIP327's reference implementation has the two calls
     in this order for the same reason.
+
+    `sec_nonce` is checked exactly `bytearray`, ahead of `session_values`
+    and of every read below: it is never zeroed and never spent, so a
+    caller handed a clean `BTClibEccTypeError` for a `bytes` or a `list`
+    may simply retry with the bytearray this takes (issue
+    btclib-org/ellipticcurves#11).
     """
+    assert_type(sec_nonce, bytearray, "sec_nonce")
     values = session_values(session_ctx)
     k_1_ = int.from_bytes(sec_nonce[:_SCALAR_SIZE], "big")
     k_2_ = int.from_bytes(sec_nonce[_SCALAR_SIZE : 2 * _SCALAR_SIZE], "big")

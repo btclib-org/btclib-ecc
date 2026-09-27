@@ -373,8 +373,11 @@ def encrypt(
     parameters of this library: a hex string is how this package spells binary
     everywhere else, and reading `"deadbeef"` as four bytes rather than as
     the eight characters somebody meant to hide is not a mistake the
-    recipient can notice.
+    recipient can notice. `assert_type` is what refuses a caller's
+    mistake here instead of leaking whatever `encrypt_f` does with a
+    non-bytes plaintext (issue btclib-org/ellipticcurves#11).
     """
+    assert_type(msg, bytes, "msg")
     if eph_prv_key is None:
         # in the range [1, n-1], as everywhere else a key is generated here
         eph_prv_key = 1 + secrets.randbelow(secp256k1.n - 1)

@@ -102,6 +102,12 @@ The z search is bounded at p, and the inner loop raises
 `BTClibEccValueError` when it is exhausted, instead of an outer loop
 that ran forever past the "p must be a prime" precondition (closes #9).
 
+### `kdf`, `tagged_hash`, `ecies.encrypt` and `sign` refuse a malformed input
+
+A bare `bytes`, `bytearray` or hash function used to leak a builtin
+`TypeError` for a malformed input in `kdf`, `hashes.tagged_hash`,
+`ecies.encrypt` and the two `sign`s; each now refuses it by name (issue #11).
+
 ## v2026.9.26
 
 ### The repository opens

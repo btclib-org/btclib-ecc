@@ -246,6 +246,29 @@ def test_sign_verify_valid_vectors(group: dict[str, Any], case: dict[str, Any]) 
 
 
 @pytest.mark.parametrize(
+    "sec_nonce",
+    ["not a nonce", None],
+    ids=["str", "None"],
+)
+def test_sign_refuses_a_secnonce_that_is_no_bytearray(sec_nonce: Any) -> None:
+    """A `str` or `None` secnonce used to leak a bare builtin `TypeError`.
+
+    `musig2.sign`'s own test has the shape this refuses: a `bytearray`
+    is what nothing but this scheme can spend (issue
+    btclib-org/ellipticcurves#11).
+    """
+    group = _SIGN_VERIFY["test_groups"][0]
+    n, t = group["n"], group["t"]
+    thresh_pk = bytes.fromhex(group["thresh_pk"])
+    ids = list(range(1, n + 1))
+    session_ctx = frost.SessionContext(
+        n, t, ids, None, thresh_pk, bytes(66), [], [], bytes(32)
+    )
+    with pytest.raises(BTClibEccTypeError, match="invalid sec_nonce type"):
+        frost.sign(sec_nonce, bytes(32), 1, session_ctx)
+
+
+@pytest.mark.parametrize(
     "group, case", _all_group_params(_SIGN_VERIFY, "sign_error_tests")
 )
 def test_sign_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
