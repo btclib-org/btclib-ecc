@@ -96,6 +96,12 @@ The constructor now checks `cofactor*n` against Hasse's bound, in place
 of refusing every cofactor but the interval's largest multiple of `n`,
 wrong wherever several multiples fit (closes #19).
 
+### `tonelli_var` and `mod_sqrt_var` raise, not hang, on a composite p
+
+The z search is bounded at p, and the inner loop raises
+`BTClibEccValueError` when it is exhausted, instead of an outer loop
+that ran forever past the "p must be a prime" precondition (closes #9).
+
 ## v2026.9.26
 
 ### The repository opens
