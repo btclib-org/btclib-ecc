@@ -31,6 +31,12 @@ An issue filed from a review may say the fix where one is known: *What is
 filed, and what is not* dropped its "no fix", the filing bar standing as it
 was (issue btclib-org/.github#1378).
 
+### `codeql.yml`, `REPOSITORY.md` and `dependabot.yml` follow sections 10 and 11
+
+The aggregate accepts `analyze`'s lagging rows (issue btclib-org/.github#1395),
+signatures and SHA pinning are read back (issue btclib-org/.github#1409), and
+`pre-commit` is an ecosystem left unused (issue btclib-org/.github#1391).
+
 ## v2026.9.26
 
 ### The repository opens
