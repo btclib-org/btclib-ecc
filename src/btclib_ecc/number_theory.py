@@ -402,24 +402,36 @@ def tonelli_var(a: int, p: int) -> int:
 
     # Select a z which is a quadratic non residue modulo p, from the
     # first value that can be one: 1 is a square modulo every prime, so
-    # its symbol is known before the loop asks for it
+    # its symbol is known before the loop asks for it. A genuine prime
+    # always has one below it, half its nonzero residues being
+    # non-residues; z reaching p without meeting one is the same
+    # violation of "p must be a prime" the t loop below raises on, and it
+    # is what a p that is a perfect square does, its Jacobi symbol never
+    # being -1.
     z = 2
     while legendre_symbol_var(z, p) != -1:
         z += 1
+        if z == p:
+            err_msg = "p is not prime: "
+            err_msg += f"'{hex_string(p)}'" if p > 0xFFFFFFFF else f"{p}"
+            raise BTClibEccValueError(err_msg)
     c = pow(z, q, p)
     r = pow(a, (q + 1) // 2, p)
     t = pow(a, q, p)
     while t != 1:
         # Find the lowest i such that t^(2^i) = 1
         t2i = t
-        # `no branch` on the exhausted loop, which cannot happen: the
-        # legendre symbol above is what rules it out, `a` being a
-        # quadratic residue making `t = a**q` an element of the subgroup
-        # of order 2**(s-1), so squaring it reaches 1 at some i < s. The
-        # bound is the loop's termination and not a fallback -- there is
-        # no value of i to take past it -- which is why nothing follows
-        # the loop but the `while` that reads the new t
-        for i in range(1, s):  # pragma: no branch -- a non-residue is ruled out above
+        # For a genuine prime p this always finds such an i: the
+        # legendre symbol above rules out a == 0, and `a` being a
+        # quadratic residue makes `t = a**q` an element of the subgroup
+        # of order 2**(s-1), so squaring it reaches 1 at some i < s.
+        # Where p is not prime, the legendre symbol above is only a
+        # Jacobi symbol and does not rule this out, so the loop's
+        # exhaustion -- `for`/`else` running with no `break` -- is the
+        # same violation of "p must be a prime" the z search above
+        # raises on, rather than a case left for the `while` above to
+        # loop on forever.
+        for i in range(1, s):
             t2i = t2i * t2i % p
             if t2i == 1:
                 # Update next value to iterate
@@ -429,5 +441,9 @@ def tonelli_var(a: int, p: int) -> int:
                 t = (t * c) % p
                 s = i
                 break
+        else:
+            err_msg = "p is not prime: "
+            err_msg += f"'{hex_string(p)}'" if p > 0xFFFFFFFF else f"{p}"
+            raise BTClibEccValueError(err_msg)
 
     return r

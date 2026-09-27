@@ -957,6 +957,19 @@ def test_INF() -> None:
         secp256k1.y_var(INF[0] + secp256k1.n)
 
 
+def test_y_var_raises_on_a_fermat_liar_modulus() -> None:
+    """`y_var` raises instead of hanging when p is a Fermat liar.
+
+    `_is_prime` is a base-2 Fermat test, and 561 is a Fermat liar for it,
+    so `CurveGroup.__init__` accepts it; `y_var` reaches
+    `number_theory.mod_sqrt_var` on that composite p, which is where the
+    hang this guards against used to be.
+    """
+    ec = CurveGroup(561, 1, 3)
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: "):
+        ec.y_var(1)
+
+
 def test_aff_from_jac_batch_is_aff_from_jac_over_a_sequence() -> None:
     """The batch answers what the conversions one at a time answer.
 

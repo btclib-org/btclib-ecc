@@ -193,6 +193,23 @@ def test_mod_sqrt2() -> None:
         assert i == (root * root) % p
 
 
+def test_composite_modulus_raises_instead_of_hanging() -> None:
+    """A composite p ends in `BTClibEccValueError`, not an infinite loop.
+
+    Both docstrings restrict p to a prime, and a composite one reaches
+    that restriction two different ways: 9, a perfect square, has no z
+    whose Jacobi symbol is -1, which is what bounds the z search; 33 has
+    one -- the search itself succeeds -- but the inner loop's t never
+    reaches 1, which is what its own bound raises on instead.
+    """
+    err_msg = "p is not prime: "
+    for a, p in ((4, 9), (2, 33)):
+        with pytest.raises(BTClibEccValueError, match=err_msg):
+            tonelli_var(a, p)
+        with pytest.raises(BTClibEccValueError, match=err_msg):
+            mod_sqrt_var(a, p)
+
+
 def test_minus_one_quadr_res() -> None:
     """Ensure that if p = 3 (mod 4) then p - 1 is not a quadratic residue."""
     for p in primes:
