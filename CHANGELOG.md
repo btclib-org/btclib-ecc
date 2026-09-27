@@ -25,6 +25,12 @@ driver that would keep both sides' numbers.
 
 ## v2026.10 (work in progress, not released yet)
 
+### `REVIEWING.md` lets a filed issue carry its fix
+
+An issue filed from a review may say the fix where one is known: *What is
+filed, and what is not* dropped its "no fix", the filing bar standing as it
+was (issue btclib-org/.github#1378).
+
 ## v2026.9.26
 
 ### The repository opens
