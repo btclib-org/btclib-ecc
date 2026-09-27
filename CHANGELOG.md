@@ -55,6 +55,12 @@ Section 3's name-equals-repository rule is declined here, with the
 maintainer's decision and its citation, rather than left unexplained
 (closes #17).
 
+### The fuzz build installs from `uv.lock`, not the index
+
+`.clusterfuzzlite/build.sh` installs `requirements.txt`, `uv.lock`'s base
+dependencies exported with their hashes, with `--require-hashes --no-deps`
+before the package itself, instead of resolving off the index (closes #13).
+
 ## v2026.9.26
 
 ### The repository opens
