@@ -253,7 +253,7 @@ package is used to teach and to prototype as much as to build:
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
     (`src/btclib_ecc/curves/curve.py:859`). `dh.diffie_hellman` at
     `sec = libsecp256k1_shared_point(`
-    (`src/btclib_ecc/ecc/dh.py:103`) and `sec_point._mult_sec` at
+    (`src/btclib_ecc/ecc/dh.py:119`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
     (`src/btclib_ecc/curves/sec_point.py:384`), under
     `sec_point.mult_pub_key` and `ecies.derive_keys`, make the same call

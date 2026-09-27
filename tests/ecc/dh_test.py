@@ -14,6 +14,7 @@ from btclib_ecc.curves.curve import CURVES
 from btclib_ecc.ecc import dh, diffie_hellman, dsa
 from btclib_ecc.exceptions import (
     BTClibEccRuntimeError,
+    BTClibEccTypeError,
     BTClibEccValueError,
 )
 from btclib_ecc.kdf import ansi_x9_63_kdf
@@ -192,12 +193,92 @@ def test_a_normal_dU_reaches_the_bindings(monkeypatch: pytest.MonkeyPatch) -> No
     assert calls == [a % CURVES["secp256k1"].n]
 
 
-def test_infinity_shared_secret() -> None:
-    """A degenerate scalar, zero mod n, maps every public key to INF."""
+def test_a_degenerate_dU_is_refused_as_a_bad_key_not_as_an_INF_secret() -> None:
+    """0 mod n was never a valid private key, and is now refused as one.
+
+    Before scalar_from_prv_key ran first, `d = dU % ec.n` folded `dU = 0`
+    into a degenerate scalar that reached `mult` and answered INF -- a
+    BTClibEccRuntimeError about the *secret*, as though 0 were a key that
+    merely produced a bad answer. It never was a valid key, in 1..n-1, so
+    it is refused as one (issue btclib-org/ellipticcurves#10).
+    """
     ec = CURVES["secp256k1"]
-    err_msg = r"invalid \(INF\) key"
-    with pytest.raises(BTClibEccRuntimeError, match=err_msg):
+    with pytest.raises(BTClibEccValueError, match="private key not in 1..n-1"):
         diffie_hellman(0, ec.G, 32)
+
+
+@pytest.mark.parametrize(
+    "bad_dU,exc",
+    [
+        (True, BTClibEccTypeError),
+        (5.0, BTClibEccTypeError),
+        (-5, BTClibEccValueError),
+    ],
+)
+def test_a_bad_dU_is_refused_the_same_way_on_both_arithmetic_arms(
+    monkeypatch: pytest.MonkeyPatch, bad_dU: object, exc: type[Exception]
+) -> None:
+    """A bool, a float, and a negative int, refused identically either way.
+
+    `d = dU % ec.n` used to run before any check, so a `True` reached the
+    bindings arm as `1` (1*QV, no exception at all) and `5.0 % ec.n`
+    reached it as a float the C call itself refused with a bare
+    `TypeError`, where the Python arm's own `mult` already refused each of
+    them as a `BTClibEccTypeError` or a `BTClibEccValueError`. Both arms
+    now run `scalar_from_prv_key` first and agree (issue
+    btclib-org/ellipticcurves#10).
+    """
+    QV = mult(0xC0FFEE)
+    with pytest.raises(exc):
+        diffie_hellman(bad_dU, QV, 32)  # type: ignore[arg-type]
+    with monkeypatch.context() as no_bindings:
+        no_bindings.setattr(dh, "_libsecp256k1_serves", lambda *_: False)
+        with pytest.raises(exc):
+            diffie_hellman(bad_dU, QV, 32)  # type: ignore[arg-type]
+
+
+def test_dU_at_or_above_n_is_refused_rather_than_silently_reduced(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`n + 5` used to answer the same secret as `5`; now it is refused.
+
+    `d = dU % ec.n` silently wrapped an out-of-range `dU` into range on
+    both arithmetic arms, so `-5` and `ec.n + 5` answered the same shared
+    secret as `5` either way -- consistent between the two arms, and still
+    not what `scalar_from_prv_key` allows any other private key to do
+    (issue btclib-org/ellipticcurves#10).
+    """
+    ec = CURVES["secp256k1"]
+    QV = mult(0xC0FFEE)
+    err_msg = "private key not in 1..n-1"
+    with pytest.raises(BTClibEccValueError, match=err_msg):
+        diffie_hellman(ec.n + 5, QV, 32)
+    with monkeypatch.context() as no_bindings:
+        no_bindings.setattr(dh, "_libsecp256k1_serves", lambda *_: False)
+        with pytest.raises(BTClibEccValueError, match=err_msg):
+            diffie_hellman(ec.n + 5, QV, 32)
+
+
+def test_an_INF_public_key_is_refused_the_same_way_on_both_arithmetic_arms(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """QV at infinity, refused identically whichever arm would serve it.
+
+    Before the upfront check, `bytes_from_point` refused an INF `QV` as a
+    `BTClibEccValueError` on the bindings arm, while the Python arm passed
+    it through the cofactor multiplication and `mult` unchecked, and only
+    caught it afterwards as a `BTClibEccRuntimeError` about the secret --
+    the same input, two different classes (issue
+    btclib-org/ellipticcurves#10).
+    """
+    ec = CURVES["secp256k1"]
+    err_msg = r"invalid \(INF\) public key"
+    with pytest.raises(BTClibEccValueError, match=err_msg):
+        diffie_hellman(5, (1, 0), 32, ec=ec)
+    with monkeypatch.context() as no_bindings:
+        no_bindings.setattr(dh, "_libsecp256k1_serves", lambda *_: False)
+        with pytest.raises(BTClibEccValueError, match=err_msg):
+            diffie_hellman(5, (1, 0), 32, ec=ec)
 
 
 def test_cofactor_dh_hides_a_low_order_key_parity() -> None:
