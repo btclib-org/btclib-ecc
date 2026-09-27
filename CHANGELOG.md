@@ -49,6 +49,12 @@ An `analyze` row listed unfinished is read again before it is accepted
 (issue btclib-org/.github#1416), and an `analyze` result other than
 `success` or `skipped` fails the step (issue btclib-org/.github#1424).
 
+### `REPOSITORY.md` records the `btclib-ecc`/`ellipticcurves` naming exception
+
+Section 3's name-equals-repository rule is declined here, with the
+maintainer's decision and its citation, rather than left unexplained
+(closes #17).
+
 ## v2026.9.26
 
 ### The repository opens

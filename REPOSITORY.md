@@ -81,6 +81,28 @@ tree serves no GitHub Pages site, and a recorded `404` is what makes a
 later flip visible. It asks for the status line alone, the error body
 being the endpoint's generic `Not Found` document.
 
+## Naming: `btclib-ecc` published from `ellipticcurves`
+
+**Section 3 asks that the repository be named after the distribution,
+hyphenated, and this one is not.** `pyproject.toml` declares
+`name = "btclib-ecc"`; the repository stays `ellipticcurves`.
+
+The maintainer decided both halves in
+[btclib-org/btclib#2282](https://github.com/btclib-org/btclib/issues/2282)
+(comment of 2026-09-26): the distribution takes `btclib-ecc`, pairing with
+the import package `btclib_ecc` the way `btclib-secp256k1` pairs with
+`btclib_secp256k1`, and "the repository stays
+[btclib-org/ellipticcurves](https://github.com/btclib-org/ellipticcurves)".
+That comment states the decision and no reason for keeping the
+repository's own name against it, and no reason is recorded anywhere else
+in this tree.
+
+The organization's alignment suite carries the resulting mismatch as
+[btclib-org/.github#1392](https://github.com/btclib-org/.github/issues/1392):
+the `ellipticcurves` cell of `test_the_name_normalizes_to_the_repository`
+stays red there until that repository records an exemption or a
+`BACKLOG` row, which the maintainer left undone on 2026-09-27.
+
 ## Required checks on main
 
 **Never name matrix contexts in the branch rule.** The rule lives outside
