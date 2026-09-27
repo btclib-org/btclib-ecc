@@ -43,6 +43,12 @@ signatures and SHA pinning are read back (issue btclib-org/.github#1409), and
 pinned to its digest (closes #12), and `dependabot.yml`'s `docker` block is
 what proposes the next one (issue btclib-org/.github#1405).
 
+### `codeql.yml` rereads a lagging row and fails on a failed `needs` result
+
+An `analyze` row listed unfinished is read again before it is accepted
+(issue btclib-org/.github#1416), and an `analyze` result other than
+`success` or `skipped` fails the step (issue btclib-org/.github#1424).
+
 ## v2026.9.26
 
 ### The repository opens
