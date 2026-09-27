@@ -66,6 +66,12 @@ before the package itself, instead of resolving off the index (closes #13).
 Only ASCII whitespace is stripped, and the refusal no longer quotes the
 string, which may be a private key (closes #21).
 
+### `Sig.parse` refuses a long-form or oversized DER length under strict
+
+A DER length octet at 0x80 or above, or an oversized r,s total, is refused
+under `strict` instead of CompactSize; errors now name the DER length, not
+`var_int` or a psbt caller this tree lacks (closes #8) (closes #14).
+
 ## v2026.9.26
 
 ### The repository opens

@@ -4,6 +4,7 @@
 
 """Tests for the `btclib_ecc.ecc.dsa` module."""
 
+import re
 import secrets
 from hashlib import sha1, sha256, sha512
 from io import BytesIO
@@ -15,6 +16,7 @@ from btclib_ecc._libsecp256k1 import INSTALLED
 from btclib_ecc._libsecp256k1 import dsa as libsecp256k1_dsa
 from btclib_ecc._libsecp256k1 import ffi as libsecp256k1_ffi
 from btclib_ecc._libsecp256k1 import recovery as libsecp256k1_recovery
+from btclib_ecc._utils import hex_string
 from btclib_ecc.alias import INF, JacPoint, Point
 from btclib_ecc.curves import (
     Curve,
@@ -2527,7 +2529,7 @@ def test_verify_answers_false_for_a_well_formed_signature_that_is_wrong() -> Non
     [
         pytest.param(
             b"",
-            ("BTClibEccValueError", "not enough binary data for var_int"),
+            ("BTClibEccValueError", "not enough binary data for DER length"),
             id="nothing",
         ),
         pytest.param(
@@ -2548,14 +2550,14 @@ def test_verify_answers_false_for_a_well_formed_signature_that_is_wrong() -> Non
         ),
         pytest.param(
             b"\xfd\xfd",
-            ("BTClibEccValueError", "not enough binary data for var_int"),
+            ("BTClibEccValueError", "not enough binary data for DER length"),
             id="two octets cut short",
         ),
         pytest.param(
             b"\xfd\xfc\x00",
             (
                 "BTClibEccValueError",
-                "non-canonical var_int: 252 encoded in 3 bytes",
+                "non-canonical DER length: 252 encoded in 3 bytes",
             ),
             id="two octets non-canonical",
         ),
@@ -2566,34 +2568,110 @@ def test_verify_answers_false_for_a_well_formed_signature_that_is_wrong() -> Non
         ),
         pytest.param(
             b"\xfe\x01\x00\x00\x02",
-            ("BTClibEccValueError", "var_int too big: 02000001, max is 02000000"),
+            ("BTClibEccValueError", "DER length too big: 02000001, max is 02000000"),
             id="four octets past the cap",
         ),
         pytest.param(
             b"\xff" + bytes(8),
-            ("BTClibEccValueError", "non-canonical var_int: 0 encoded in 9 bytes"),
+            ("BTClibEccValueError", "non-canonical DER length: 0 encoded in 9 bytes"),
             id="eight octets non-canonical",
         ),
     ],
 )
-def test_a_der_size_is_read_as_compact_size(
+def test_a_der_size_is_read_as_compact_size_when_not_strict(
     data: bytes, expected: tuple[str, bytes | str]
 ) -> None:
-    """Every branch of the size reader `Sig.parse` carries, pinned.
+    """Every branch of the lax size reader, pinned.
 
-    The value, or the exception class and its message: the wording is
-    CompactSize's, `var_int` included, because a reader of the same
-    octets elsewhere answers in those words and a caller comparing the
-    two sees one refusal rather than two.
+    The value, or the exception class and its message. This is the reading
+    `_parse_der_value(..., strict=False)` falls back to: `strict=True`
+    refuses every size at 0x80 and above outright, pinned separately by
+    `test_strict_parsing_refuses_any_long_form_length` below.
     """
     try:
         outcome: tuple[str, bytes | str] = (
             "value",
-            dsa._parse_der_value(BytesIO(data)),
+            dsa._parse_der_value(BytesIO(data), False),
         )
     except BTClibEccValueError as e:
         outcome = (type(e).__name__, str(e))
     assert outcome == expected
+
+
+@pytest.mark.parametrize(
+    "size_octet",
+    [0x80, 0x81, 0xFC, 0xFD, 0xFE, 0xFF],
+    ids=["0x80 indefinite", "0x81 long form", "0xfc", "0xfd", "0xfe", "0xff"],
+)
+def test_strict_parsing_refuses_any_long_form_length(size_octet: int) -> None:
+    """Issue #8: strict refuses a length octet of 0x80 or above outright.
+
+    Read as CompactSize instead, 0x81 is a valid one-octet size (129) rather
+    than X.690 8.1.3's long-form marker, and a strict parse that fell for
+    that accepted an encoding it then reserialized differently -- the
+    round trip `strict` promises.
+    """
+    data = bytes([size_octet]) + bytes(0x80)
+    err_msg = f"invalid DER length: long form {hex_string(size_octet)}"
+    err_msg += ", strict parsing requires the short form below 0x80"
+    with pytest.raises(BTClibEccValueError, match=re.escape(err_msg)):
+        dsa._parse_der_value(BytesIO(data), True)
+
+
+def test_strict_parse_round_trips_a_signature_with_a_long_form_length() -> None:
+    """Issue #8's own reproducer: a long-form length octet is refused.
+
+    A length octet of 0x81 is X.690 8.1.3's long form, not the CompactSize
+    value 129, and strict pins the refusal rather than a reserialization
+    that would answer with a different encoding than the one handed in.
+    """
+    body = b"\x02\x81" + b"\x01" + b"\x00" * 128 + b"\x02\x01\x01"
+    der = b"\x30" + bytes([len(body)]) + body
+    with pytest.raises(BTClibEccValueError, match="long form"):
+        dsa.Sig.parse(der, strict=True, check_validity=False)
+    # unaffected: lax parsing was never strict's promise to keep
+    assert dsa.Sig.parse(der, strict=False, check_validity=False).r != 0
+
+
+def test_strict_parsing_accepts_the_der_sequence_at_exactly_70_octets() -> None:
+    """70 is the bound itself, and the bound is accepted, not refused.
+
+    r and s at 33 octets each sum to 70, the widest r,s content the class
+    docstring gives for secp256k1's widest signature body -- 72 octets
+    once the bare DER's 0x30 tag and its own length octet are counted,
+    which is `CPubKey::Verify`'s own "~72 bytes" for the signature Core
+    verifies with the scriptSig's trailing sighash byte already stripped.
+    """
+    r_bytes = bytes([0x01]) * 33
+    s_bytes = bytes([0x01]) * 33
+    body = b"\x02" + bytes([len(r_bytes)]) + r_bytes
+    body += b"\x02" + bytes([len(s_bytes)]) + s_bytes
+    assert len(body) == 70
+    der = b"\x30" + bytes([len(body)]) + body
+    sig = dsa.Sig.parse(der, strict=True, check_validity=False)
+    assert (sig.r, sig.s) == (
+        int.from_bytes(r_bytes, byteorder="big"),
+        int.from_bytes(s_bytes, byteorder="big"),
+    )
+
+
+def test_strict_parsing_refuses_the_der_sequence_at_71_octets() -> None:
+    """One octet past the bound is refused, every individual length short-form.
+
+    r at 34 octets and s at 33 sum to 71: each length octet stays below
+    0x80 on its own, so the per-field short-form check above does not by
+    itself catch what Core's own size equation refuses.
+    """
+    r_bytes = bytes([0x01]) * 34
+    s_bytes = bytes([0x01]) * 33
+    body = b"\x02" + bytes([len(r_bytes)]) + r_bytes
+    body += b"\x02" + bytes([len(s_bytes)]) + s_bytes
+    assert len(body) == 71
+    der = b"\x30" + bytes([len(body)]) + body
+    err_msg = f"invalid DER sequence length: {len(body)} octets of r,s data"
+    err_msg += ", max is 70 for secp256k1"
+    with pytest.raises(BTClibEccValueError, match=re.escape(err_msg)):
+        dsa.Sig.parse(der, strict=True, check_validity=False)
 
 
 def test_recover_pub_key_validates_a_sig_it_is_handed() -> None:

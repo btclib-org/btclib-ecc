@@ -158,45 +158,67 @@ _WIDE_SIZE_PREFIXES = {
 # serialize.h: nine octets could otherwise announce 2**64 - 1 of them
 _MAX_SIZE = 0x02000000
 
+# Core's IsValidSignatureEncoding caps sig.size() at 73, but that size is
+# the scriptSig-embedded array with a trailing sighash byte still on it --
+# IsLowDERSignature strips exactly that one byte first, and CPubKey::Verify,
+# which takes the bare DER blob this module parses, documents its own
+# argument as "~72 bytes". 72 is this module's bound, and under a
+# single-octet length form that leaves 70 for the r,s data once the 0x30
+# tag and its own length octet are counted -- the 70 octets the class
+# docstring above already gives as secp256k1's widest signature body
+_MAX_SIG_DATA_SIZE = 70
 
-def _parse_der_size(stream: BytesIO) -> int:
-    """Return the size in front of a DER element, read as CompactSize.
 
-    CompactSize and X.690 8.1.3 agree below 0x80, which is every size a
-    secp256k1 signature under BIP66 carries. At 0x80 and above they part:
-    CompactSize takes the octet as the size, up to 0xfc, and 0xfd, 0xfe and 0xff
-    as the prefix of a wider one, where X.690 takes it as the count of the size
-    octets that follow (issue btclib-org/btclib#2283). `_der_length` is the
-    X.690 side, and writes; this is the side `parse` reads with.
+def _parse_der_size(stream: BytesIO, strict: bool) -> int:
+    """Return the size in front of a DER element.
+
+    Under strict, only X.690 8.1.3's short form is read: one octet below
+    0x80, holding the size itself -- every size a secp256k1 signature
+    under BIP66 carries. An octet at 0x80 or above is refused outright,
+    whether it opens the long form (`0x80 | k`, k octets of size to
+    follow) or, at exactly 0x80, BER's indefinite length, which DER
+    forbids.
+
+    Without strict the octet is read as CompactSize instead, which agrees
+    with X.690 below 0x80 and diverges above it: 0x80 through 0xfc there is
+    the size itself rather than a length-of-length count, and 0xfd, 0xfe
+    and 0xff are the prefix of a wider one (issue
+    btclib-org/btclib#2283). `_der_length` is the X.690 side, and never
+    writes anything this module parses back other than the short form.
     """
     prefix = stream.read(1)
     if not prefix:
-        raise BTClibEccValueError("not enough binary data for var_int")
+        raise BTClibEccValueError("not enough binary data for DER length")
     size = prefix[0]
+    if strict and size >= 0x80:
+        err_msg = f"invalid DER length: long form {hex_string(size)}"
+        err_msg += ", strict parsing requires the short form below 0x80"
+        raise BTClibEccValueError(err_msg)
     if size in _WIDE_SIZE_PREFIXES:
         width, minimum = _WIDE_SIZE_PREFIXES[size]
         data = stream.read(width)
         if len(data) != width:
-            raise BTClibEccValueError("not enough binary data for var_int")
+            raise BTClibEccValueError("not enough binary data for DER length")
         size = int.from_bytes(data, byteorder="little", signed=False)
         if size < minimum:
-            err_msg = f"non-canonical var_int: {size} encoded in {width + 1} bytes"
+            err_msg = f"non-canonical DER length: {size} encoded in {width + 1} bytes"
             raise BTClibEccValueError(err_msg)
     if size > _MAX_SIZE:
-        err_msg = f"var_int too big: {hex_string(size)}, max is {hex_string(_MAX_SIZE)}"
+        err_msg = (
+            f"DER length too big: {hex_string(size)}, max is {hex_string(_MAX_SIZE)}"
+        )
         raise BTClibEccValueError(err_msg)
     return size
 
 
-def _parse_der_value(stream: BytesIO) -> bytes:
+def _parse_der_value(stream: BytesIO, strict: bool) -> bytes:
     """Return the [size][value] octets a DER element announced.
 
     A size that overruns the buffer, or a zero one, means the DER is
-    malformed, so each is a BTClibEccValueError: the callers that filter
-    parse failures -- psbt_in._assert_valid_partial_sigs among them --
-    catch BTClibEccValueError alone.
+    malformed, so each is a BTClibEccValueError, which is the exception a
+    caller filtering parse failures catches.
     """
-    size = _parse_der_size(stream)
+    size = _parse_der_size(stream, strict)
     if size == 0:
         raise BTClibEccValueError("invalid DER length: zero size")
     value = stream.read(size)
@@ -212,7 +234,7 @@ def _deserialize_scalar(sig_data_stream: BytesIO, strict: bool) -> int:
         err_msg += f", instead of integer element {_DER_SCALAR_MARKER.hex()}"
         raise BTClibEccValueError(err_msg)
 
-    scalar_bytes = _parse_der_value(sig_data_stream)
+    scalar_bytes = _parse_der_value(sig_data_stream, strict)
 
     if strict:
         # a leading zero byte is legal only to keep a value whose highest
@@ -429,7 +451,16 @@ class Sig:
             raise BTClibEccValueError(err_msg)
 
         # then data-size, 0x02, r-size, r, 0x02, s-size, s
-        sig_data = _parse_der_value(stream)
+        sig_data = _parse_der_value(stream, strict)
+
+        # every individual length octet below is already the short form,
+        # which alone still leaves room for r,s data past what Core's own
+        # size equation allows: a single check per field does not bound
+        # the sum of them
+        if strict and len(sig_data) > _MAX_SIG_DATA_SIZE:
+            err_msg = f"invalid DER sequence length: {len(sig_data)} octets of "
+            err_msg += f"r,s data, max is {_MAX_SIG_DATA_SIZE} for secp256k1"
+            raise BTClibEccValueError(err_msg)
 
         # then 0x02, r-size, r, 0x02, s-size, s
         sig_data_substream = bytesio_from_binarydata(sig_data)
