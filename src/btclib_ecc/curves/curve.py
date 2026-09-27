@@ -273,11 +273,31 @@ class Curve(CurveGroup):
         # being what this is -- on p = 7 they are 5 and 4, and the second
         # refuses an n of 13 that Hasse admits
         delta = isqrt(4 * self.p)
-        # also check n with Hasse Theorem
-        if cofactor < 2 and not self.p + 1 - delta <= n <= self.p + 1 + delta:
-            err_msg = "n not in p+1-delta..p+1+delta: "
-            err_msg += f"{hex_string(n)}" if n > HEX_THRESHOLD else f"{n}"
+
+        # 6. Check cofactor. The curve's own order is cofactor*n, and
+        # Hasse bounds that order, not n alone -- a cofactor above 1 is a
+        # real parameter of the curve rather than a number derived from n,
+        # and what it multiplies is what Hasse actually constrains. Where n
+        # is more than twice delta, the interval is narrower than the gap
+        # between two consecutive multiples of n, so at most one multiple
+        # of n can lie in it and a cofactor whose product falls inside is
+        # the only one that can: the containment check below is then
+        # exact, in place of computing that one multiple directly and
+        # comparing. Below that threshold several multiples of n can lie
+        # in the interval at once, and nothing short of counting the
+        # curve's own points -- which this constructor does not do --
+        # tells the true cofactor from the others; containment is the
+        # strongest check available short of that (issue
+        # btclib-org/ellipticcurves#19)
+        lo = self.p + 1 - delta
+        hi = self.p + 1 + delta
+        if cofactor < 1 or not lo <= cofactor * n <= hi:
+            cn = cofactor * n
+            err_msg = f"invalid cofactor: {cofactor}, cofactor*n not in "
+            err_msg += "p+1-delta..p+1+delta: "
+            err_msg += f"{hex_string(cn)}" if cn > HEX_THRESHOLD else f"{cn}"
             raise BTClibEccValueError(err_msg)
+        self.cofactor = cofactor
 
         # 7. Check that G ≠ INF, nG = INF
         if self.G[1] == 0:
@@ -302,19 +322,6 @@ class Curve(CurveGroup):
             err_msg = "n is not the group order: "
             err_msg += f"{hex_string(n)}" if n > HEX_THRESHOLD else f"{n}"
             raise BTClibEccValueError(err_msg)
-
-        # 6. Check cofactor
-        # floor((p + 1 + delta) / n), the upper end of the Hasse interval
-        # divided by the subgroup order, in integer arithmetic for the
-        # reason delta is: three float divisions of 256-bit integers each
-        # round before they are added, where the quotient of a curve with
-        # a cofactor of 1 sits one ulp above the integer it must truncate
-        # to
-        exp_cofactor = (1 + delta + self.p) // n
-        if cofactor != exp_cofactor:
-            err_msg = f"invalid cofactor: {cofactor}, expected {exp_cofactor}"
-            raise BTClibEccValueError(err_msg)
-        self.cofactor = cofactor
 
         # 8. Check that n ≠ p
         # self.p, not the p parameter: that one is still an Integer, and
