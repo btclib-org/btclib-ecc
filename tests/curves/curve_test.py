@@ -187,7 +187,7 @@ def test_exceptions() -> None:
     with pytest.raises(BTClibEccValueError, match="n is not prime: "):
         Curve(13, 0, 2, (1, 9), 20, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match="n not in "):
+    with pytest.raises(BTClibEccValueError, match=r"cofactor\*n not in "):
         Curve(13, 0, 2, (1, 9), 71, 1, False)
 
     with pytest.raises(BTClibEccValueError, match="INF point cannot be a generator"):
@@ -200,11 +200,44 @@ def test_exceptions() -> None:
     # else about it checks out, which is why the check has to exist
     Curve(13, 0, 2, (1, 9), 17, 1, False, order_check=False)
 
-    with pytest.raises(BTClibEccValueError, match="invalid cofactor: "):
+    with pytest.raises(
+        BTClibEccValueError, match=r"invalid cofactor: 2, cofactor\*n not in "
+    ):
         Curve(13, 0, 2, (1, 9), 19, 2, False)
+
+    with pytest.raises(BTClibEccValueError, match=r"invalid cofactor: 0, "):
+        Curve(13, 0, 2, (1, 9), 19, 0, False)
 
     with pytest.raises(BTClibEccValueError, match="weak curve: the embedding degree"):
         Curve(11, 2, 7, (6, 9), 7, 2, True)
+
+
+def test_cofactor_ambiguous_below_hasse_threshold() -> None:
+    """Below n > 2*delta several cofactors satisfy Hasse; above it, one.
+
+    y^2 = x^3 + 2x + 7 over F_11 has 7 points (brute force over every
+    (x, y) plus INF), so G = (6, 9) generates the whole group and its
+    cofactor is 1 -- issue btclib-org/ellipticcurves#19's own
+    reproduction, which the constructor used to refuse. delta =
+    isqrt(4*11) = 6 and n = 7 is below 2*delta, so h = 2 (14, also
+    inside [6, 18]) is accepted too, since nothing short of counting the
+    curve's points tells the two apart; h = 3 (21) falls outside the
+    interval and is refused.
+    """
+    delta = isqrt(4 * 11)
+    assert delta == 6
+    assert 11 + 1 - delta <= 1 * 7 <= 11 + 1 + delta
+    assert 11 + 1 - delta <= 2 * 7 <= 11 + 1 + delta
+    assert not (11 + 1 - delta <= 3 * 7 <= 11 + 1 + delta)
+
+    ec = Curve(11, 2, 7, (6, 9), 7, 1, False)
+    assert ec.cofactor == 1
+
+    ec2 = Curve(11, 2, 7, (6, 9), 7, 2, False)
+    assert ec2.cofactor == 2
+
+    with pytest.raises(BTClibEccValueError, match=r"invalid cofactor: 3, "):
+        Curve(11, 2, 7, (6, 9), 7, 3, False)
 
 
 # y^2 = x^3 + x + 6 over F_13 has 13 points, cofactor 1: an anomalous
@@ -283,8 +316,19 @@ def test_hasse_half_width_is_exact() -> None:
     for ec in all_curves.values():
         delta = isqrt(4 * ec.p)
         assert delta * delta <= 4 * ec.p < (delta + 1) * (delta + 1)
-        # the curve was built, so its own n and cofactor satisfy what the
-        # constructor computed from this delta
+        # the curve was built, so cofactor*n -- the curve's own order --
+        # is inside the Hasse interval delta bounds; that is all the
+        # constructor requires (issue btclib-org/ellipticcurves#19)
+        assert ec.p + 1 - delta <= ec.cofactor * ec.n <= ec.p + 1 + delta
+
+    # every catalogued curve has n > 2*delta, where at most one multiple
+    # of n fits the interval above: the formula below picks it out, and
+    # is what the constructor's containment check reduces to there.
+    # test_cofactor_ambiguous_below_hasse_threshold is the regime below
+    # that threshold, where it is not
+    for ec in CURVES.values():
+        delta = isqrt(4 * ec.p)
+        assert ec.n > 2 * delta
         assert ec.cofactor == (1 + delta + ec.p) // ec.n
 
     # p = 7 is where 2*isqrt(p) and isqrt(4*p) part company, and the curve

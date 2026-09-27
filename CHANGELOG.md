@@ -90,6 +90,12 @@ rather than the index (closes #24).
 refused, before the bindings or the Python arithmetic can disagree on
 either one (closes #10).
 
+### `Curve()` accepts a cofactor Hasse's bound cannot pin down on its own
+
+The constructor now checks `cofactor*n` against Hasse's bound, in place
+of refusing every cofactor but the interval's largest multiple of `n`,
+wrong wherever several multiples fit (closes #19).
+
 ## v2026.9.26
 
 ### The repository opens
