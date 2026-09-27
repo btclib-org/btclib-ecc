@@ -37,6 +37,12 @@ The aggregate accepts `analyze`'s lagging rows (issue btclib-org/.github#1395),
 signatures and SHA pinning are read back (issue btclib-org/.github#1409), and
 `pre-commit` is an ecosystem left unused (issue btclib-org/.github#1391).
 
+### The fuzz image is pinned by digest, and Dependabot moves it
+
+`.clusterfuzzlite/Dockerfile` builds from `base-builder-python:latest`
+pinned to its digest (closes #12), and `dependabot.yml`'s `docker` block is
+what proposes the next one (issue btclib-org/.github#1405).
+
 ## v2026.9.26
 
 ### The repository opens

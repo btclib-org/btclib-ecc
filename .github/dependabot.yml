@@ -1,5 +1,5 @@
 ---
-# two of the three ecosystems this repository has: the pre-commit hook
+# every ecosystem this repository has but one: the pre-commit hook
 # revisions are left out. Dependabot has a pre-commit ecosystem, and the
 # maintainer decided to keep pre-commit.ci for them instead
 # (btclib-org/.github#1391): its weekly autoupdate, configured in the ci:
@@ -11,7 +11,7 @@
 #
 # every pull request here runs the whole merge gate, so each ecosystem
 # groups its updates into a single pull request rather than paying for
-# that once each. Neither declares a target-branch: without one dependabot
+# that once each. None declares a target-branch: without one dependabot
 # opens against the default branch, which is the only branch a change
 # lands on -- and a target-branch naming a branch that is not there is
 # not an error anywhere, it is a repository where nothing is proposed.
@@ -25,7 +25,8 @@
 #
 # The seven day cooldown is what the interval trades against: a
 # compromised release is usually yanked within days, so nothing is offered
-# before it has been public a week
+# before it has been public a week, wherever the release can be dated: the
+# docker block says where it cannot
 version: 2
 updates:
   # every action is pinned to a commit SHA, which nothing but this
@@ -58,6 +59,25 @@ updates:
       day: thursday
     groups:
       dev-tooling:
+        patterns: ["*"]
+    cooldown:
+      default-days: 7
+
+  # .clusterfuzzlite/Dockerfile pins the image fuzz.yml builds in by
+  # digest, which nothing but this moves: without it the pin is frozen at
+  # the image of the day it was written. The cooldown is inert here:
+  # dependabot-core dates a docker tag only on Docker Hub
+  # (registry_tag_release_date, docker/lib/dependabot/docker/
+  # update_checker.rb) and this image is on gcr.io. It is kept so that one
+  # rule holds for every ecosystem, and it takes effect with no edit here
+  # where the registry or dependabot-core changes
+  - package-ecosystem: docker
+    directory: /.clusterfuzzlite
+    schedule:
+      interval: weekly
+      day: thursday
+    groups:
+      base-image:
         patterns: ["*"]
     cooldown:
       default-days: 7
