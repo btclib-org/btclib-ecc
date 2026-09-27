@@ -114,6 +114,12 @@ A non-integer used to leak a bare builtin `TypeError` from the comparisons
 guarding the recoding; each of the three is now checked and refused as a
 `BTClibEccTypeError` ahead of them (closes #34).
 
+### `_libsecp256k1` no longer reads an installed, too-old package as absent
+
+Only `ModuleNotFoundError` naming `btclib_secp256k1` itself means absent; a
+name an older, installed package lacks now raises instead of a silent
+fallback (closes #25).
+
 ## v2026.9.26
 
 ### The repository opens

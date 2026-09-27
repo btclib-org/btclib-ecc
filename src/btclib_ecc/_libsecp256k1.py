@@ -41,6 +41,20 @@ With the bindings absent every name here is None. Nothing may call one:
 predicate in front of every delegation -- which is a rule about the
 package rather than about this file, and is what `tests/no_bindings_test.py`
 checks by importing this package with the bindings out of reach.
+
+Absent and installed-but-too-old are different failures, and only the
+first one is this fallback (btclib-org/ellipticcurves#25). `btclib_secp256k1`
+itself failing to import is `ModuleNotFoundError` with its `name` naming
+the top-level package -- nothing else is. A name this module asks for that
+an installed, too-old package does not have raises a plain `ImportError`
+instead (the package is found; the attribute inside it is not), or a
+`ModuleNotFoundError` naming a submodule rather than the top-level package
+(an old package missing a whole submodule this floor needs). Catching
+either of those as "absent" is the defect: it is what let
+`btclib-secp256k1` 0.8.0.6, which has no `btclib_secp256k1.ecdh.shared_point`,
+answer `INSTALLED = False` instead of raising. So only the first shape is
+caught here; the other two propagate, which is a loud failure at import
+time rather than a silent, slower fallback nobody is told about.
 """
 
 from __future__ import annotations
@@ -114,13 +128,24 @@ try:
 # and is not dead code -- and the pragma still belongs here regardless, because
 # `coverage-union` is a second gate beside the `coverage` job's, not instead of
 # it: that job's own report, `pytest --cov` on this configuration alone, has
-# bindings installed by construction, an `ImportError` only reachable by
+# bindings installed by construction, a `ModuleNotFoundError` only reachable by
 # actually removing them, and a subprocess that does
 # (`tests/no_bindings_test.py`) whose coverage that job does not collect. So
 # this branch is a structural miss in that report regardless of the union, and
 # removing the pragma would fail the one gate this issue chose to leave
 # unchanged
-except ImportError:  # pragma: no cover -- only the no-bindings job reaches this
+except ModuleNotFoundError as exc:  # pragma: no cover -- only no-bindings reaches this
+    # `exc.name` is the top-level package's own name only when the
+    # import system never found it at all -- a submodule of an
+    # installed package failing to import names that submodule instead
+    # (`btclib_secp256k1.ecdh`, say), and a name missing from a module
+    # that *was* found raises plain `ImportError`, which this clause
+    # does not catch to begin with. Either of those is an installed
+    # package too old for what this module asks of it
+    # (btclib-org/ellipticcurves#25), and the caller is told rather than
+    # silently handed the slower Python arithmetic
+    if exc.name != "btclib_secp256k1":
+        raise
     # None and not a callable that raises: what would raise is never
     # called, so the object would be a second thing to keep true. The
     # ignore is on the assignment and not on the module: every other
