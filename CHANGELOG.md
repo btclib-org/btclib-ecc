@@ -132,6 +132,12 @@ A genuinely cofactor-2 curve this small has a two-torsion point
 `_mult`, whose affine table of odd multiples of `G` could hold the curve's
 own two-torsion point and read it as infinity (closes #39).
 
+### `_assert_in_subgroup` no longer mistakes 2n for n
+
+The same collision `order_check` was fixed against, at the call site that
+confines a parsed public key to ⟨G⟩ on a cofactor > 1 curve: `_mult_jac_var`
+replaces the windowed `_mult` there too (closes #42).
+
 ## v2026.9.26
 
 ### The repository opens
