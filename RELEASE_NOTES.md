@@ -11,6 +11,8 @@ before upgrading, rather than a digit.
 
 ## v2026.10 (work in progress, not released yet)
 
+## v2026.9.28
+
 ### Breaking changes
 
 - **`_utils.int_from_integer` and `hex_string` refuse a `0x` string whose
