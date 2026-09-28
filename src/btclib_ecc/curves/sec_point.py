@@ -190,7 +190,7 @@ def point_from_octets(
     On a curve of cofactor above 1 a point on the curve need not be a
     point of ⟨G⟩: `_assert_in_subgroup` refuses one that is not, after
     the on-curve check every branch already makes and before either
-    coordinate leaves this function (issue btclib-org/ellipticcurves#15).
+    coordinate leaves this function (issue btclib-org/btclib-ecc#15).
     """
     assert_type(hybrid, bool, "hybrid")
     _assert_valid_ec(ec)
@@ -218,7 +218,7 @@ def point_from_octets(
         # _assert_in_subgroup's own precondition is a point already on the
         # curve, and its Jacobian arithmetic reads y == 0 as infinity
         # exactly as the affine convention does, so it does not catch what
-        # is_on_curve is what refuses (issue btclib-org/ellipticcurves#16)
+        # is_on_curve is what refuses (issue btclib-org/btclib-ecc#16)
         ec.require_on_curve(Q)
         _assert_in_subgroup(Q, ec)
         return Q
@@ -298,7 +298,7 @@ def point_from_pub_key(pub_key: PubKey, ec: Curve = secp256k1) -> Point:
 
     A tuple is confined to ⟨G⟩ here as `point_from_octets` confines the
     octets it parses, on a curve whose cofactor makes the two different
-    (issue btclib-org/ellipticcurves#15).
+    (issue btclib-org/btclib-ecc#15).
     """
     _assert_valid_ec(ec)
     _assert_pub_key_type(pub_key)

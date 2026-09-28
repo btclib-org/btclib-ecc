@@ -273,7 +273,7 @@ markdownlint-cli2](https://img.shields.io/badge/lint-markdownlint--cli2-yellowgr
 [![pre-commit
 enabled](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![GitHub repository:
-btclib-org/ellipticcurves](https://img.shields.io/badge/GitHub-btclib--org%2Fellipticcurves-181717?logo=github)](https://github.com/btclib-org/ellipticcurves/)
+btclib-org/btclib-ecc](https://img.shields.io/badge/GitHub-btclib--org%2Fbtclib--ecc-181717?logo=github)](https://github.com/btclib-org/btclib-ecc/)
 
 To get an overview of the project, read the [README](./README.md).
 

@@ -86,7 +86,7 @@ def ansi_x9_63_kdf(z: bytes, size: int, hf: HashF, shared_info: bytes | None) ->
     `z` and `shared_info` are `bytes` and not `Octets`: `assert_type` is
     what refuses a caller's mistake here, `hf` never reaching a bare
     `hf()` on something that is not callable (issue
-    btclib-org/ellipticcurves#11).
+    btclib-org/btclib-ecc#11).
     """
     _assert_valid_hf(hf)
     assert_type(z, bytes, "z")
@@ -142,7 +142,7 @@ def hkdf_extract(ikm: bytes, salt: bytes | None, hf: HashF) -> bytes:
 
     `ikm` and `salt` are `bytes` and not `Octets`, for the reason
     `ansi_x9_63_kdf`'s docstring gives (issue
-    btclib-org/ellipticcurves#11).
+    btclib-org/btclib-ecc#11).
     """
     _assert_valid_hf(hf)
     assert_type(ikm, bytes, "ikm")
@@ -172,7 +172,7 @@ def hkdf_expand(prk: bytes, size: int, hf: HashF, info: bytes | None) -> bytes:
 
     `prk` and `info` are `bytes` and not `Octets`, for the reason
     `ansi_x9_63_kdf`'s docstring gives (issue
-    btclib-org/ellipticcurves#11).
+    btclib-org/btclib-ecc#11).
     """
     _assert_valid_hf(hf)
     assert_type(prk, bytes, "prk")

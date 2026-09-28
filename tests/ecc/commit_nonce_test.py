@@ -198,7 +198,7 @@ def test_a_tag_that_is_no_bytes_is_refused_as_such() -> None:
     `commit_nonce_`, `commit_point_` and `commit_entropy_` all reach
     `hashes.tagged_hash` with `tag` unconverted, so its own `bytes` check
     is what refuses this rather than a check of its own (issue
-    btclib-org/ellipticcurves#11).
+    btclib-org/btclib-ecc#11).
     """
     with pytest.raises(BTClibEccTypeError, match="invalid tag type"):
         commit_nonce_(b"\x01" * 32, 1, "x")  # type: ignore[arg-type]

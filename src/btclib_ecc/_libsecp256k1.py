@@ -43,7 +43,7 @@ package rather than about this file, and is what `tests/no_bindings_test.py`
 checks by importing this package with the bindings out of reach.
 
 Absent and installed-but-too-old are different failures, and only the
-first one is this fallback (btclib-org/ellipticcurves#25). `btclib_secp256k1`
+first one is this fallback (btclib-org/btclib-ecc#25). `btclib_secp256k1`
 itself failing to import is `ModuleNotFoundError` with its `name` naming
 the top-level package -- nothing else is. A name this module asks for that
 an installed, too-old package does not have raises a plain `ImportError`
@@ -142,7 +142,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover -- only no-bindings reach
     # that *was* found raises plain `ImportError`, which this clause
     # does not catch to begin with. Either of those is an installed
     # package too old for what this module asks of it
-    # (btclib-org/ellipticcurves#25), and the caller is told rather than
+    # (btclib-org/btclib-ecc#25), and the caller is told rather than
     # silently handed the slower Python arithmetic
     if exc.name != "btclib_secp256k1":
         raise

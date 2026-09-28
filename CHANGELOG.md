@@ -138,6 +138,12 @@ The same collision `order_check` was fixed against, at the call site that
 confines a parsed public key to ⟨G⟩ on a cofactor > 1 curve: `_mult_jac_var`
 replaces the windowed `_mult` there too (closes #42).
 
+### The repository is `btclib-org/btclib-ecc`, not `btclib-org/ellipticcurves`
+
+GitHub's repository was renamed to match the PyPI distribution; every
+hardcoded reference in this tree, from `release.yml`'s publish guards to
+its own issue citations, now reads `btclib-org/btclib-ecc`.
+
 ## v2026.9.26
 
 ### The repository opens

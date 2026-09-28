@@ -356,7 +356,7 @@ def test_signed_odd_digits() -> None:
     assert signed_odd_digits(1, 4, 3) == [-15, -15, 1]
     assert signed_odd_digits(1, 4, 1) == [1]
 
-    # issue btclib-org/ellipticcurves#34: None used to reach `m < 0` and
+    # issue btclib-org/btclib-ecc#34: None used to reach `m < 0` and
     # leak Python's own bare TypeError instead of this package's
     with pytest.raises(BTClibEccTypeError, match="non-integer m: None"):
         signed_odd_digits(None, 4, 64)  # type: ignore[arg-type]

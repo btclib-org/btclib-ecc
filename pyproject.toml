@@ -75,11 +75,11 @@ classifiers = [
 [project.urls]
 homepage = "https://btclib-ecc.readthedocs.io/"
 documentation = "https://btclib-ecc.readthedocs.io/"
-download = "https://github.com/btclib-org/ellipticcurves/releases"
-changelog = "https://github.com/btclib-org/ellipticcurves/blob/main/RELEASE_NOTES.md"
-repository = "https://github.com/btclib-org/ellipticcurves"
-issues = "https://github.com/btclib-org/ellipticcurves/issues"
-pull_requests = "https://github.com/btclib-org/ellipticcurves/pulls"
+download = "https://github.com/btclib-org/btclib-ecc/releases"
+changelog = "https://github.com/btclib-org/btclib-ecc/blob/main/RELEASE_NOTES.md"
+repository = "https://github.com/btclib-org/btclib-ecc"
+issues = "https://github.com/btclib-org/btclib-ecc/issues"
+pull_requests = "https://github.com/btclib-org/btclib-ecc/pulls"
 
 [project.optional-dependencies]
 # the libsecp256k1 bindings, which accelerate secp256k1 and nothing else.

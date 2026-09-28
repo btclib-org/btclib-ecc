@@ -317,7 +317,7 @@ def test_low_cardinality(name: str) -> None:
                     # and the list is exactly step 1.6.1's candidates, less
                     # what step 1.6 refuses: on a curve of prime order --
                     # every entry of low_card_curves, issue
-                    # btclib-org/ellipticcurves#32 -- that is the screen
+                    # btclib-org/btclib-ecc#32 -- that is the screen
                     # and the infinity test alone.
                     # test_step_1_6_1_agrees_above_cofactor_1 is where a
                     # lift landing outside the prime-order subgroup is
@@ -350,7 +350,7 @@ def test_step_1_6_1_agrees_above_cofactor_1() -> None:
 
     `test_low_cardinality` held the two to the same list over every key,
     nonce and challenge a curve admits, cofactor above 1 included, until
-    issue btclib-org/ellipticcurves#32: every low-cardinality curve this
+    issue btclib-org/btclib-ecc#32: every low-cardinality curve this
     suite can hold is now cofactor 1, an exhaustive sweep over a curve
     whose cofactor is genuinely above 1 not being safe at that size (the
     issue has the reason). One explicit (private key, nonce, challenge)
@@ -1595,7 +1595,7 @@ def test_verify_refuses_a_key_shifted_by_p_on_both_arithmetics(
     arithmetic. On the bindings arm the same tuple made `bytes_from_point`
     raise a bare `OverflowError`, `x_Q + p` no longer fitting the
     coordinate's own byte length, where every other refusal here is this
-    package's `BTClibEccValueError` (issue btclib-org/ellipticcurves#7).
+    package's `BTClibEccValueError` (issue btclib-org/btclib-ecc#7).
     Both arms now refuse the tuple the same way, before any point is
     multiplied.
     """

@@ -302,7 +302,7 @@ def test_sign_refuses_a_secnonce_that_is_no_bytearray(sec_nonce: Any) -> None:
     `bytearray` is: `sign` consumes the secnonce by slice assignment, so
     any mutable sequence went untouched all the way to a signature, with
     nothing in the type saying the caller had not built the one thing
-    this scheme's safety depends on (issue btclib-org/ellipticcurves#11).
+    this scheme's safety depends on (issue btclib-org/btclib-ecc#11).
     """
     pub_keys = [_SV_PUB_KEYS[i] for i in (0, 1, 2)]
     agg_nonce = _SV_AGG_NONCES[0]

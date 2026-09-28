@@ -53,7 +53,7 @@ the only merge method with auto-merge, the head branch deleted on merge,
 and the squash commit's title and body:
 
 ```shell
-gh api -X PATCH repos/btclib-org/ellipticcurves \
+gh api -X PATCH repos/btclib-org/btclib-ecc \
   -F has_issues=true -F has_wiki=false -F has_projects=false \
   -F allow_squash_merge=true -F allow_merge_commit=false \
   -F allow_rebase_merge=false -F allow_auto_merge=true \
@@ -66,12 +66,12 @@ gh api -X PATCH repos/btclib-org/ellipticcurves \
 Read back:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves \
+gh api repos/btclib-org/btclib-ecc \
   --jq '{visibility, default_branch: .default_branch, has_issues,
          wiki: .has_wiki, projects: .has_projects}'
 # {"default_branch":"main","has_issues":true,"projects":false,
 #  "visibility":"public","wiki":false}
-gh api -i repos/btclib-org/ellipticcurves/pages 2>/dev/null | head -1
+gh api -i repos/btclib-org/btclib-ecc/pages 2>/dev/null | head -1
 # HTTP/2.0 404 Not Found
 ```
 
@@ -81,27 +81,32 @@ tree serves no GitHub Pages site, and a recorded `404` is what makes a
 later flip visible. It asks for the status line alone, the error body
 being the endpoint's generic `Not Found` document.
 
-## Naming: `btclib-ecc` published from `ellipticcurves`
+## Naming: the repository was renamed to match the distribution
 
 **Section 3 asks that the repository be named after the distribution,
-hyphenated, and this one is not.** `pyproject.toml` declares
-`name = "btclib-ecc"`; the repository stays `ellipticcurves`.
+hyphenated, and it now is.** `pyproject.toml` declares
+`name = "btclib-ecc"`, and the repository is `btclib-org/btclib-ecc`.
 
-The maintainer decided both halves in
+The maintainer had decided otherwise in
 [btclib-org/btclib#2282](https://github.com/btclib-org/btclib/issues/2282)
-(comment of 2026-09-26): the distribution takes `btclib-ecc`, pairing with
+(comment of 2026-09-26): the distribution took `btclib-ecc`, pairing with
 the import package `btclib_ecc` the way `btclib-secp256k1` pairs with
-`btclib_secp256k1`, and "the repository stays
-[btclib-org/ellipticcurves](https://github.com/btclib-org/ellipticcurves)".
-That comment states the decision and no reason for keeping the
-repository's own name against it, and no reason is recorded anywhere else
-in this tree.
+`btclib_secp256k1`, while the repository stayed `ellipticcurves`. That
+decision was reversed on 2026-09-28, when the repository was renamed from
+`ellipticcurves` to `btclib-ecc`, ending the mismatch the 2026-09-26
+decision had accepted. `gh repo create` and the first `git push` under
+*Creating the repository* above still read `ellipticcurves`, being the
+literal commands typed that day; every other command in this file reads
+back the settings of the repository as it is named now.
 
-The organization's alignment suite carries the resulting mismatch as
-[btclib-org/.github#1392](https://github.com/btclib-org/.github/issues/1392):
-the `ellipticcurves` cell of `test_the_name_normalizes_to_the_repository`
-stays red there until that repository records an exemption or a
-`BACKLOG` row, which the maintainer left undone on 2026-09-27.
+The organization's alignment suite carries the mismatch as
+[btclib-org/.github#1392](https://github.com/btclib-org/.github/issues/1392),
+tracking the `ellipticcurves` cell of
+`test_the_name_normalizes_to_the_repository`. That issue belongs to a
+different repository and is not this file's to close or comment on, but
+whoever owns the alignment suite should revisit it now that the
+repository has been renamed: the exemption it tracks may no longer be
+needed.
 
 ## Required checks on main
 
@@ -150,7 +155,7 @@ branch that has none; every later change `PATCH`es the sub-endpoint it is
 about, a partial `PUT` dropping the rest:
 
 ```shell
-gh api -X PUT repos/btclib-org/ellipticcurves/branches/main/protection \
+gh api -X PUT repos/btclib-org/btclib-ecc/branches/main/protection \
   --input - <<'JSON'
 {"required_status_checks": {"strict": true, "checks": [
    {"context": "test: every job passed", "app_id": 15368},
@@ -174,7 +179,7 @@ where the endpoint types `app_id` as an integer.
 Read back:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves/branches/main/protection \
+gh api repos/btclib-org/btclib-ecc/branches/main/protection \
   --jq '{checks: [.required_status_checks.checks[] | [.context, .app_id]],
          strict: .required_status_checks.strict,
          reviews: .required_pull_request_reviews
@@ -199,7 +204,7 @@ and classic protection, taking the most restrictive combination.
 `main-integrity` has no bypass actor, for anyone:
 
 ```shell
-gh api -X POST repos/btclib-org/ellipticcurves/rulesets --input - <<'JSON'
+gh api -X POST repos/btclib-org/btclib-ecc/rulesets --input - <<'JSON'
 {"name": "main-integrity", "target": "branch", "enforcement": "active",
  "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": []}},
  "bypass_actors": [],
@@ -216,7 +221,7 @@ approving review a solo-maintainer repository cannot produce and nothing
 else: a direct push to `main` is refused for everyone.
 
 ```shell
-gh api -X POST repos/btclib-org/ellipticcurves/rulesets --input - <<'JSON'
+gh api -X POST repos/btclib-org/btclib-ecc/rulesets --input - <<'JSON'
 {"name": "main-self-merge", "target": "branch", "enforcement": "active",
  "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": []}},
  "bypass_actors": [{"actor_id": 3296421, "actor_type": "User",
@@ -238,7 +243,7 @@ Classic protection's own copy of the signature rule is off, read on
 2026-09-27:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves/branches/main/protection \
+gh api repos/btclib-org/btclib-ecc/branches/main/protection \
   --jq '.required_signatures.enabled'
 # false
 ```
@@ -254,7 +259,7 @@ nothing else, so the recovery path RELEASING.md gives — delete and
 re-tag a release that failed before `publish-pypi` — still works:
 
 ```shell
-gh api -X POST repos/btclib-org/ellipticcurves/rulesets --input - <<'JSON'
+gh api -X POST repos/btclib-org/btclib-ecc/rulesets --input - <<'JSON'
 {"name": "tag-integrity", "target": "tag", "enforcement": "active",
  "conditions": {"ref_name": {"include": ["refs/tags/v*"], "exclude": []}},
  "bypass_actors": [],
@@ -267,8 +272,8 @@ JSON
 endpoint:
 
 ```shell
-for id in $(gh api repos/btclib-org/ellipticcurves/rulesets --jq '.[].id'); do
-  gh api repos/btclib-org/ellipticcurves/rulesets/"$id" \
+for id in $(gh api repos/btclib-org/btclib-ecc/rulesets --jq '.[].id'); do
+  gh api repos/btclib-org/btclib-ecc/rulesets/"$id" \
     --jq '{name, target, enforcement, include: .conditions.ref_name.include,
            rules: [.rules[].type],
            bypass: [.bypass_actors[] | [.actor_id, .bypass_mode]],
@@ -294,7 +299,7 @@ presses it once the review and the checks are in; the call is the one
 under *Creating the repository*. Read back:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves \
+gh api repos/btclib-org/btclib-ecc \
   --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge,
          allow_auto_merge, squash_merge_commit_title,
          squash_merge_commit_message, delete_branch_on_merge}'
@@ -338,7 +343,7 @@ override — so it is left to inherit, and this is the call that reads the
 value it gets:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves/actions/permissions/workflow \
+gh api repos/btclib-org/btclib-ecc/actions/permissions/workflow \
   --jq '{default_workflow_permissions, can_approve_pull_request_reviews}'
 # {"can_approve_pull_request_reviews":false,
 #  "default_workflow_permissions":"read"}
@@ -353,7 +358,7 @@ moves it back for the organization rather than here.
 Read on 2026-09-27, for this repository and for the organization:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves/actions/permissions \
+gh api repos/btclib-org/btclib-ecc/actions/permissions \
   --jq '{allowed_actions, sha_pinning_required}'
 # {"allowed_actions":"all","sha_pinning_required":true}
 gh api orgs/btclib-org/actions/permissions \
@@ -374,7 +379,7 @@ tags. `RELEASING.md` records the reasoning and the trusted publishers
 each index is given.
 
 ```shell
-gh api -X PUT repos/btclib-org/ellipticcurves/environments/pypi \
+gh api -X PUT repos/btclib-org/btclib-ecc/environments/pypi \
   --input - <<'JSON'
 {"reviewers": [{"type": "User", "id": 3296421},
                {"type": "User", "id": 30932677},
@@ -384,9 +389,9 @@ gh api -X PUT repos/btclib-org/ellipticcurves/environments/pypi \
                               "custom_branch_policies": true}}
 JSON
 gh api -X POST \
-  repos/btclib-org/ellipticcurves/environments/pypi/deployment-branch-policies \
+  repos/btclib-org/btclib-ecc/environments/pypi/deployment-branch-policies \
   -f name='v*' -f type=tag
-gh api -X PUT repos/btclib-org/ellipticcurves/environments/testpypi \
+gh api -X PUT repos/btclib-org/btclib-ecc/environments/testpypi \
   --input - <<'JSON'
 {"reviewers": [{"type": "User", "id": 3296421},
                {"type": "User", "id": 30932677},
@@ -403,7 +408,7 @@ JSON
 Read back:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves/environments \
+gh api repos/btclib-org/btclib-ecc/environments \
   --jq '.environments[] | {name, dbp: .deployment_branch_policy,
          rules: [.protection_rules[] | .type],
          reviewers: [.protection_rules[].reviewers[]?.reviewer.login]}'
@@ -414,7 +419,7 @@ gh api repos/btclib-org/ellipticcurves/environments \
 # {"dbp":null,"name":"testpypi",
 #  "reviewers":["fametrano","giacomocaironi","pmazzocchi"],
 #  "rules":["required_reviewers"]}
-env=repos/btclib-org/ellipticcurves/environments/pypi
+env=repos/btclib-org/btclib-ecc/environments/pypi
 gh api "$env/deployment-branch-policies" \
   --jq '.branch_policies[] | [.name, .type]'
 # ["v*","tag"]
@@ -441,7 +446,7 @@ site**, set under *Creating the repository* and read back here rather
 than from `pyproject.toml`'s own copy of it:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves --jq '.homepage'
+gh api repos/btclib-org/btclib-ecc --jq '.homepage'
 # https://btclib-ecc.readthedocs.io/
 ```
 
@@ -449,7 +454,7 @@ gh api repos/btclib-org/ellipticcurves --jq '.homepage'
 
 The project is to be imported on
 [readthedocs.org](https://app.readthedocs.org/) from
-`btclib-org/ellipticcurves` under the slug `btclib-ecc`, which is what
+`btclib-org/btclib-ecc` under the slug `btclib-ecc`, which is what
 `release.yml`'s `documented` job and `pyproject.toml`'s `documentation`
 url name, with an automation rule activating each new `v*` tag. It was
 not yet imported on 2026-09-26: importing it is the maintainer's, and
@@ -493,7 +498,7 @@ gh api orgs/btclib-org/installations \
   --jq '.installations[] | select(.app_slug == "read-the-docs-community")
         | [.app_slug, .repository_selection]'
 # ["read-the-docs-community","all"]
-gh api repos/btclib-org/ellipticcurves/hooks --jq length
+gh api repos/btclib-org/btclib-ecc/hooks --jq length
 # 0
 ```
 
@@ -507,14 +512,14 @@ security updates and private vulnerability reporting are free on a
 public repository and off by default:
 
 ```shell
-gh api -X PATCH repos/btclib-org/ellipticcurves --input - <<'JSON'
+gh api -X PATCH repos/btclib-org/btclib-ecc --input - <<'JSON'
 {"security_and_analysis": {
    "secret_scanning": {"status": "enabled"},
    "secret_scanning_push_protection": {"status": "enabled"}}}
 JSON
-gh api -X PUT repos/btclib-org/ellipticcurves/vulnerability-alerts
-gh api -X PUT repos/btclib-org/ellipticcurves/automated-security-fixes
-gh api -X PUT repos/btclib-org/ellipticcurves/private-vulnerability-reporting
+gh api -X PUT repos/btclib-org/btclib-ecc/vulnerability-alerts
+gh api -X PUT repos/btclib-org/btclib-ecc/automated-security-fixes
+gh api -X PUT repos/btclib-org/btclib-ecc/private-vulnerability-reporting
 ```
 
 Code scanning is `codeql.yml`'s, and GitHub's **default setup** has to
@@ -525,29 +530,29 @@ has. `PATCH`, not `PUT`: that endpoint answers a PUT with a bare 404.
 
 ```shell
 gh api -X PATCH -F state=not-configured \
-  repos/btclib-org/ellipticcurves/code-scanning/default-setup
+  repos/btclib-org/btclib-ecc/code-scanning/default-setup
 gh api -X PATCH -F state=not-configured \
-  repos/btclib-org/ellipticcurves/code-quality/setup
+  repos/btclib-org/btclib-ecc/code-quality/setup
 ```
 
 Read back:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves --jq '.security_and_analysis'
+gh api repos/btclib-org/btclib-ecc --jq '.security_and_analysis'
 # {"dependabot_security_updates":{"status":"enabled"},
 #  "secret_scanning":{"status":"enabled"},
 #  "secret_scanning_non_provider_patterns":{"status":"disabled"},
 #  "secret_scanning_push_protection":{"status":"enabled"},
 #  "secret_scanning_validity_checks":{"status":"disabled"}}
-gh api -i repos/btclib-org/ellipticcurves/vulnerability-alerts | head -1
+gh api -i repos/btclib-org/btclib-ecc/vulnerability-alerts | head -1
 # HTTP/2.0 204 No Content
-gh api repos/btclib-org/ellipticcurves/automated-security-fixes
+gh api repos/btclib-org/btclib-ecc/automated-security-fixes
 # {"enabled":true,"paused":false}
-gh api repos/btclib-org/ellipticcurves/private-vulnerability-reporting
+gh api repos/btclib-org/btclib-ecc/private-vulnerability-reporting
 # {"enabled":true}
-gh api repos/btclib-org/ellipticcurves/code-scanning/default-setup --jq .state
+gh api repos/btclib-org/btclib-ecc/code-scanning/default-setup --jq .state
 # not-configured
-gh api repos/btclib-org/ellipticcurves/code-quality/setup --jq .state
+gh api repos/btclib-org/btclib-ecc/code-quality/setup --jq .state
 # not-configured
 ```
 
@@ -565,14 +570,14 @@ the topics are set from `pyproject.toml` rather than typed a second time:
 ```shell
 sed -n '/^keywords = \[/,/^]/s/^ *"\(.*\)",$/\1/p' pyproject.toml \
   | jq -R . | jq -s '{names: .}' \
-  | gh api -X PUT repos/btclib-org/ellipticcurves/topics --input -
+  | gh api -X PUT repos/btclib-org/btclib-ecc/topics --input -
 ```
 
 Read back, and compared, sorted because GitHub returns topics in an order
 of its own; the diff is expected empty:
 
 ```shell
-diff <(gh api repos/btclib-org/ellipticcurves --jq '.topics[]' | sort) \
+diff <(gh api repos/btclib-org/btclib-ecc --jq '.topics[]' | sort) \
      <(sed -n '/^keywords = \[/,/^]/s/^ *"\(.*\)",$/\1/p' pyproject.toml \
        | sort)
 # (nothing, exit 0)
@@ -581,7 +586,7 @@ diff <(gh api repos/btclib-org/ellipticcurves --jq '.topics[]' | sort) \
 What the diff compares, the topics as the endpoint returns them:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves --jq '.topics'
+gh api repos/btclib-org/btclib-ecc --jq '.topics'
 # ["bip340","cryptography","ecdsa","ecies","elliptic-curves","ellswift",
 #  "frost","musig2","pedersen-commitment","rfc-6979","schnorr",
 #  "secp256k1"]
@@ -615,7 +620,7 @@ The endpoints above answer for more than this repository decides, and the
 scope at the top is what leaves the rest out.
 
 **Most of the repository document is not a setting.**
-`gh api repos/btclib-org/ellipticcurves --jq 'keys[]'` answers with URLs,
+`gh api repos/btclib-org/btclib-ecc --jq 'keys[]'` answers with URLs,
 counts, timestamps and derived state beside the switches, and the
 switches among them this file records are the ones a section above reads
 back with a call of its own.
@@ -632,9 +637,9 @@ stores, so the repository's own stores are expected empty and a copy in
 either would be that decision undone:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves/actions/secrets --jq .total_count
+gh api repos/btclib-org/btclib-ecc/actions/secrets --jq .total_count
 # 0
-gh api repos/btclib-org/ellipticcurves/dependabot/secrets --jq .total_count
+gh api repos/btclib-org/btclib-ecc/dependabot/secrets --jq .total_count
 # 0
 ```
 
@@ -645,6 +650,6 @@ over one of the same name on the organization, so the repository's own
 store is read too:
 
 ```shell
-gh api repos/btclib-org/ellipticcurves/actions/variables --jq .total_count
+gh api repos/btclib-org/btclib-ecc/actions/variables --jq .total_count
 # 0
 ```

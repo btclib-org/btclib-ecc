@@ -826,7 +826,7 @@ def sign(sec_nonce: bytearray, prv_key: Integer, session_ctx: SessionContext) ->
     and of every read below: it is never zeroed and never spent, so a
     caller handed a clean `BTClibEccTypeError` for a `bytes` or a `list`
     may simply retry with the bytearray this takes (issue
-    btclib-org/ellipticcurves#11).
+    btclib-org/btclib-ecc#11).
     """
     assert_type(sec_nonce, bytearray, "sec_nonce")
     values = session_values(session_ctx)
