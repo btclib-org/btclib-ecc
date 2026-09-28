@@ -962,6 +962,38 @@ def test_is_on_curve_refuses_the_real_two_torsion_point() -> None:
     assert ec.is_on_curve((T[0], 0)) is True
 
 
+def test_order_check_refuses_a_generator_whose_true_order_is_2n() -> None:
+    """G = (12, 9) generates all 26 points of y^2 = x^3 + 3x over F_17.
+
+    n = 13 annihilates G -- 13*G is the curve's own two-torsion point, an
+    odd multiple of G and therefore no affine tuple, and reads exactly as
+    INF under the affine y == 0 convention -- without being G's order,
+    which is 26. order_check exists to catch precisely an n that
+    annihilates G without being its order, and used to accept this one
+    (issue btclib-org/ellipticcurves#39): its own check reached the
+    windowed `_mult`, whose table of odd multiples of G is built in
+    affine coordinates and fed through `_jac_from_aff` to seed the
+    accumulator, so the very table entry that answers digit 13 is already
+    read as infinity before any arithmetic distinguishes it. `_mult_jac_var`
+    stays in Jacobian coordinates throughout -- double_jac and add_jac read
+    only a coordinate's own Z, never an affine y -- so it is what confirms
+    the true order below, independently of the constructor under test.
+    """
+    ec = CurveGroup(17, 3, 0)
+    G = (12, 9)
+    thirteen_G = _mult_jac_var(13, _jac_from_aff(G), ec)
+    assert thirteen_G[2] != 0  # a genuine point, not INF
+    assert ec.aff_from_jac_var(thirteen_G)[1] == 0  # the real two-torsion point
+    assert _mult_jac_var(26, _jac_from_aff(G), ec)[2] == 0  # G's true order
+
+    with pytest.raises(BTClibEccValueError, match="n is not the group order: "):
+        Curve(17, 3, 0, G, 13, 2, False)
+
+    # the same curve, with the group order check turned off: everything
+    # else about it checks out, which is why the check has to exist
+    Curve(17, 3, 0, G, 13, 2, False, order_check=False)
+
+
 def test_negate() -> None:
     """Verify P plus its negation is INF; refuse mixed coordinates."""
     for ec in all_curves.values():

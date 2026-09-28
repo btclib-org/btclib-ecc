@@ -126,6 +126,12 @@ A genuinely cofactor-2 curve this small has a two-torsion point
 `is_on_curve` refuses outright, which an exhaustive sweep reaches;
 `secp112r2` carries the cofactor above 1 case now (closes #32).
 
+### `Curve.__init__`'s `order_check` no longer mistakes 2n for n
+
+`_mult_jac_var`, never leaving Jacobian coordinates, replaces the windowed
+`_mult`, whose affine table of odd multiples of `G` could hold the curve's
+own two-torsion point and read it as infinity (closes #39).
+
 ## v2026.9.26
 
 ### The repository opens
