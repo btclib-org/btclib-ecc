@@ -7,7 +7,7 @@ issue: an issue is public from the moment it is filed, and so is the
 window between filing it and a fix being released.
 
 Report it privately instead, by
-[opening a security advisory](https://github.com/btclib-org/ellipticcurves/security/advisories/new).
+[opening a security advisory](https://github.com/btclib-org/btclib-ecc/security/advisories/new).
 Only the maintainers can see it, the discussion stays private until an
 advisory is published, and a CVE can be requested from it if the
 vulnerability warrants one.
@@ -46,7 +46,7 @@ a build provenance attestation of their own, signed in the run that built
 them:
 
 ```shell
-gh attestation verify --repo btclib-org/ellipticcurves \
+gh attestation verify --repo btclib-org/btclib-ecc \
   --signer-workflow btclib-org/.github/.github/workflows/reusable-attest.yml \
   <a distribution file from the release>
 ```

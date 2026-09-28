@@ -375,7 +375,7 @@ def encrypt(
     the eight characters somebody meant to hide is not a mistake the
     recipient can notice. `assert_type` is what refuses a caller's
     mistake here instead of leaking whatever `encrypt_f` does with a
-    non-bytes plaintext (issue btclib-org/ellipticcurves#11).
+    non-bytes plaintext (issue btclib-org/btclib-ecc#11).
     """
     assert_type(msg, bytes, "msg")
     if eph_prv_key is None:

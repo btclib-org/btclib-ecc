@@ -38,7 +38,7 @@ them with.
 `test_an_installed_but_too_old_package_is_not_read_as_absent` asks a
 different question: not "is the package findable at all", but "is a name
 this module asks of a *found* package missing". issue
-btclib-org/ellipticcurves#25 is that the two used to answer the same way.
+btclib-org/btclib-ecc#25 is that the two used to answer the same way.
 The meta path finder above cannot build that case -- it refuses to find
 `btclib_secp256k1` in the first place -- so that child stubs the package
 directly into `sys.modules`, present and one name short.
@@ -96,7 +96,7 @@ class RefuseTheBindings:
             # `btclib_secp256k1` raises with no finder in the way at all,
             # and what `_libsecp256k1`'s own except clause reads to tell
             # this apart from an installed package too old for a name it
-            # asks for (btclib-org/ellipticcurves#25)
+            # asks for (btclib-org/btclib-ecc#25)
             raise ModuleNotFoundError(f"{{name}} is out of reach", name=name)
         return None
 
@@ -273,7 +273,7 @@ else:
 def test_an_installed_but_too_old_package_is_not_read_as_absent() -> None:
     """A name missing from a *found* package raises, rather than reading absent.
 
-    issue btclib-org/ellipticcurves#25: catching every `ImportError` the
+    issue btclib-org/btclib-ecc#25: catching every `ImportError` the
     bindings' own import could raise, absent or merely too old, answered
     `INSTALLED = False` for both -- `btclib-secp256k1` 0.8.0.6 lacking
     `ecdh.shared_point` fell back to the Python arithmetic exactly as an
@@ -393,7 +393,7 @@ class RefuseTheBindings:
             # `btclib_secp256k1` raises with no finder in the way at all,
             # and what `_libsecp256k1`'s own except clause reads to tell
             # this apart from an installed package too old for a name it
-            # asks for (btclib-org/ellipticcurves#25)
+            # asks for (btclib-org/btclib-ecc#25)
             raise ModuleNotFoundError(f"{{name}} is out of reach", name=name)
         return None
 

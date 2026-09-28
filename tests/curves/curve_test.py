@@ -94,12 +94,12 @@ low_card_curves["ec13_19"] = Curve(13, 0, 2, (1, 9), 19, 1, False)
 #
 # 13 points, brute force over every (x, y) plus INF, so cofactor 1: this
 # curve was built with a false cofactor of 2 until issue
-# btclib-org/ellipticcurves#32, back when #19's bug forced it -- Curve()
+# btclib-org/btclib-ecc#32, back when #19's bug forced it -- Curve()
 # accepted no other value for an n this close to p. A low-cardinality
 # curve genuinely of cofactor 2 is not a fixture this suite can hold: its
 # curve order is then even, so a rational two-torsion point at y = 0
 # exists on it by group theory, and `Curve.is_on_curve` refuses that
-# point outright (issue btclib-org/ellipticcurves#16) rather than
+# point outright (issue btclib-org/btclib-ecc#16) rather than
 # reading it as off-curve -- and a genuinely cofactor-2 candidate tried
 # here landed a real signature's recovery on exactly that point on its
 # first (private key, nonce, challenge) triple, raising rather than
@@ -109,7 +109,7 @@ low_card_curves["ec17_23"] = Curve(17, 3, 5, (1, 14), 23, 1, False)
 # 19 % 4 = 3; 19 % 8 = 3
 #
 # 13 points, cofactor 1 for the same reason (issue
-# btclib-org/ellipticcurves#32)
+# btclib-org/btclib-ecc#32)
 low_card_curves["ec19_13"] = Curve(19, 0, 2, (4, 16), 13, 1, False)
 low_card_curves["ec19_23"] = Curve(19, 2, 9, (0, 16), 23, 1, False)
 # 23 % 4 = 3; 23 % 8 = 7
@@ -235,7 +235,7 @@ def test_cofactor_ambiguous_below_hasse_threshold() -> None:
 
     y^2 = x^3 + 2x + 7 over F_11 has 7 points (brute force over every
     (x, y) plus INF), so G = (6, 9) generates the whole group and its
-    cofactor is 1 -- issue btclib-org/ellipticcurves#19's own
+    cofactor is 1 -- issue btclib-org/btclib-ecc#19's own
     reproduction, which the constructor used to refuse. delta =
     isqrt(4*11) = 6 and n = 7 is below 2*delta, so h = 2 (14, also
     inside [6, 18]) is accepted too, since nothing short of counting the
@@ -336,7 +336,7 @@ def test_hasse_half_width_is_exact() -> None:
         assert delta * delta <= 4 * ec.p < (delta + 1) * (delta + 1)
         # the curve was built, so cofactor*n -- the curve's own order --
         # is inside the Hasse interval delta bounds; that is all the
-        # constructor requires (issue btclib-org/ellipticcurves#19)
+        # constructor requires (issue btclib-org/btclib-ecc#19)
         assert ec.p + 1 - delta <= ec.cofactor * ec.n <= ec.p + 1 + delta
 
     # every catalogued curve has n > 2*delta, where at most one multiple
@@ -889,7 +889,7 @@ def test_is_on_curve() -> None:
         # x is reduced mod p by _y2, which read x + p and x - p back as
         # the same point Q names, both a second SEC octet encoding of a
         # key already accepted and, for x - p, a negative int no encoding
-        # can even carry (issue btclib-org/ellipticcurves#7)
+        # can even carry (issue btclib-org/btclib-ecc#7)
         with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1: "):
             ec.is_on_curve((Q[0] + ec.p, Q[1]))
         with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1: "):
@@ -915,7 +915,7 @@ def secp112r2_order_4_point() -> Point:
     secp112r2 is cofactor 4, and gcd(4, n) == 1, n being an odd prime, so
     n*P always lands in the curve's own 4-element subgroup {INF, T0, 2T0,
     -T0} for any P on the curve -- the derivation the issue itself walks
-    through (issues btclib-org/ellipticcurves#15 and #16). Of those four,
+    through (issues btclib-org/btclib-ecc#15 and #16). Of those four,
     only T0 and -T0 have y != 0: INF and 2T0, the real two-torsion point,
     both have y == 0, a point of order 2 having no other affine shape. x
     = 2 is a fixed, already-checked case of that: its own n*P lands on
@@ -945,7 +945,7 @@ def test_is_on_curve_refuses_the_real_two_torsion_point() -> None:
     Doubling the order-4 point above lands on the curve's real two-torsion
     point, which the affine y == 0 convention cannot tell apart from
     infinity: is_on_curve refuses it rather than reading it either way
-    (issue btclib-org/ellipticcurves#16), and add_var, which validates its
+    (issue btclib-org/btclib-ecc#16), and add_var, which validates its
     operands through is_on_curve, refuses to add it to anything.
     """
     ec = CURVES["secp112r2"]
@@ -972,7 +972,7 @@ def test_order_check_refuses_a_generator_whose_true_order_is_2n() -> None:
     INF under the affine y == 0 convention -- without being G's order,
     which is 26. order_check exists to catch precisely an n that
     annihilates G without being its order, and used to accept this one
-    (issue btclib-org/ellipticcurves#39): its own check reached the
+    (issue btclib-org/btclib-ecc#39): its own check reached the
     windowed `_mult`, whose table of odd multiples of G is built in
     affine coordinates and fed through `_jac_from_aff` to seed the
     accumulator, so the very table entry that answers digit 13 is already

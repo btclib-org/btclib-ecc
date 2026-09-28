@@ -815,7 +815,7 @@ def sign(
 
     `sec_nonce` is checked exactly `bytearray` first, for the reason
     `musig2.sign`'s own docstring gives (issue
-    btclib-org/ellipticcurves#11).
+    btclib-org/btclib-ecc#11).
     """
     assert_type(sec_nonce, bytearray, "sec_nonce")
     values = session_values(session_ctx)

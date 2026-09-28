@@ -90,7 +90,7 @@ one, and TestPyPI's rehearsal does the same there.
 
 1. On [PyPI](https://pypi.org/manage/account/publishing/), add a trusted
    publisher: PyPI project name `btclib-ecc`, owner `btclib-org`,
-   repository `ellipticcurves`, workflow `release.yml`,
+   repository `btclib-ecc`, workflow `release.yml`,
    environment `pypi`.
 
 1. On [TestPyPI](https://test.pypi.org/), add the same trusted publisher,
@@ -507,7 +507,7 @@ result.
    ```shell
    gh api --paginate \
      --jq '.jobs[] | [.conclusion, (.steps|length), .name] | @tsv' \
-     "repos/btclib-org/ellipticcurves/actions/runs/${run:?}/jobs?per_page=100"
+     "repos/btclib-org/btclib-ecc/actions/runs/${run:?}/jobs?per_page=100"
    ```
 
    On a tag `Publish to TestPyPI` is `skipped`, its trigger being the
@@ -544,7 +544,7 @@ result.
    application/vnd.pypi.simple.v1+json`) carries the real link, under
    `/integrity/<project>/<version>/<filename>/provenance`, and
    `pypi-attestations verify pypi <file> --repository
-   https://github.com/btclib-org/ellipticcurves` checks the
+   https://github.com/btclib-org/btclib-ecc` checks the
    signature rather than merely its presence.
 
 1. Read the `published` job of the release run, which needs no dispatch:
@@ -607,9 +607,9 @@ result.
    ```
 
    ```shell
-   gh release download "v${version:?}" --repo btclib-org/ellipticcurves &&
+   gh release download "v${version:?}" --repo btclib-org/btclib-ecc &&
    wheel=btclib_ecc-${version:?}-py3-none-any.whl &&
-   repo=btclib-org/ellipticcurves &&
+   repo=btclib-org/btclib-ecc &&
    signer=btclib-org/.github/.github/workflows/reusable-attest.yml &&
    gh attestation verify "$wheel" --repo "$repo" \
      --signer-workflow "$signer" &&
@@ -677,11 +677,11 @@ command, and both scripts below read the variable out of their own
 environment and refuse to run without it.
 
 ```shell
-git worktree add --detach /tmp/ellipticcurves-rebuild "v${version:?}" &&
-cd /tmp/ellipticcurves-rebuild &&
+git worktree add --detach /tmp/btclib-ecc-rebuild "v${version:?}" &&
+cd /tmp/btclib-ecc-rebuild &&
 python=$(grep -Ev '^[[:space:]]*(#|$)' .python-version) &&
 export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) &&
-repo=btclib-org/ellipticcurves &&
+repo=btclib-org/btclib-ecc &&
 signer=btclib-org/.github/.github/workflows/reusable-attest.yml &&
 wheels=$(mktemp -d) &&
 gh release download "v${version:?}" --repo "$repo" --dir "$wheels" \

@@ -200,7 +200,7 @@ def test_a_degenerate_dU_is_refused_as_a_bad_key_not_as_an_INF_secret() -> None:
     into a degenerate scalar that reached `mult` and answered INF -- a
     BTClibEccRuntimeError about the *secret*, as though 0 were a key that
     merely produced a bad answer. It never was a valid key, in 1..n-1, so
-    it is refused as one (issue btclib-org/ellipticcurves#10).
+    it is refused as one (issue btclib-org/btclib-ecc#10).
     """
     ec = CURVES["secp256k1"]
     with pytest.raises(BTClibEccValueError, match="private key not in 1..n-1"):
@@ -226,7 +226,7 @@ def test_a_bad_dU_is_refused_the_same_way_on_both_arithmetic_arms(
     `TypeError`, where the Python arm's own `mult` already refused each of
     them as a `BTClibEccTypeError` or a `BTClibEccValueError`. Both arms
     now run `scalar_from_prv_key` first and agree (issue
-    btclib-org/ellipticcurves#10).
+    btclib-org/btclib-ecc#10).
     """
     QV = mult(0xC0FFEE)
     with pytest.raises(exc):
@@ -246,7 +246,7 @@ def test_dU_at_or_above_n_is_refused_rather_than_silently_reduced(
     both arithmetic arms, so `-5` and `ec.n + 5` answered the same shared
     secret as `5` either way -- consistent between the two arms, and still
     not what `scalar_from_prv_key` allows any other private key to do
-    (issue btclib-org/ellipticcurves#10).
+    (issue btclib-org/btclib-ecc#10).
     """
     ec = CURVES["secp256k1"]
     QV = mult(0xC0FFEE)
@@ -269,7 +269,7 @@ def test_an_INF_public_key_is_refused_the_same_way_on_both_arithmetic_arms(
     it through the cofactor multiplication and `mult` unchecked, and only
     caught it afterwards as a `BTClibEccRuntimeError` about the secret --
     the same input, two different classes (issue
-    btclib-org/ellipticcurves#10).
+    btclib-org/btclib-ecc#10).
     """
     ec = CURVES["secp256k1"]
     err_msg = r"invalid \(INF\) public key"
@@ -289,7 +289,7 @@ def test_cofactor_dh_hides_a_low_order_key_parity() -> None:
     every odd dU and INF for every even one, so a peer sending T learned
     dU's parity from whether the call raised. Cofactor DH multiplies T by
     the cofactor first, landing on INF regardless of dU, so every dU now
-    answers alike (issue btclib-org/ellipticcurves#15).
+    answers alike (issue btclib-org/btclib-ecc#15).
     """
     ec = CURVES["secp112r2"]
     t = secp112r2_order_4_point()

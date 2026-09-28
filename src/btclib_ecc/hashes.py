@@ -84,7 +84,7 @@ def tagged_hash(tag: bytes, m: bytes, hf: HashF = hashlib.sha256) -> bytes:
     parameter this package converts through `bytes_from_octets`, neither
     is ever meant to be read as a hex-string, so `assert_type` is what
     refuses a caller's mistake here rather than a coercion (issue
-    btclib-org/ellipticcurves#11).
+    btclib-org/btclib-ecc#11).
     """
     _assert_valid_hf(hf)
     assert_type(tag, bytes, "tag")

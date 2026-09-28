@@ -90,14 +90,14 @@ def diffie_hellman(
     the way `sec_point.point_from_pub_key` does -- is annihilated by h·QV
     rather than surviving into the point dU multiplies and leaking dU's
     residue modulo that component's order (issue
-    btclib-org/ellipticcurves#15). h == 1 on every curve without a
+    btclib-org/btclib-ecc#15). h == 1 on every curve without a
     cofactor, where this is QV unchanged.
 
     `dU` is read through `curves.scalar_from_prv_key`, which validates it
     into 1..n-1 before either arithmetic arm sees it, so a bool, a float, a
     negative int or a value at or above `ec.n` is refused identically
     whichever arm ends up serving the call (issue
-    btclib-org/ellipticcurves#10). `QV` is refused the same way on both
+    btclib-org/btclib-ecc#10). `QV` is refused the same way on both
     arms when it is the infinity point: nothing here otherwise confines it
     to a serializable point, but INF is the one value neither arm can turn
     into a shared secret, and checking it once ahead of the dispatch is

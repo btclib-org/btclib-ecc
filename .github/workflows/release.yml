@@ -121,7 +121,7 @@ jobs:
     # (section 12 of the organization's standard)
     if: >-
       always() && github.event_name == 'workflow_dispatch' &&
-      github.repository == 'btclib-org/ellipticcurves' &&
+      github.repository == 'btclib-org/btclib-ecc' &&
       needs.test.result == 'success' && needs.lint.result == 'success' &&
       needs.docs.result == 'success' && needs.ubuntu.result == 'success' &&
       needs.macos.result == 'success' && needs.windows.result == 'success'
@@ -151,7 +151,7 @@ jobs:
     # for its result, on a tag exactly as on a rehearsal
     if: >-
       always() && github.event_name == 'push' &&
-      github.repository == 'btclib-org/ellipticcurves' &&
+      github.repository == 'btclib-org/btclib-ecc' &&
       needs.test.result == 'success' && needs.lint.result == 'success' &&
       needs.docs.result == 'success' && needs.ubuntu.result == 'success' &&
       needs.macos.result == 'success' && needs.windows.result == 'success'

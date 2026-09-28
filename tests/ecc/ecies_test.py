@@ -286,7 +286,7 @@ def test_encrypt_refuses_a_message_that_is_no_bytes() -> None:
     `msg` is `bytes` alone, not `Octets` (the module docstring's own
     "The plaintext is bytes and not Octets" says why), so a `str` is
     refused by name rather than read as a hex-string or handed to
-    `encrypt_f` unchecked (issue btclib-org/ellipticcurves#11).
+    `encrypt_f` unchecked (issue btclib-org/btclib-ecc#11).
     """
     pub_key = mult(0xC28FCA386C7A227600B2FE50B7CAE11EC86D3BF1FBE471BE89827E19D72AA1D)
     with pytest.raises(BTClibEccTypeError, match="invalid msg type"):

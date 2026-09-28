@@ -2,7 +2,7 @@
 
 To see the list of btclib-ecc authors for copyright purposes, see the
 revision history in source control:
-<https://github.com/btclib-org/ellipticcurves/graphs/contributors>
+<https://github.com/btclib-org/btclib-ecc/graphs/contributors>
 
 The code this repository opened with was written in btclib, whose
 revision history holds its authors:

@@ -255,7 +255,7 @@ def test_sign_refuses_a_secnonce_that_is_no_bytearray(sec_nonce: Any) -> None:
 
     `musig2.sign`'s own test has the shape this refuses: a `bytearray`
     is what nothing but this scheme can spend (issue
-    btclib-org/ellipticcurves#11).
+    btclib-org/btclib-ecc#11).
     """
     group = _SIGN_VERIFY["test_groups"][0]
     n, t = group["n"], group["t"]

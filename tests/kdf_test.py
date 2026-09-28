@@ -62,7 +62,7 @@ def test_a_z_that_is_no_bytes_is_refused_as_such() -> None:
 
     `z` is `bytes`, not `Octets`: it is the shared secret an agreement
     computed, never a caller's hex-string (issue
-    btclib-org/ellipticcurves#11).
+    btclib-org/btclib-ecc#11).
     """
     with pytest.raises(BTClibEccTypeError, match="invalid z type"):
         ansi_x9_63_kdf("abc", 10, sha256, None)  # type: ignore[arg-type]
@@ -72,7 +72,7 @@ def test_a_hash_function_that_is_not_one_is_refused_as_such() -> None:
     """A digest object where the constructor belongs, refused before use.
 
     `hf().digest_size` used to leak "not callable" straight from the
-    call (issue btclib-org/ellipticcurves#11).
+    call (issue btclib-org/btclib-ecc#11).
     """
     with pytest.raises(BTClibEccTypeError, match="not a hash function"):
         ansi_x9_63_kdf(b"abc", 10, sha256(), None)  # type: ignore[arg-type]
@@ -374,7 +374,7 @@ def test_hkdf_refuses_a_size_that_is_no_integer(size: object) -> None:
 def test_hkdf_refuses_an_ikm_that_is_no_bytes() -> None:
     """A hex-string used to reach `hmac.new` and leak a str/bytes mismatch.
 
-    Issue btclib-org/ellipticcurves#11.
+    Issue btclib-org/btclib-ecc#11.
     """
     with pytest.raises(BTClibEccTypeError, match="invalid ikm type"):
         hkdf("abc", 10, sha256, None, None)  # type: ignore[arg-type]
@@ -397,7 +397,7 @@ def test_hkdf_expand_refuses_a_short_pseudorandom_key() -> None:
 def test_hkdf_expand_refuses_a_prk_that_is_no_bytes() -> None:
     """A hex-string used to leak "key: expected bytes" from `hmac.new`.
 
-    Issue btclib-org/ellipticcurves#11.
+    Issue btclib-org/btclib-ecc#11.
     """
     with pytest.raises(BTClibEccTypeError, match="invalid prk type"):
         hkdf_expand("a" * 32, 10, sha256, None)  # type: ignore[arg-type]

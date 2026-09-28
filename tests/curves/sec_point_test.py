@@ -37,7 +37,7 @@ low_card_curves["ec13_19"] = Curve(13, 0, 2, (1, 9), 19, 1, False)
 # 17 % 4 = 1; 17 % 8 = 1
 #
 # cofactor 1, not 2: tests/curves/curve_test.py's own copy of this dict
-# has the reason (issue btclib-org/ellipticcurves#32)
+# has the reason (issue btclib-org/btclib-ecc#32)
 low_card_curves["ec17_13"] = Curve(17, 6, 8, (0, 12), 13, 1, False)
 low_card_curves["ec17_23"] = Curve(17, 3, 5, (1, 14), 23, 1, False)
 # 19 % 4 = 3; 19 % 8 = 3
@@ -237,7 +237,7 @@ def test_point_from_pub_key_refuses_a_point_outside_the_subgroup() -> None:
     `bytes_from_point` serializes it without complaint -- but not a point
     of ⟨G⟩, `n*T` not being INF: `mult` would answer `dU*T` reduced mod n,
     a wrong point for any dU, which is the whole of issue
-    btclib-org/ellipticcurves#15. Every spelling that reaches a point --
+    btclib-org/btclib-ecc#15. Every spelling that reaches a point --
     the bare tuple, the compressed octets, the uncompressed ones -- is
     refused the same way.
     """
@@ -279,7 +279,7 @@ def test_point_from_octets_refuses_the_real_two_torsion_point(
     `_jac_from_aff` reads affine y == 0 as Jacobian Z == 0 exactly as the
     convention this refuses does, and it never reduces y at all -- so
     both compressed keys passed silently (issue
-    btclib-org/ellipticcurves#16). Both prefixes, and both entry points,
+    btclib-org/btclib-ecc#16). Both prefixes, and both entry points,
     are checked; the hybrid and plain uncompressed forms are refused
     already -- no bytes representation exists for a y == 0 uncompressed
     point at all, ambiguous or not -- and are checked here too so a

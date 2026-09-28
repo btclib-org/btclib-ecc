@@ -598,7 +598,7 @@ class CurveGroup:
         # telling it from infinity, and add_jac doubles it to infinity
         # correctly; none of the low-cardinality test curves has one, and
         # two catalogued curves of cofactor 4 do (issue
-        # btclib-org/ellipticcurves#16). This method still assumes its
+        # btclib-org/btclib-ecc#16). This method still assumes its
         # operands on the curve and reads either one's y == 0 as infinity
         # whatever it stands for, as add_jac's own stand-ins do; on a
         # Curve, add_var -- the validated entry point -- never reaches it
@@ -692,7 +692,7 @@ class CurveGroup:
         # before the y==0 check too: _y2 reduces x mod p, so an x outside
         # 0..p-1 would otherwise be accepted -- x + p and x - p read back
         # as a second, third encoding of the same point (issue
-        # btclib-org/ellipticcurves#7)
+        # btclib-org/btclib-ecc#7)
         if not 0 <= Q[0] < self.p:
             err_msg = "x-coordinate not in 0..p-1: "
             err_msg += f"{hex_string(Q[0])}" if Q[0] > HEX_THRESHOLD else f"{Q[0]}"
@@ -705,7 +705,7 @@ class CurveGroup:
             # overrides this method: ⟨G⟩ is what a cofactor makes
             # ambiguous, a real two-torsion point outside it having no
             # affine spelling distinct from INF's (issue
-            # btclib-org/ellipticcurves#16)
+            # btclib-org/btclib-ecc#16)
             return True
         if not 0 < Q[1] < self.p:  # y cannot be zero
             raise BTClibEccValueError(

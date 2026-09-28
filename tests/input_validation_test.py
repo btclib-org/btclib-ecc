@@ -77,7 +77,7 @@ hold `kdf.ansi_x9_63_kdf`, `kdf.hkdf`, `kdf.hkdf_expand`,
 `kdf.hkdf_extract`, `hashes.tagged_hash`, `ecies.encrypt`,
 `commit_nonce.commit_nonce_`, `musig2.sign` and `frost.sign` to the same
 `BTClibEccTypeError`/`BTClibEccValueError` contract this file drives
-automatically for everything else (issue btclib-org/ellipticcurves#11).
+automatically for everything else (issue btclib-org/btclib-ecc#11).
 
 `int` alone would also reach outside this package's input-validation
 surface and into arithmetic this file has never gated:
@@ -87,7 +87,7 @@ extended Euclid, not a malformed argument.
 `curves.curve_group.signed_odd_digits` refuses a non-integer `m`, `w` or
 `size` of its own accord, driven by hand in `curves/curve_group_test.py`
 rather than by this walk, in a module of its own (issue
-btclib-org/ellipticcurves#34).
+btclib-org/btclib-ecc#34).
 
 ## The two lists
 
@@ -307,7 +307,7 @@ def test_the_vocabulary_is_the_libraries_input_types() -> None:
     without_a_wrong_value = {
         # not always behind a default: `ssa.challenge_` and four of
         # `kdf`'s functions take it with none (issue
-        # btclib-org/ellipticcurves#11). What keeps it out of
+        # btclib-org/btclib-ecc#11). What keeps it out of
         # `_WRONG_TYPE`/`_WRONG_VALUE` is that it has no wrong value the
         # module docstring's "What it does not reach" does not already
         # give a shared reason for -- `hashes._assert_valid_hf` is the

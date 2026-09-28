@@ -192,7 +192,7 @@ Point = tuple[int, int]
 # spelling distinct from this one. curve.Curve.is_on_curve -- not the
 # CurveGroup method it overrides, which has no G and no n to be
 # ambiguous about -- refuses that one x-coordinate rather than reading
-# it as INF (issue btclib-org/ellipticcurves#16); every catalogued
+# it as INF (issue btclib-org/btclib-ecc#16); every catalogued
 # curve of cofactor 1
 # still reads any other y=0 tuple as infinity exactly as this comment
 # describes.
