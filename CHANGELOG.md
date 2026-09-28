@@ -25,6 +25,8 @@ driver that would keep both sides' numbers.
 
 ## v2026.10 (work in progress, not released yet)
 
+## v2026.9.28
+
 ### `REVIEWING.md` lets a filed issue carry its fix
 
 An issue filed from a review may say the fix where one is known: *What is
