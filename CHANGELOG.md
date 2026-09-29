@@ -48,6 +48,12 @@ The `--bundle` form of *Verify the provenance of an asset* passes
 `--signer-workflow "$signer"`, without which `gh attestation verify` refuses
 a good release (issue btclib-org/.github#1446).
 
+### A `btclib-secp256k1` too old to import says which version and what to install
+
+An installed release lacking a name `_libsecp256k1` imports still raises, and
+the `ImportError` names the installed version, the floor the `secp256k1` extra
+declares and how to meet it, instead of the missing symbol alone (closes #56).
+
 ## v2026.9.28
 
 ### `REVIEWING.md` lets a filed issue carry its fix

@@ -49,17 +49,30 @@ the top-level package -- nothing else is. A name this module asks for that
 an installed, too-old package does not have raises a plain `ImportError`
 instead (the package is found; the attribute inside it is not), or a
 `ModuleNotFoundError` naming a submodule rather than the top-level package
-(an old package missing a whole submodule this floor needs). Catching
+(an old package missing a whole submodule this floor needs). Reading
 either of those as "absent" is the defect: it is what let
 `btclib-secp256k1` 0.8.0.6, which has no `btclib_secp256k1.ecdh.shared_point`,
-answer `INSTALLED = False` instead of raising. So only the first shape is
-caught here; the other two propagate, which is a loud failure at import
-time rather than a silent, slower fallback nobody is told about.
+answer `INSTALLED = False` instead of raising. So those two raise, which is
+a loud failure at import time rather than a silent, slower fallback nobody
+is told about.
+
+What they raise is an `ImportError` that says what to do about it, chained
+from the one the import system raised (btclib-org/btclib-ecc#56): the
+installed `btclib-secp256k1` version, the floor this package declares for it,
+and the two ways to a release that meets it. The floor is read back from this
+distribution's own metadata, where `pyproject.toml`'s `secp256k1` extra put
+it, so no second copy of it is kept here to drift; a source tree with no
+metadata beside it is told to look in the extra. Only an `ImportError` naming
+`btclib_secp256k1` or one of its submodules is taken for a bindings mismatch:
+a dependency of the bindings that is missing, or a shared library that will
+not load, propagates as it was raised.
 """
 
 from __future__ import annotations
 
 import os
+import re
+from importlib import metadata
 
 # the environment variable that refuses the bindings without uninstalling
 # them, read once and here, when this module is first imported. `import
@@ -91,6 +104,68 @@ __all__ = [
     "xonly_pubkey_verify",
     "xonly_to_pubkey",
 ]
+
+_BINDINGS_MODULE = "btclib_secp256k1"
+_BINDINGS_DISTRIBUTION = "btclib-secp256k1"
+
+
+def _floor() -> str | None:
+    """Return the specifier the `secp256k1` extra puts on the bindings.
+
+    Read from this distribution's own metadata, which is where
+    `pyproject.toml` declares it, and `None` where there is no metadata to
+    read: a source tree that was never installed, or an installed one whose
+    `Requires-Dist` no longer lists the extra.
+    """
+    try:
+        requirements = metadata.requires("btclib-ecc")
+    except metadata.PackageNotFoundError:
+        return None
+    for requirement in requirements or ():
+        head, _, marker = requirement.partition(";")
+        if not re.search(r"""extra\s*==\s*["']secp256k1["']""", marker):
+            continue
+        name = re.match(r"[A-Za-z0-9._-]+", head.strip())
+        if name is None:
+            continue
+        if re.sub(r"[-_.]+", "-", name.group()).lower() != _BINDINGS_DISTRIBUTION:
+            continue
+        specifier = head.strip()[name.end() :].strip()
+        return specifier or None
+    return None
+
+
+def _mismatch(exc: ImportError) -> ImportError | None:
+    """Return the error to raise for a bindings mismatch, `None` for any other.
+
+    A mismatch is an `ImportError` that names the bindings or one of their
+    submodules: the package was found, and something this module asks of it
+    was not there. Anything else -- a dependency of the bindings that is
+    missing, a shared library that will not load -- is not this module's to
+    reword, and the caller re-raises it as it came.
+    """
+    if exc.name != _BINDINGS_MODULE and not (exc.name or "").startswith(
+        _BINDINGS_MODULE + "."
+    ):
+        return None
+    try:
+        installed = f"version {metadata.version(_BINDINGS_DISTRIBUTION)}"
+    except metadata.PackageNotFoundError:
+        installed = "a version it could not read"
+    floor = _floor()
+    required = (
+        f"{_BINDINGS_DISTRIBUTION}{floor}"
+        if floor
+        else "the release the `secp256k1` extra of btclib-ecc names"
+    )
+    return ImportError(
+        f"{_BINDINGS_DISTRIBUTION} is installed, {installed}, but it lacks what "
+        f"btclib-ecc imports from it ({exc}); btclib-ecc requires {required}. "
+        f"Upgrade it with `pip install --upgrade {_BINDINGS_DISTRIBUTION}` or "
+        f"install `btclib-ecc[secp256k1]`",
+        name=exc.name,
+    )
+
 
 try:
     # `ffi` is the one object here that is not a wrapped call: issue
@@ -134,18 +209,23 @@ try:
 # this branch is a structural miss in that report regardless of the union, and
 # removing the pragma would fail the one gate this issue chose to leave
 # unchanged
-except ModuleNotFoundError as exc:  # pragma: no cover -- only no-bindings reaches this
-    # `exc.name` is the top-level package's own name only when the
-    # import system never found it at all -- a submodule of an
-    # installed package failing to import names that submodule instead
-    # (`btclib_secp256k1.ecdh`, say), and a name missing from a module
-    # that *was* found raises plain `ImportError`, which this clause
-    # does not catch to begin with. Either of those is an installed
-    # package too old for what this module asks of it
-    # (btclib-org/btclib-ecc#25), and the caller is told rather than
-    # silently handed the slower Python arithmetic
-    if exc.name != "btclib_secp256k1":
-        raise
+except (
+    ImportError
+) as exc:  # pragma: no cover -- only a child interpreter or no-bindings reaches this
+    # `exc.name` is the top-level package's own name, on a
+    # `ModuleNotFoundError`, only when the import system never found it at
+    # all. A submodule of an installed package failing to import names that
+    # submodule instead (`btclib_secp256k1.ecdh`, say), and a name missing
+    # from a module that *was* found is a plain `ImportError`. Either of
+    # those is an installed package too old for what this module asks of it
+    # (btclib-org/btclib-ecc#25), and the caller is told so and what to do
+    # (btclib-org/btclib-ecc#56) rather than silently handed the slower
+    # Python arithmetic
+    if not (isinstance(exc, ModuleNotFoundError) and exc.name == _BINDINGS_MODULE):
+        mismatch = _mismatch(exc)
+        if mismatch is None:
+            raise
+        raise mismatch from exc
     # None and not a callable that raises: what would raise is never
     # called, so the object would be a second thing to keep true. The
     # ignore is on the assignment and not on the module: every other
