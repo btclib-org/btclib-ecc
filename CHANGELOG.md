@@ -25,6 +25,11 @@ driver that would keep both sides' numbers.
 
 ## v2026.10 (work in progress, not released yet)
 
+### Vendored-vector pins follow upstream's tip
+
+Every entry of `tests/_data/README.md` the weekly job reports behind is
+pinned at upstream's tip, and no vendored content changes (closes #48).
+
 ## v2026.9.28
 
 ### `REVIEWING.md` lets a filed issue carry its fix
