@@ -577,7 +577,7 @@ builds each.
 ```text
 repo    bitcoin-core/secp256k1
 path    src
-commit  46db787112beabdb5e17e0dc35680716f1057e7b  2026-09-11
+commit  b819a790f06122d5a53c0320e79c0dc486349fbd  2026-09-28
 pulled  2026-09-10, refreshed 2026-09-14
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -987,8 +987,8 @@ Pulled 2020-05-08.
 ```text
 repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/rangeproof/tests_impl.h
-commit  72867fd682279ff2c79cf13f4f8d8484048d2527  2026-08-17
-blob    19c83ecbd84ae318d8eccf9336638238d3a29826
+commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
+blob    1137404643ab667715e2c5eedd3463dcb20740e6
 pulled  2026-09-09
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -1043,8 +1043,8 @@ own, and `tests/ecc/rangeproof_test.py` is where those are rewound.
 ```text
 repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/generator/tests_impl.h
-commit  d111d31293b479832c767946145702151897785d  2026-03-03
-blob    14ec95dc94780126a796866b05eeafa2093bf22f
+commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
+blob    a5dd39f8b2b645ed23988f62fc2bfd612a3c4358
 pulled  2026-09-11
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -1067,8 +1067,11 @@ against the sage program it keeps beside the code. The bindings
 `uv.lock` resolves vendor a fork of that repository,
 `fametrano/secp256k1-zkp` at
 `a8f6b86a804cdfd455dfb943937d254ec6ccc70a`; the blob at this path there
-is the one above, where the entry above has to name its own, so the
-transcription's source is the code the bindings run.
+is `14ec95dc94780126a796866b05eeafa2093bf22f` and not the one above. They
+differ only where the loop of `test_shallue_van_de_woestijne`
+calls `secp256k1_fe_set_int` there and `secp256k1_fe_set_int_unchecked`
+above, so the arrays this entry transcribes read the same in both and
+the transcription's source is the code the bindings run.
 
 `tests/ecc/pedersen_test.py` is what reads it: the first array against
 `ecc.pedersen._shallue_van_de_woestijne` and the second against
@@ -1080,8 +1083,8 @@ the pair of calls upstream's own loop makes of each entry.
 ```text
 repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/ecdsa_s2c/tests_impl.h
-commit  72867fd682279ff2c79cf13f4f8d8484048d2527  2026-08-17
-blob    ea0b650d829c87c39908903abe7a5b164e06063c
+commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
+blob    88eeb1e9e7156d8c99a032ce3eef4423825792c9
 pulled  2026-08-02
 behind  0 revisions; that commit is the tip of the path
 ```
