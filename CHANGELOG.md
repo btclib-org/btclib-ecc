@@ -30,6 +30,12 @@ driver that would keep both sides' numbers.
 Every entry of `tests/_data/README.md` the weekly job reports behind is
 pinned at upstream's tip, and no vendored content changes (closes #48).
 
+### `[tool.uv] required-version` follows the `uv` `dependabot-core` bundles to `0.12.19`
+
+`required-version` reads `>=0.12.19`: a floor below the `uv` pin
+`dependabot-core` bundles admits a `uv` older than the one Dependabot writes
+`uv.lock` with (issue btclib-org/.github#1438).
+
 ## v2026.9.28
 
 ### `REVIEWING.md` lets a filed issue carry its fix
