@@ -81,6 +81,12 @@ which `tests/readme_test.py` runs (issue #52).
 job passes, where it answered `ModuleNotFoundError` for the previous
 release (issue btclib-org/.github#1447).
 
+### `pypi-install.yml` installs the version the release published
+
+The install names `btclib-ecc==<version>` from the tag `release.yml` passes,
+where a bare name let a lagging index serve the release before it
+(issue btclib-org/.github#1456).
+
 ## v2026.9.28
 
 ### `REVIEWING.md` lets a filed issue carry its fix
