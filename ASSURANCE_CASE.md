@@ -132,9 +132,9 @@ package for every public class carrying a `parse`, and holds each to that
 contract or names the reason it is excluded. A range proof header names
 an exponent and a mantissa, and `src/btclib_ecc/ecc/rangeproof.py`
 bounds them by `_MAX_EXP` and `_MAX_MANTISSA`, the mantissa being checked
-before any ring size is computed from it. An ECIES envelope's MAC is verified, by
-`hmac.compare_digest`, before the caller's cipher is handed a
-ciphertext.
+before any ring size is computed from it. An ECIES envelope's MAC is
+verified, by `hmac.compare_digest`, before the caller's cipher is handed
+a ciphertext.
 
 **Files.** The package opens no file a caller names. What it reads is
 its own catalogue of curve parameters, four json files under
