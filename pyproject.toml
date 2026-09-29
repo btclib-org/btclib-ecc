@@ -90,8 +90,8 @@ pull_requests = "https://github.com/btclib-org/btclib-ecc/pulls"
 # (btclib-org/btclib-secp256k1#1005), which `curves.curve`,
 # `curves.sec_point` and `ecc.dh` call to multiply a point other than the
 # generator by a private scalar. `_libsecp256k1` imports the whole surface
-# in one `try`, so a release missing one name of it leaves every
-# delegation declining, silently
+# in one `try`, and a release missing one name of it fails that import with
+# an error naming the installed version and this floor
 secp256k1 = ["btclib-secp256k1>=0.8.0.8"]
 
 # Every entry below declares a lower bound, the release uv.lock resolved

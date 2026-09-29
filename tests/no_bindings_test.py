@@ -41,7 +41,9 @@ this module asks of a *found* package missing". issue
 btclib-org/btclib-ecc#25 is that the two used to answer the same way.
 The meta path finder above cannot build that case -- it refuses to find
 `btclib_secp256k1` in the first place -- so that child stubs the package
-directly into `sys.modules`, present and one name short.
+directly into `sys.modules`, present and one name short, and asserts that
+what is raised says which version is installed and what to install instead
+(issue btclib-org/btclib-ecc#56).
 """
 
 from __future__ import annotations
@@ -50,11 +52,15 @@ import json
 import os
 import subprocess
 import sys
+import tomllib
 from collections.abc import Callable
+from importlib import metadata
+from pathlib import Path
 from typing import Any
 
 import pytest
 
+from btclib_ecc import _libsecp256k1
 from btclib_ecc._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
 from btclib_ecc.curves import (
     bytes_from_point,
@@ -261,13 +267,31 @@ sys.modules["btclib_secp256k1.keys"] = keys_module
 sys.modules["btclib_secp256k1.xonly"] = xonly_module
 sys.modules["btclib_secp256k1.ecdh"] = ecdh_module
 
+# what an installed 0.8.0.6 answers to the metadata lookup, since the stub
+# above has no distribution beside it
+import importlib.metadata as metadata
+
+_version = metadata.version
+metadata.version = lambda name: "0.8.0.6" if name == "btclib-secp256k1" else _version(name)
+
 try:
     import btclib_ecc._libsecp256k1
 except ImportError as exc:
     print("raised", type(exc).__name__)
+    print(str(exc))
+    print("cause", type(exc.__cause__).__name__)
 else:
     print("swallowed")
 """
+
+
+def _declared_floor() -> str:
+    """Return the specifier `pyproject.toml` puts on the bindings."""
+    pyproject = tomllib.loads(
+        (Path(__file__).parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    (requirement,) = pyproject["project"]["optional-dependencies"]["secp256k1"]
+    return str(requirement).removeprefix("btclib-secp256k1")
 
 
 def test_an_installed_but_too_old_package_is_not_read_as_absent() -> None:
@@ -291,7 +315,148 @@ def test_an_installed_but_too_old_package_is_not_read_as_absent() -> None:
         timeout=120,
     )
     assert completed.returncode == 0, completed.stderr
-    assert completed.stdout.split() == ["raised", "ImportError"]
+    raised, message, cause = completed.stdout.strip().splitlines()
+    assert raised == "raised ImportError"
+    assert cause == "cause ImportError"
+    # what to do about it, and not only which symbol is missing
+    assert "btclib-secp256k1 is installed, version 0.8.0.6," in message
+    assert "cannot import name 'shared_point'" in message
+    assert f"requires btclib-secp256k1{_declared_floor()}" in message
+    assert "btclib-ecc[secp256k1]" in message
+    assert "pip install --upgrade btclib-secp256k1" in message
+
+
+def test_the_floor_is_the_one_the_extra_declares() -> None:
+    """The floor in the message is read back from the metadata, not restated.
+
+    `pyproject.toml` is the one place the specifier is written, and the
+    installed distribution's `Requires-Dist` is what carries it to run time.
+    """
+    assert _libsecp256k1._floor() == _declared_floor()
+
+
+@pytest.mark.parametrize(
+    "requires",
+    [
+        None,
+        ["typing-extensions>=4.10"],
+        # another extra's requirement, and the right one without a specifier
+        ['btclib-secp256k1>=1 ; extra == "other"'],
+        ['btclib-secp256k1 ; extra == "secp256k1"'],
+        ["!!! ; extra == 'secp256k1'"],
+        ["other-package>=1 ; extra == 'secp256k1'"],
+    ],
+)
+def test_no_floor_is_found_where_the_metadata_names_none(
+    monkeypatch: pytest.MonkeyPatch, requires: list[str] | None
+) -> None:
+    """A distribution that does not list the requirement has no floor."""
+    monkeypatch.setattr(metadata, "requires", lambda _name: requires)
+    assert _libsecp256k1._floor() is None
+
+
+def test_the_floor_is_read_from_any_spelling_of_the_requirement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The name is normalised and the marker's quotes are either."""
+    monkeypatch.setattr(
+        metadata,
+        "requires",
+        lambda _name: [
+            "typing-extensions",
+            "btclib_secp256k1 >=0.8.0.8; extra == 'secp256k1'",
+        ],
+    )
+    assert _libsecp256k1._floor() == ">=0.8.0.8"
+
+
+def test_no_floor_is_found_without_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A source tree that was never installed has no metadata to read."""
+
+    def absent(_name: str) -> list[str]:
+        raise metadata.PackageNotFoundError
+
+    monkeypatch.setattr(metadata, "requires", absent)
+    assert _libsecp256k1._floor() is None
+
+
+def test_the_message_survives_metadata_that_cannot_be_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The message is built without the version or the floor."""
+
+    def absent(_name: str) -> str:
+        raise metadata.PackageNotFoundError
+
+    monkeypatch.setattr(metadata, "version", absent)
+    monkeypatch.setattr(metadata, "requires", lambda _name: None)
+    exc = ImportError("boom", name="btclib_secp256k1.ecdh")
+    mismatch = _libsecp256k1._mismatch(exc)
+    assert isinstance(mismatch, ImportError)
+    assert mismatch.name == "btclib_secp256k1.ecdh"
+    message = str(mismatch)
+    assert "installed, a version it could not read," in message
+    assert "requires the release the `secp256k1` extra of btclib-ecc names" in message
+    assert "btclib-ecc[secp256k1]" in message
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        ImportError("a shared library will not load"),
+        ImportError("boom", name="/usr/lib/libsecp256k1.so"),
+        ModuleNotFoundError("no cffi", name="cffi"),
+        ImportError("boom", name="btclib_secp256k1_other"),
+    ],
+)
+def test_an_import_error_that_is_not_the_bindings_is_not_reworded(
+    exc: ImportError,
+) -> None:
+    """Only an error naming the bindings or one of their submodules is one."""
+    assert _libsecp256k1._mismatch(exc) is None
+
+
+@pytest.mark.parametrize("name", ["btclib_secp256k1", "btclib_secp256k1.ecdh"])
+def test_an_import_error_naming_the_bindings_is_a_mismatch(name: str) -> None:
+    """A name missing from the package itself is one, as from a submodule."""
+    assert _libsecp256k1._mismatch(ImportError("x", name=name)) is not None
+
+
+# the bindings found, and importing them failing on something that is not
+# the bindings' own: a dependency of theirs that is not installed
+_BROKEN_DEPENDENCY_CHILD = """
+import sys
+
+
+class BrokenDependency:
+    def find_spec(self, name, path=None, target=None):
+        if name == "btclib_secp256k1":
+            raise ModuleNotFoundError("No module named 'cffi'", name="cffi")
+        return None
+
+
+sys.meta_path.insert(0, BrokenDependency())
+
+import btclib_ecc._libsecp256k1
+"""
+
+
+def test_a_failure_that_is_not_the_bindings_propagates_as_it_was_raised() -> None:
+    """A missing dependency of the bindings is neither absence nor a mismatch.
+
+    Not absence, the top-level name being `cffi`'s; and not reworded as a
+    too-old package, which it is not: the caller sees `cffi` named.
+    """
+    completed = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", _BROKEN_DEPENDENCY_CHILD],
+        capture_output=True,
+        encoding="utf-8",
+        check=False,
+        timeout=120,
+    )
+    assert completed.returncode != 0
+    assert "ModuleNotFoundError: No module named 'cffi'" in completed.stderr
+    assert "is installed" not in completed.stderr
 
 
 def test_the_switch_refuses_to_promise_bindings_that_are_not_there(
