@@ -51,6 +51,7 @@ says how the choice is enforced.
 [![codeql workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/codeql.yml?query=branch%3Amain)
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/btclib-ecc/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/btclib-ecc)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15085/badge)](https://www.bestpractices.dev/projects/15085)
 
 It is fully annotated and ships `py.typed`.
 
@@ -114,11 +115,45 @@ The `secp256k1` extra installs the
 [libsecp256k1 bindings](https://github.com/btclib-org/btclib-secp256k1).
 The quotes are for zsh, which reads the brackets as a glob.
 
+## First use
+
+An ECDSA signature, verified from the DER octets a peer would send, and
+a BIP340 Schnorr signature:
+
+```python
+from btclib_ecc.curves import sec_point
+from btclib_ecc.ecc import dsa, ssa
+
+prv_key = 0xB7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF
+
+_, pub_key = dsa.gen_keys(prv_key)
+assert sec_point.bytes_from_point(pub_key).hex() == (
+    "02dff1d77f2a671c5f36183726db2341be58feae1da2deced843240f7b502ba659"
+)
+sig = dsa.sign(b"hello", prv_key)
+assert dsa.verify(b"hello", pub_key, sig.serialize())
+assert not dsa.verify(b"HELLO", pub_key, sig.serialize())
+
+msg = bytes.fromhex("243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89")
+_, x_pub_key = ssa.gen_keys(prv_key)
+assert x_pub_key == int(
+    "DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659", 16
+)
+assert ssa.verify_(msg, x_pub_key, ssa.sign_(msg, prv_key))
+```
+
+The private key and the message are test vector 1 of
+[BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki),
+and `tests/readme_test.py` runs every Python block of this file.
+
 ## Security
 
 [SECURITY.md](./SECURITY.md) says how to report a vulnerability, which
 versions are supported, and how a published file is traced back to the
 run that built it.
+[ASSURANCE_CASE.md](./ASSURANCE_CASE.md) argues why the security it states
+holds: the threat model, the trust boundaries, the design principles and
+the weaknesses countered.
 
 ## Contributing
 
