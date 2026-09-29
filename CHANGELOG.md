@@ -59,6 +59,12 @@ declares and how to meet it, instead of the missing symbol alone (closes #56).
 The shared half takes `btclib-org/.github`'s paragraph on the label and its
 one search across the organization (issue btclib-org/.github#1362, closes #53).
 
+### `.clusterfuzzlite/.python-version` pins the fuzz image's interpreter
+
+`.clusterfuzzlite/.python-version` names `3.11`, the fuzz image's interpreter,
+so that the Dependency Graph's pip job there reads it rather than a root pin
+Dependabot does not support yet (issue btclib-org/.github#1436).
+
 ## v2026.9.28
 
 ### `REVIEWING.md` lets a filed issue carry its fix
