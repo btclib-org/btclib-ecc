@@ -452,41 +452,69 @@ gh api repos/btclib-org/btclib-ecc --jq '.homepage'
 
 ## Read the Docs, which is btclib-ecc.readthedocs.io
 
-The project is to be imported on
-[readthedocs.org](https://app.readthedocs.org/) from
-`btclib-org/btclib-ecc` under the slug `btclib-ecc`, which is what
+The project is imported on [readthedocs.org](https://app.readthedocs.org/)
+from `btclib-org/btclib-ecc` under the slug `btclib-ecc`, which is what
 `release.yml`'s `documented` job and `pyproject.toml`'s `documentation`
-url name, with an automation rule activating each new `v*` tag. It was
-not yet imported on 2026-09-26: importing it is the maintainer's, and
-until then the `.homepage` *Publishing* reads back names a site that
-answers `404`. The slug is what serves the site, and it is not the
-project's name: renaming the slug makes the old one stop answering
-rather than redirect. The project's public API answers without a token:
+url name. The slug is what serves the site, and it is not the project's
+name: renaming the slug makes the old one stop answering rather than
+redirect. The `.homepage` *Publishing* reads back is that site:
+
+```shell
+curl -sL -o /dev/null -w '%{http_code} %{url_effective}\n' \
+  https://btclib-ecc.readthedocs.io/
+# 200 https://btclib-ecc.readthedocs.io/en/latest/
+```
+
+The project's public API answers without a token:
 
 ```shell
 p=https://app.readthedocs.org/api/v3/projects/btclib-ecc
 curl -s "$p/" | jq -c '{default_branch, repository: .repository.url}'
-# {"default_branch":null,"repository":null}
+# {"default_branch":"main",
+#  "repository":"https://github.com/btclib-org/btclib-ecc.git"}
+curl -s "$p/" | jq -c '[.programming_language.code, .homepage]'
+# ["py","https://github.com/btclib-org/btclib-ecc"]
+diff <(curl -s "$p/" | jq -r '.tags[]' | sort) \
+     <(gh api repos/btclib-org/btclib-ecc --jq '.topics[]' | sort)
+# (nothing, exit 0)
+```
+
+The project's tags are the repository's topics, which *Topics* sets, and
+its homepage is the repository rather than the site it serves.
+
+`stable` follows the highest semantic-version tag, so the next release
+changes this answer with nothing here having decided differently. Read
+at 2026-09-29T17:49:13Z:
+
+```shell
 curl -s "$p/versions/?active=true" \
   | jq -c '.results[] | select(.slug == "latest" or .slug == "stable")
            | [.slug, .type, .ref]'
-# (nothing)
+# ["stable","tag","v2026.9.28"]
+# ["latest","branch",null]
+git tag --list 'v*' --sort=version:refname | tail -1
+# v2026.9.28
 ```
 
-Once the project exists, `stable` is still missing from the second
-answer while no `v*` tag exists: Read the Docs takes that version from
-the highest semantic-version tag.
+An automation rule activates each new `v*` tag. That is a setting
+recorded as configured, not read back: the API does not expose it,
+`automation-rules/` answering `404` where an endpoint needing a token,
+such as `redirects/`, answers `401`. `v2026.9.26` and `v2026.9.28`
+predate the project, and were activated by hand when it was imported;
+the rule covers the tags after them. That rests on the maintainer's
+statement rather than on a call.
 
-**Neither call fails on a slug nothing holds.** The first reads the
-`404` body, `{"detail":"No Project matches the given query."}`, through
-its filter as a pair of `null`s, and the versions endpoint answers `200`
-with an empty `results`, which the second prints as nothing. The status
+**Neither the `default_branch` call nor the versions call fails on a
+slug nothing holds.** The first reads the `404` body,
+`{"detail":"No Project matches the given query."}`, through its filter
+as a pair of `null`s, and the versions endpoint answers `200` with an
+empty `results`, which the second prints as nothing. The status
 is what tells an absent project from one with nothing active:
 
 ```shell
 curl -s -o /dev/null -w '%{http_code}\n' \
   https://app.readthedocs.org/api/v3/projects/btclib-ecc/
-# 404
+# 200
 ```
 
 **What connects the repository to Read the Docs is the organization-wide

@@ -17,7 +17,8 @@
 # an automation rule is what activates a new tag there -- so a release
 # that keeps a permanent URL of its own and one that does not differ in
 # a setting, not in this file. REPOSITORY.md's "Read the Docs" section
-# records those settings with the commands that read them back.
+# records those settings, with the commands that read back each one the
+# public API exposes.
 
 # Required
 version: 2

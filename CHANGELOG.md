@@ -36,6 +36,12 @@ pinned at upstream's tip, and no vendored content changes (closes #48).
 `dependabot-core` bundles admits a `uv` older than the one Dependabot writes
 `uv.lock` with (issue btclib-org/.github#1438).
 
+### `REPOSITORY.md` reads back the imported Read the Docs project
+
+`btclib-ecc.readthedocs.io` serves the documentation, and *Read the Docs*
+records the project's settings with the answers their read-backs give
+(issue #51).
+
 ## v2026.9.28
 
 ### `REVIEWING.md` lets a filed issue carry its fix
