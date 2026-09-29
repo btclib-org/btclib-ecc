@@ -65,6 +65,16 @@ one search across the organization (issue btclib-org/.github#1362, closes #53).
 so that the Dependency Graph's pip job there reads it rather than a root pin
 Dependabot does not support yet (issue btclib-org/.github#1436).
 
+### The README carries the OpenSSF Best Practices badge
+
+The row links the tree's bestpractices.dev registration (closes #1).
+
+### An assurance case, and a first use the suite runs
+
+`ASSURANCE_CASE.md` argues the threat model, the trust boundaries and the
+design principles, and the README shows a signature made and verified,
+which `tests/readme_test.py` runs (issue #52).
+
 ## v2026.9.28
 
 ### `REVIEWING.md` lets a filed issue carry its fix
