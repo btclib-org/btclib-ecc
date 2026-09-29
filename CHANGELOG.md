@@ -54,6 +54,11 @@ An installed release lacking a name `_libsecp256k1` imports still raises, and
 the `ImportError` names the installed version, the floor the `secp256k1` extra
 declares and how to meet it, instead of the missing symbol alone (closes #56).
 
+### `CONTRIBUTING.md` points a newcomer at `good first issue`
+
+The shared half takes `btclib-org/.github`'s paragraph on the label and its
+one search across the organization (issue btclib-org/.github#1362, closes #53).
+
 ## v2026.9.28
 
 ### `REVIEWING.md` lets a filed issue carry its fix
