@@ -42,6 +42,12 @@ pinned at upstream's tip, and no vendored content changes (closes #48).
 records the project's settings with the answers their read-backs give
 (issue #51).
 
+### `RELEASING.md`'s bundle verification names the signer workflow
+
+The `--bundle` form of *Verify the provenance of an asset* passes
+`--signer-workflow "$signer"`, without which `gh attestation verify` refuses
+a good release (issue btclib-org/.github#1446).
+
 ## v2026.9.28
 
 ### `REVIEWING.md` lets a filed issue carry its fix
