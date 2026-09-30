@@ -289,6 +289,11 @@ filterwarnings = ["error"]
 # skipped for the reason .pre-commit-config.yaml's trailing-whitespace
 # hook gives
 skip = "*/_data/*.json,*/_data/*.csv,*/_data/*.txt,.secrets.baseline,uv.lock,fuzz/corpus/*"
+# `intoto` is in-toto's own spelling, in the bundle's name
+# `<tag>.intoto.jsonl`. RELEASING.md writes it in fenced commands, outside
+# the backticks `ignore-regex` below hides, and the dictionary offers
+# "into" for it, which --write-changes applies
+ignore-words-list = "intoto"
 # a misspelling written on purpose goes in backticks, which hides it from
 # this hook: what is inside backticks is an identifier, typos' half of the
 # work and not this hook's
@@ -333,6 +338,9 @@ evalues = "evalues"
 # "ands" is the verb, a call site's further condition anded onto the
 # bindings predicate, and cannot be written differently
 ands = "ands"
+# `intoto` in the bundle's name `<tag>.intoto.jsonl`, as for codespell above:
+# typos' dictionary offers "into" for it too
+intoto = "intoto"
 
 [tool.typos.type.verbatim]
 # the files that quote a word rather than use it: a changelog entry quotes
