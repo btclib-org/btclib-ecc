@@ -87,6 +87,18 @@ _MSG_HASH = bytes(range(32))
 # nonce a function of the message and the key
 _AUX = bytes(32)
 
+
+def _child_env(**extra: str) -> dict[str, str]:
+    """Return the environment for a child interpreter, with colour off.
+
+    Python 3.13 and later colours a traceback where `FORCE_COLOR` is set,
+    and the escapes split the text a test looks for in it.
+    """
+    env = {k: v for k, v in os.environ.items() if k != "FORCE_COLOR"}
+    env["PYTHON_COLORS"] = "0"
+    return {**env, **extra}
+
+
 # what the child runs: the finder first, the package after it, and the answers
 # as json on stdout. `-c` and not a file, so that nothing has to be
 # written to disk and cleaned up
@@ -146,6 +158,7 @@ def _child_answers(sec: str, sig: str) -> dict[str, Any]:
         capture_output=True,
         encoding="utf-8",
         check=False,
+        env=_child_env(),
         # large enough to be uninteresting, and there so that a child
         # that hangs fails as this test rather than as a slow suite: it
         # would otherwise hold an xdist worker until the job's own
@@ -215,7 +228,7 @@ def test_the_environment_variable_refuses_the_installed_bindings() -> None:
         capture_output=True,
         encoding="utf-8",
         check=True,
-        env={**os.environ, NO_LIBSECP256K1: "1"},
+        env=_child_env(**{NO_LIBSECP256K1: "1"}),
     ).stdout.split()
     assert answered == ["True", "False", "False"]
 
@@ -225,7 +238,7 @@ def test_the_environment_variable_refuses_the_installed_bindings() -> None:
         capture_output=True,
         encoding="utf-8",
         check=True,
-        env={**os.environ, NO_LIBSECP256K1: ""},
+        env=_child_env(**{NO_LIBSECP256K1: ""}),
     ).stdout.split()
     assert answered == ["True", "True", "True"]
 
@@ -312,6 +325,7 @@ def test_an_installed_but_too_old_package_is_not_read_as_absent() -> None:
         capture_output=True,
         encoding="utf-8",
         check=False,
+        env=_child_env(),
         timeout=120,
     )
     assert completed.returncode == 0, completed.stderr
@@ -452,6 +466,7 @@ def test_a_failure_that_is_not_the_bindings_propagates_as_it_was_raised() -> Non
         capture_output=True,
         encoding="utf-8",
         check=False,
+        env=_child_env(),
         timeout=120,
     )
     assert completed.returncode != 0
@@ -603,6 +618,7 @@ def _refusal_child_answers() -> dict[str, Any]:
         capture_output=True,
         encoding="utf-8",
         check=False,
+        env=_child_env(),
         # the same ceiling as `_child_answers`, and the same reason: a
         # hung child fails as this test rather than as a slow suite
         timeout=120,
