@@ -11,6 +11,13 @@ before upgrading, rather than a digit.
 
 ## v2026.10 (work in progress, not released yet)
 
+## v2026.9.30
+
+No breaking changes. An installed `btclib-secp256k1` older than the floor
+the `secp256k1` extra names still fails the import, and its `ImportError`
+now names the installed version and that floor: upgrade `btclib-secp256k1`,
+or install `btclib-ecc[secp256k1]`.
+
 ## v2026.9.28
 
 ### Breaking changes
