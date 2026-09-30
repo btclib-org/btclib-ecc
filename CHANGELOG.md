@@ -72,6 +72,12 @@ The `audit` job calls btclib-org/.github's `reusable-audit.yml`, which runs
 `uv audit` over what the wheel declares, and both publish jobs wait for its
 success (issue btclib-org/.github#1466).
 
+### `CLAUDE.md` carries the shared primary-checkout section
+
+The section *The primary checkout is the maintainer's* is the organization's
+shared text, and the *Model* section names only the model to use (issue
+btclib-org/.github#1494).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
