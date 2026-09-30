@@ -66,6 +66,12 @@ published advisory within 90 (issue btclib-org/.github#1460).
 negative or at least the number of public keys, instead of selecting from the
 end or leaking `IndexError` (closes #78).
 
+### `release.yml` audits the lock before it publishes
+
+The `audit` job calls btclib-org/.github's `reusable-audit.yml`, which runs
+`uv audit` over what the wheel declares, and both publish jobs wait for its
+success (issue btclib-org/.github#1466).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
