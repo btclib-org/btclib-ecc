@@ -78,6 +78,12 @@ The section *The primary checkout is the maintainer's* is the organization's
 shared text, and the *Model* section names only the model to use (issue
 btclib-org/.github#1494).
 
+### `generate_sbom.py` is btclib-org/.github's
+
+The `dist` job writes the bill of materials with btclib-org/.github's
+`generate_sbom.py`, served from `main`, and the tree keeps no copy of it
+(issue btclib-org/.github#1478).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
