@@ -52,6 +52,7 @@ says how the choice is enforced.
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/btclib-ecc/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/btclib-ecc)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15085/badge)](https://www.bestpractices.dev/projects/15085)
+[![OpenSSF Baseline](https://www.bestpractices.dev/projects/15085/baseline)](https://www.bestpractices.dev/projects/15085)
 
 It is fully annotated and ships `py.typed`.
 
