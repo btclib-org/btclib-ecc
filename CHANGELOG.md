@@ -60,6 +60,12 @@ vulnerabilities its release is not affected by, into the document's
 `SECURITY.md` says a report is acknowledged within 7 days, and a fix or a
 published advisory within 90 (issue btclib-org/.github#1460).
 
+### MuSig2 refuses a signer index outside its participant arrays
+
+`partial_sig_verify` raises `BTClibEccValueError` when the signer index is
+negative or at least the number of public keys, instead of selecting from the
+end or leaking `IndexError` (closes #78).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip

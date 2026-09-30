@@ -1358,6 +1358,23 @@ def test_a_nonce_per_key() -> None:
         musig2.partial_sig_verify(bytes(32), [pub_nonce], [pk_1, pk_2], [], [], _MSG, 0)
 
 
+@pytest.mark.parametrize("signer_index", [-1, 1])
+def test_partial_sig_verify_refuses_a_signer_index_out_of_range(
+    signer_index: int,
+) -> None:
+    """Verify `i` is within the public nonce and key arrays."""
+    with pytest.raises(BTClibEccValueError, match="signer index"):
+        musig2.partial_sig_verify(
+            bytes(32),
+            [_SV_PUB_NONCES[0]],
+            [_SV_PUB_KEYS[0]],
+            [],
+            [],
+            _MSG,
+            signer_index,
+        )
+
+
 def test_invalid_contribution_names_the_party() -> None:
     """Verify InvalidContributionError's message names the culprit."""
     exc = InvalidContributionError(2, "pubkey")
