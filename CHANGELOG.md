@@ -25,6 +25,8 @@ driver that would keep both sides' numbers.
 
 ## v2026.10 (work in progress, not released yet)
 
+## v2026.9.30
+
 ### Vendored-vector pins follow upstream's tip
 
 Every entry of `tests/_data/README.md` the weekly job reports behind is
