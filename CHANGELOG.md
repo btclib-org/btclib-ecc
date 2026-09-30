@@ -37,6 +37,12 @@ Each install cell runs `pip install btclib-ecc==<version>` through
 btclib-org/.github's `install_published_release.py`, which retries only while
 the installer says the pin is not resolvable (issue btclib-org/.github#1458).
 
+### The release's attestation bundle is attached as `*.intoto.jsonl`
+
+`RELEASING.md`'s verification and recovery commands name the bundle
+`<tag>.intoto.jsonl`, the name `reusable-github-release.yml` attaches it under
+(issue btclib-org/.github#1468).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
