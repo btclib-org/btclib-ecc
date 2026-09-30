@@ -1070,6 +1070,8 @@ def partial_sig_verify(
     if len(pub_nonces) != len(pub_keys):
         err_msg = "The `pubnonces` and `pubkeys` arrays must have the same length."
         raise BTClibEccValueError(err_msg)
+    if not 0 <= i < len(pub_keys):
+        raise BTClibEccValueError("The signer index must satisfy 0 <= i <= u - 1.")
     agg_nonce = nonce_agg(pub_nonces)
     session_ctx = SessionContext(agg_nonce, pub_keys, tweaks, is_xonly, msg)
     return partial_sig_verify_(psig, pub_nonces[i], pub_keys[i], session_ctx)
