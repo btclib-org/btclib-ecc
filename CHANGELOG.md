@@ -176,6 +176,11 @@ btclib-org/.github#1467).
 so an outage of that site no longer fails the `-n -W` docs build (issue
 btclib-org/.github#1508).
 
+### `public-api` is red for a break `RELEASE_NOTES.md` does not name
+
+`release.yml` and `RELEASING.md` say that a red `public-api` means
+`RELEASE_NOTES.md` misses a name (closes btclib-org/.github#1517).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
