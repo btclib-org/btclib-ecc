@@ -117,6 +117,17 @@ A base-2 Fermat pseudoprime such as 341 or 561 is refused as p or n
 `dsa.assert_as_valid_` and `dsa.sign_` raise `BTClibEccValueError` for a key
 with the prefix `0x06` or `0x07`, as `point_from_octets` does (closes #75).
 
+### FROST refuses a signer id outside the session
+
+`partial_sig_verify_` raises `BTClibEccValueError` for an id not in `ids`, and
+returns `False` for a public share other than the session's (closes #77).
+
+### FROST coerces no integer
+
+`SessionContext`, `ThresholdInfo`, `sign`, `deterministic_sign` and both
+`partial_sig_verify` raise `BTClibEccTypeError` for a `bool`, `float` or `str` as
+`n`, `t`, an id or the signer index: `ids=[0, 1.9]` is not `(0, 1)` (closes #79).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip

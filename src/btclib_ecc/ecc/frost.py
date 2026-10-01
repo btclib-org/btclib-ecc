@@ -102,8 +102,9 @@ import secrets
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from hashlib import sha256
+from typing import cast
 
-from btclib_ecc._utils import assert_type, bytes_from_octets, is_octets
+from btclib_ecc._utils import assert_type, bytes_from_octets, is_integer, is_octets
 from btclib_ecc.alias import INF, Octets, Point
 from btclib_ecc.curves import mult, multi_mult_var, secp256k1
 from btclib_ecc.curves.curve import _sum_var, _tweak_add_var
@@ -224,6 +225,27 @@ def _assert_octets_sequence(value: object, what: str) -> None:
         raise BTClibEccTypeError(f"invalid {what} type: {type(value).__name__}")
 
 
+def _integer(value: object, what: str) -> int:
+    """Return `value` if it is an integer, a bool not being one.
+
+    `int(value)` would turn 1.9 into 1 and "1" into 1, so a session
+    would be built for other signers than the ones named.
+    """
+    if not is_integer(value):
+        raise BTClibEccTypeError(f"invalid {what} type: {type(value).__name__}")
+    return cast("int", value)
+
+
+def _ids(ids: Sequence[int]) -> tuple[int, ...]:
+    """Return `ids` as a tuple, each one an integer.
+
+    A str or bytes is refused whole, as a Sequence of what are not ids:
+    `_assert_octets_sequence` is the check, its name notwithstanding.
+    """
+    _assert_octets_sequence(ids, "ids")
+    return tuple(_integer(i, "id") for i in ids)
+
+
 def _pub_shares(pub_shares: Sequence[Octets]) -> tuple[bytes, ...]:
     return tuple(bytes_from_octets(ps, PK_SIZE) for ps in pub_shares)
 
@@ -265,9 +287,8 @@ def _derive_interpolating_value(ids: Sequence[int], my_id: int) -> int:
 
     Assumes `ids` holds no duplicate, which `_validate_session_params`
     has checked before either caller reaches this. `my_id in ids` is
-    `sign`'s own check and is made there rather than here:
-    `partial_sig_verify_` does not make it, so an id the session does
-    not hold reaches this with no `curr_id == my_id` to match, and the
+    checked by its callers, `sign` and `partial_sig_verify_`: an id the
+    session does not hold has no `curr_id == my_id` to match, and the
     coefficient returned interpolates nothing.
     """
     num = 1
@@ -340,7 +361,7 @@ class ThresholdInfo:
         self, t: int, thresh_pk: Octets, pub_shares: Sequence[Octets | None]
     ) -> None:
         _assert_octets_sequence(pub_shares, "pub_shares")
-        object.__setattr__(self, "t", int(t))
+        object.__setattr__(self, "t", _integer(t, "t"))
         object.__setattr__(self, "thresh_pk", bytes_from_octets(thresh_pk, PK_SIZE))
         object.__setattr__(
             self,
@@ -712,9 +733,9 @@ class SessionContext:
         if pub_shares is not None:
             _assert_octets_sequence(pub_shares, "pub_shares")
         _assert_octets_sequence(tweaks, "tweaks")
-        object.__setattr__(self, "n", int(n))
-        object.__setattr__(self, "t", int(t))
-        object.__setattr__(self, "ids", tuple(int(i) for i in ids))
+        object.__setattr__(self, "n", _integer(n, "n"))
+        object.__setattr__(self, "t", _integer(t, "t"))
+        object.__setattr__(self, "ids", _ids(ids))
         object.__setattr__(
             self, "pub_shares", None if pub_shares is None else _pub_shares(pub_shares)
         )
@@ -818,6 +839,7 @@ def sign(
     btclib-org/btclib-ecc#11).
     """
     assert_type(sec_nonce, bytearray, "sec_nonce")
+    _integer(my_id, "my_id")
     values = session_values(session_ctx)
     k_1_ = int.from_bytes(sec_nonce[:_SCALAR_SIZE], "big")
     k_2_ = int.from_bytes(sec_nonce[_SCALAR_SIZE : 2 * _SCALAR_SIZE], "big")
@@ -906,9 +928,13 @@ def deterministic_sign(
     untrusted coordinator -- `sign`, reached at the end of this, is what
     catches a session it does not assemble into.
     """
+    n = _integer(n, "n")
+    t = _integer(t, "t")
+    ids_ = _ids(ids)
+    my_id = _integer(my_id, "my_id")
     _pub_shares_ = None if pub_shares is None else _pub_shares(pub_shares)
     thresh_pk_bytes = bytes_from_octets(thresh_pk, PK_SIZE)
-    _validate_session_params(n, t, ids, _pub_shares_, thresh_pk_bytes)
+    _validate_session_params(n, t, ids_, _pub_shares_, thresh_pk_bytes)
 
     sec_share_bytes = bytes_from_octets(sec_share, _SCALAR_SIZE)
     if aux_rand is not None:
@@ -927,7 +953,6 @@ def deterministic_sign(
     tweaked_thresh_pk_xonly = tweak_ctx.x_only_pub_key
 
     msg_bytes = bytes_from_octets(msg)
-    ids_ = tuple(int(i) for i in ids)
     k_1 = (
         _det_nonce_hash(
             sec_share_,
@@ -986,7 +1011,10 @@ def partial_sig_verify_(
     no C implementation this library wraps, so every case here is the
     Python arithmetic and stays that way.
     """
+    _integer(my_id, "my_id")
     values = session_values(session_ctx)
+    if my_id not in session_ctx.ids:
+        raise BTClibEccValueError("The signer's id is missing from the ids list.")
     psig_bytes = bytes_from_octets(psig, _SCALAR_SIZE)
     s = int.from_bytes(psig_bytes, "big")
     if s >= secp256k1.n:
@@ -1003,6 +1031,11 @@ def partial_sig_verify_(
     try:
         P = _cpoint(pub_share)
     except BTClibEccValueError:
+        return False
+    if (
+        session_ctx.pub_shares is not None
+        and _cbytes(P) != session_ctx.pub_shares[session_ctx.ids.index(my_id)]
+    ):
         return False
     a = _derive_interpolating_value(session_ctx.ids, my_id)
     g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
@@ -1032,6 +1065,8 @@ def partial_sig_verify(
     key it was not given, `tests/_data/README.md`'s cited summary of the
     vendored vectors makes the same point of BIP445's own reference.
     """
+    ids = _ids(ids)
+    i = _integer(i, "i")
     if len(pub_nonces) != len(ids) or len(pub_shares) != len(ids):
         err_msg = "The pubnonces, pubshares and ids lists must have the same length."
         raise BTClibEccValueError(err_msg)

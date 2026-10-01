@@ -822,6 +822,174 @@ def test_partial_sig_verify_refuses_a_signer_index_out_of_range() -> None:
         )
 
 
+def _two_of_three_session() -> tuple[
+    frost.SessionContext, bytes, bytes, list[bytes], dict[str, Any]
+]:
+    """Return the first valid vector's session, partial signature and nonce."""
+    group = _SIGN_VERIFY["test_groups"][0]
+    case = group["valid_tests"][0]
+    pub_shares = _hex_all(group["pubshares"])
+    pub_nonces = _hex_all(group["pubnonces"])
+    nonces = [pub_nonces[i] for i in case["pubnonce_indices"]]
+    session_ctx = frost.SessionContext(
+        group["n"],
+        group["t"],
+        case["ids"],
+        [pub_shares[i] for i in case["pubshare_indices"]],
+        bytes.fromhex(group["thresh_pk"]),
+        frost.nonce_agg(nonces),
+        [],
+        [],
+        bytes.fromhex(case["msg"]),
+    )
+    return session_ctx, bytes.fromhex(case["expected"]), nonces[0], pub_shares, group
+
+
+def test_partial_sig_verify_internal_accepts_the_signer_of_the_session() -> None:
+    """The control of the next two tests: they fail for their own reason."""
+    session_ctx, psig, pub_nonce, pub_shares, _ = _two_of_three_session()
+    assert frost.partial_sig_verify_(psig, 0, pub_nonce, pub_shares[0], session_ctx)
+
+
+@pytest.mark.parametrize("my_id", [2, 3, -1, secp256k1.n])
+def test_partial_sig_verify_internal_refuses_an_id_outside_the_session(
+    my_id: int,
+) -> None:
+    """Ids the session lacks: 2, `n`, -1 and the group order are refused.
+
+    The group order is an id `mod_inv` cannot invert.
+    """
+    session_ctx, psig, pub_nonce, pub_shares, _ = _two_of_three_session()
+    with pytest.raises(BTClibEccValueError, match="missing from the ids"):
+        frost.partial_sig_verify_(psig, my_id, pub_nonce, pub_shares[2], session_ctx)
+
+
+def test_partial_sig_verify_internal_refuses_a_pub_share_the_session_lacks() -> None:
+    """A valid partial signature is not valid under another signer's share."""
+    session_ctx, psig, pub_nonce, pub_shares, _ = _two_of_three_session()
+    assert not frost.partial_sig_verify_(psig, 0, pub_nonce, pub_shares[2], session_ctx)
+    assert not frost.partial_sig_verify_(psig, 0, pub_nonce, pub_shares[1], session_ctx)
+
+
+def test_partial_sig_verify_internal_refuses_a_signature_under_a_foreign_key() -> None:
+    """The equation holds for a key the signer chose: the session decides.
+
+    The same session without pubshares signs for id 0 under a secret
+    share that is not the session's; the equation then holds for that
+    share's public key, and only the check against the session refuses it.
+    """
+    session_ctx, _, pub_nonce, _, group = _two_of_three_session()
+    sec_nonce = bytearray(bytes.fromhex(group["secnonces"][0]))
+    assert _pub_nonce_of(bytes(sec_nonce)) == pub_nonce
+    bare = replace(session_ctx, pub_shares=None)
+    sec_share = (1).to_bytes(32, "big")
+    foreign = bytes_from_point(mult(1))
+    psig = frost.sign(sec_nonce, sec_share, 0, bare)
+    assert frost.partial_sig_verify_(psig, 0, pub_nonce, foreign, bare)
+    assert not frost.partial_sig_verify_(psig, 0, pub_nonce, foreign, session_ctx)
+
+
+_NOT_INTEGERS = [True, 1.0, 1.9, "1", b"\x01", None]
+
+
+@pytest.mark.parametrize("value", _NOT_INTEGERS)
+@pytest.mark.parametrize("field_", ["n", "t", "ids", "id"])
+def test_session_context_coerces_no_integer(field_: str, value: Any) -> None:
+    """1.9 and "1" are refused, not read as 1: other signers would sign."""
+    session_ctx, *_ = _two_of_three_session()
+    args: dict[str, Any] = {
+        "n": 3,
+        "t": 2,
+        "ids": [0, 1],
+        "pub_shares": None,
+        "thresh_pk": session_ctx.thresh_pk,
+        "agg_nonce": session_ctx.agg_nonce,
+        "tweaks": [],
+        "is_xonly": [],
+        "msg": b"m",
+    }
+    if field_ == "id":
+        args["ids"] = [0, value]
+    else:
+        args[field_] = value
+    with pytest.raises(BTClibEccTypeError, match="invalid"):
+        frost.SessionContext(**args)
+
+
+@pytest.mark.parametrize("value", _NOT_INTEGERS)
+def test_threshold_info_coerces_no_threshold(value: Any) -> None:
+    """`t` as 1.9 or "2" is refused, not read as 1 or 2."""
+    group = _SIGN_VERIFY["test_groups"][0]
+    with pytest.raises(BTClibEccTypeError, match="invalid t type"):
+        frost.ThresholdInfo(
+            value, bytes.fromhex(group["thresh_pk"]), _hex_all(group["pubshares"])
+        )
+
+
+@pytest.mark.parametrize("value", _NOT_INTEGERS)
+def test_the_signing_functions_coerce_no_signer_id(value: Any) -> None:
+    """`my_id` of every entry point that takes one, and the signer index."""
+    session_ctx, psig, pub_nonce, pub_shares, _ = _two_of_three_session()
+    with pytest.raises(BTClibEccTypeError, match="invalid my_id type"):
+        frost.partial_sig_verify_(psig, value, pub_nonce, pub_shares[0], session_ctx)
+    with pytest.raises(BTClibEccTypeError, match="invalid my_id type"):
+        frost.sign(bytearray(64), bytes(32), value, session_ctx)
+    with pytest.raises(BTClibEccTypeError, match="invalid my_id type"):
+        frost.deterministic_sign(
+            bytes(32),
+            value,
+            None,
+            3,
+            2,
+            [0, 1],
+            None,
+            session_ctx.thresh_pk,
+            [],
+            [],
+            b"m",
+        )
+    with pytest.raises(BTClibEccTypeError, match="invalid i type"):
+        frost.partial_sig_verify(
+            psig,
+            [pub_nonce],
+            3,
+            2,
+            [0],
+            pub_shares[:1],
+            session_ctx.thresh_pk,
+            [],
+            [],
+            b"m",
+            value,
+        )
+
+
+@pytest.mark.parametrize("value", _NOT_INTEGERS)
+def test_deterministic_sign_and_verify_coerce_no_n_t_or_id(value: Any) -> None:
+    """`n`, `t` and `ids` of the entry points that build no context first."""
+    session_ctx, psig, pub_nonce, pub_shares, _ = _two_of_three_session()
+    thresh_pk = session_ctx.thresh_pk
+    for n, t, ids in ((value, 2, [0, 1]), (3, value, [0, 1]), (3, 2, [0, value])):
+        with pytest.raises(BTClibEccTypeError, match="invalid"):
+            frost.deterministic_sign(
+                bytes(32), 0, None, n, t, ids, None, thresh_pk, [], [], b"m"
+            )
+        with pytest.raises(BTClibEccTypeError, match="invalid"):
+            frost.partial_sig_verify(
+                psig,
+                [pub_nonce] * 2,
+                n,
+                t,
+                ids,
+                pub_shares[:2],
+                thresh_pk,
+                [],
+                [],
+                b"m",
+                0,
+            )
+
+
 # --------------------------------------------------------------------
 # TweakContext.plain_pub_key: no vector calls GetPlainPubkey, so this is
 # a direct check against the x-only property every tweak vector already

@@ -34,6 +34,7 @@ from btclib_ecc.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
+from btclib_ecc.ecc import frost
 from btclib_ecc.ecc.dsa import recover_pub_key_, recover_sec_
 from btclib_ecc.ecc.dsa import sign as dsa_sign
 from btclib_ecc.ecc.ssa import challenge_ as ssa_challenge_
@@ -48,6 +49,20 @@ _SSA_SIG = ssa_sign(b"msg", 1)
 # the key is 1 as well, and key_id 1 is the candidate that recovers it
 _DSA_MSG_HASH = hashlib.sha256(b"msg").digest()
 _DSA_SIG = dsa_sign(b"msg", 1)
+# a 1-of-1 FROST session over the key 1, for `partial_sig_verify_`'s my_id
+_FROST_PUB_SHARE = bytes_from_point(secp256k1.G)
+_FROST_PUB_NONCE = bytes_from_point(secp256k1.G) * 2
+_FROST_SESSION = frost.SessionContext(
+    1,
+    1,
+    [0],
+    [_FROST_PUB_SHARE],
+    _FROST_PUB_SHARE,
+    frost.nonce_agg([_FROST_PUB_NONCE]),
+    [],
+    [],
+    b"msg",
+)
 
 
 # every field whose contract is an integer quantity, with the shortest
@@ -92,6 +107,12 @@ _CASES: list[tuple[str, Callable[[Any], object]]] = [
     (
         "dsa sec recovery key_id",
         lambda v: recover_sec_(v, _DSA_MSG_HASH, _DSA_SIG),
+    ),
+    (
+        "FROST prepared signer id",
+        lambda v: frost.partial_sig_verify_(
+            bytes(32), v, _FROST_PUB_NONCE, _FROST_PUB_SHARE, _FROST_SESSION
+        ),
     ),
     # `CurveGroup.is_on_curve` is the one funnel behind a `Point` tuple,
     # `point_from_pub_key`, `PreparedPoint` and `bytes_from_point`
