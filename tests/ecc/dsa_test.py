@@ -153,7 +153,7 @@ def test_signature() -> None:
     with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         dsa.assert_as_valid(msg, Q_fake, sig)
 
-    err_msg = "not a valid public key: |no bytes representation for infinity point"
+    err_msg = "not a valid public key|no bytes representation for infinity point"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         dsa.assert_as_valid(msg, INF, sig)
 
