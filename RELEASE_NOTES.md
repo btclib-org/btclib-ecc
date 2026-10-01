@@ -20,6 +20,17 @@ before upgrading, rather than a digit.
   Act on it if you pass such a key: convert it first, with
   `point_from_octets(key, hybrid=True)`, and pass the point.
 
+- **`pedersen.verify` raises `BTClibEccValueError` for a generator off the
+  curve, at infinity or, on a cofactor curve, outside the subgroup generated
+  by G** (closes #76). Before, it answered False for an off-curve generator
+  and True for an opening under INF, which opens to every value.
+  On a cofactor curve `second_generator` returns a different H where its old
+  H was outside the subgroup, as at sha256 on secp112r2 and secp128r2.
+
+  Act on it if you pass a generator of your own: pass one from
+  `second_generator` or `generator_from_seed`, or catch `BTClibEccValueError`.
+  Commitments made under that old H no longer verify.
+
 ## v2026.9.30
 
 No breaking changes. An installed `btclib-secp256k1` older than the floor
