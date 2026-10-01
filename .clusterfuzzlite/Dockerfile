@@ -23,7 +23,7 @@
 # has, where `latest` is exempt from it. What the tag resolves to now is
 # the `Docker-Content-Digest` response header on
 # `gcr.io/v2/oss-fuzz-base/base-builder-python/manifests/latest`.
-FROM gcr.io/oss-fuzz-base/base-builder-python:latest@sha256:d74383a516f17ae3300aee7160277adf0702a22ca400d2dc54cd79f4b4c86b70
+FROM gcr.io/oss-fuzz-base/base-builder-python:latest@sha256:58f80c90a90944b68b8e70b98e38997ee9396225311cfb0f3aea78671446ab4e
 
 COPY . $SRC/ellipticcurves
 WORKDIR $SRC/ellipticcurves
