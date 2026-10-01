@@ -297,7 +297,8 @@ new module is published by somebody deciding to. `tests/all_test.py`
 checks all of this and finds the modules rather than listing them: a
 public name kept out of a list is recorded in its `UNEXPORTED` table.
 
-**The package imports nothing of this organization's other packages.** It
+**The package imports nothing of this organization's other packages but
+the optional `btclib_secp256k1`.** It
 is the arithmetic the others are built on, and `tests/imports_test.py`
 imports each module alone and refuses one that loads anything above it.
 

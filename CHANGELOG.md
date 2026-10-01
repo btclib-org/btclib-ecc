@@ -128,6 +128,12 @@ returns `False` for a public share other than the session's (closes #77).
 `partial_sig_verify` raise `BTClibEccTypeError` for a `bool`, `float` or `str` as
 `n`, `t`, an id or the signer index: `ids=[0, 1.9]` is not `(0, 1)` (closes #79).
 
+### `ASSURANCE_CASE.md` states what the fuzz test, the layering and `--locked` cover
+
+The assurance case no longer claims every decoder is fuzzed, that the package
+imports none of the organization's packages, or `--locked` everywhere; four
+more module-level decoders are fuzzed (closes #82).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip

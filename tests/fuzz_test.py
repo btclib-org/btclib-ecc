@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Every decoder, on input nobody wrote down.
+"""Every class decoder, and the module-level ones listed, on unwritten input.
 
 The rest of the suite is fixed vectors: exactly what conformance needs,
 and blind to the malformed octets that never make it into a
@@ -15,8 +15,10 @@ unchecked size or a silent short read reaches a caller who catches
 expect anything else.
 
 `fuzz/`'s atheris harnesses ask the same question of the signature and
-envelope decoders for an hour a week; this asks it of every decoder on
-every run, for as long as hypothesis spends on a test.
+envelope decoders for an hour a week; this asks it of every class
+decoder and of the module-level decoders in `BINARY_PARSERS`, on every
+run, for as long as hypothesis spends on a test. The wire inputs of
+musig2, frost and dleq are not driven here.
 """
 
 from __future__ import annotations
@@ -30,7 +32,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from btclib_ecc.curves.sec_point import point_from_octets
-from btclib_ecc.ecc import dsa, ecies, ssa
+from btclib_ecc.ecc import dsa, ecies, ellswift, pedersen, ssa
 from btclib_ecc.ecc.borromean import BorromeanSig
 from btclib_ecc.ecc.rangeproof import RangeProof
 from btclib_ecc.exceptions import (
@@ -69,6 +71,10 @@ BINARY_PARSERS: dict[str, Callable[[bytes], Any]] = {
     "RangeProof.parse": RangeProof.parse,
     "ecies.Envelope.parse": ecies.Envelope.parse,
     "point_from_octets": point_from_octets,
+    "ssa.point_from_bip340pub_key": ssa.point_from_bip340pub_key,
+    "ellswift.decode_var": ellswift.decode_var,
+    "pedersen.commitment_from_octets": pedersen.commitment_from_octets,
+    "pedersen.generator_from_octets": pedersen.generator_from_octets,
 }
 
 # The same contract, for what a user pastes rather than what a peer
@@ -85,9 +91,9 @@ TEXT_PARSERS: dict[str, Callable[[str], Any]] = {
 # own. `serialization_boundary_test.py`'s `test_every_decoder_is_covered`
 # draws the same three names for the same reason, so widening this tuple
 # is what a class gaining a fourth would ask for, in both files at once.
-# A module-level decoder is what that file's
-# `test_no_codec_is_a_module_function` refuses, so no walk for one is
-# needed here; `point_from_octets` is driven above by hand
+# No walk finds a module-level decoder: that file's
+# `test_no_codec_is_a_module_function` refuses only one named in its
+# family, so each is listed above by hand
 _CLASS_DECODER_METHODS = ("parse", "b64decode", "b58decode")
 
 
