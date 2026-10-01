@@ -106,6 +106,11 @@ btclib-org/.github#1494).
 `SECURITY.md` gives the date of the latest security review and links the issue
 that records it (issue btclib-org/.github#1362).
 
+### The curve constructor tests p and n with Baillie-PSW
+
+A base-2 Fermat pseudoprime such as 341 or 561 is refused as p or n
+(closes #80).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip

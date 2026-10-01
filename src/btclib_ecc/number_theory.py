@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import secrets
 from collections.abc import Sequence
+from math import isqrt
 
 from btclib_ecc._utils import hex_string, is_integer
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
@@ -447,3 +448,101 @@ def tonelli_var(a: int, p: int) -> int:
             raise BTClibEccValueError(err_msg)
 
     return r
+
+
+def _jacobi(a: int, n: int) -> int:
+    """Return the Jacobi symbol (a/n), for n odd and positive."""
+    a %= n
+    result = 1
+    while a:
+        while a % 2 == 0:
+            a //= 2
+            if n % 8 in (3, 5):
+                result = -result
+        a, n = n, a
+        if a % 4 == 3 and n % 4 == 3:
+            result = -result
+        a %= n
+    return result if n == 1 else 0
+
+
+def _is_strong_probable_prime_base_2(n: int) -> bool:
+    """Return True if the odd n > 2 is a strong probable prime to base 2."""
+    d = n - 1
+    s = (d & -d).bit_length() - 1
+    d >>= s
+    x = pow(2, d, n)
+    if x in (1, n - 1):
+        return True
+    for _ in range(s - 1):
+        x = x * x % n
+        if x == n - 1:
+            return True
+    return False
+
+
+def _is_strong_lucas_probable_prime(n: int) -> bool:
+    """Return True if the odd n > 2 is a strong Lucas probable prime.
+
+    Selfridge's method A picks the parameters: D is the first of 5, -7, 9,
+    -11, ... with Jacobi symbol (D/n) = -1, then P = 1 and Q = (1 - D)/4.
+    """
+    if isqrt(n) ** 2 == n:
+        return False
+    D = 5
+    while (j := _jacobi(D, n)) == 1:
+        D = -D - 2 if D > 0 else -D + 2
+    if j == 0:
+        # D has a factor in common with n: n is composite, |D| being < n
+        return False
+    Q = (1 - D) // 4
+
+    # U_k, V_k and Q^k for k = 1, then for the binary digits of d below
+    # the leading one: k -> 2k, and k -> 2k + 1 for a digit 1
+    d = n + 1
+    s = (d & -d).bit_length() - 1
+    d >>= s
+    U, V, Qk = 1, 1, Q % n
+    for bit in bin(d)[3:]:
+        U = U * V % n
+        V = (V * V - 2 * Qk) % n
+        Qk = Qk * Qk % n
+        if bit == "1":
+            U, V = U + V, D * U + V
+            U = (U + n if U % 2 else U) // 2 % n
+            V = (V + n if V % 2 else V) // 2 % n
+            Qk = Qk * Q % n
+    if U == 0 or V == 0:
+        return True
+    for _ in range(s - 1):
+        V = (V * V - 2 * Qk) % n
+        Qk = Qk * Qk % n
+        if V == 0:
+            return True
+    return False
+
+
+def _is_prime(x: int) -> bool:
+    """Return True if x is an odd prime, by the Baillie-PSW test.
+
+    Trial division by the primes up to 37, then a strong probable prime test
+    to base 2, then a strong Lucas test with Selfridge's parameters (Baillie
+    and Wagstaff, "Lucas pseudoprimes", Mathematics of Computation 35, 1980).
+    No composite below 2^64 passes: Feitsma and Galway listed the base-2
+    pseudoprimes below it, and Gilchrist checked that none passes the Lucas
+    test. Above 2^64 none is known, which is not a proof.
+
+    Two answers False, being even, and neither caller wants it otherwise:
+    the short Weierstrass equation defines no curve in characteristic 2,
+    and a subgroup of order 2 holds one point besides infinity.
+
+    Private: it is the test for a curve's p and n, which a caller states
+    and does not search for, and the module's public functions take a
+    prime on trust.
+    """
+    if x < 3 or x % 2 == 0:
+        return False
+    for q in (3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37):
+        if x % q == 0:
+            return x == q
+    return _is_strong_probable_prime_base_2(x) and _is_strong_lucas_probable_prime(x)

@@ -521,3 +521,63 @@ def test_mod_inv_batch_blinded_inverts(values: list[int], m: int) -> None:
     for v, inverse in zip(values, inverses, strict=True):
         assert 0 <= inverse < m
         assert v * inverse % m == 1 % m
+
+
+def _is_prime_by_trial_division(n: int) -> bool:
+    return n > 1 and all(n % q for q in range(2, math.isqrt(n) + 1))
+
+
+def test_is_prime_agrees_with_trial_division() -> None:
+    """Every integer up to 20000 is classified as trial division does.
+
+    Two is no prime here, as the curve constructor wants it.
+    """
+    for n in range(-5, 20000):
+        assert number_theory._is_prime(n) == (
+            n % 2 == 1 and _is_prime_by_trial_division(n)
+        )
+
+
+def test_is_prime_refuses_pseudoprimes() -> None:
+    """Refuse Fermat and strong base-2 pseudoprimes and Carmichael numbers."""
+    fermat_base_2 = [341, 561, 645, 1105, 1387, 1729, 1905, 2047, 2465, 2701]
+    strong_base_2 = [2047, 3277, 4033, 4681, 8321, 15841, 29341, 42799]
+    carmichael = [
+        561,
+        1729,
+        6601,
+        41041,
+        825265,
+        321197185,
+        5394826801,
+        232250619601,
+        9746347772161,
+    ]
+    for n in fermat_base_2 + strong_base_2 + carmichael:
+        assert not number_theory._is_prime(n)
+
+    # the strong Lucas pseudoprimes are what the base-2 step is there for
+    for n in (5459, 5777, 10877, 16109, 18971):
+        assert not number_theory._is_prime(n)
+        assert number_theory._is_strong_lucas_probable_prime(n)
+        assert not number_theory._is_strong_probable_prime_base_2(n)
+
+    # a base-2 strong pseudoprime is what the Lucas step is there for
+    for n in strong_base_2:
+        assert number_theory._is_strong_probable_prime_base_2(n)
+        assert not number_theory._is_strong_lucas_probable_prime(n)
+
+    # perfect squares and a D with a factor in common with n
+    assert not number_theory._is_strong_lucas_probable_prime(1681)
+    assert not number_theory._is_strong_lucas_probable_prime(1765)
+
+    # the least strong pseudoprime to each of the first twelve prime bases
+    assert not number_theory._is_prime(318665857834031151167461)
+
+
+def test_is_prime_accepts_large_primes() -> None:
+    """Accept the Mersenne primes 2**61 - 1 and 2**127 - 1."""
+    assert number_theory._is_prime(2**61 - 1)
+    assert number_theory._is_prime(2**127 - 1)
+    assert not number_theory._is_prime(2**127 + 1)
+    assert not number_theory._is_prime((2**61 - 1) * (2**89 - 1))

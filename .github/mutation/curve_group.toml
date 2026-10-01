@@ -22,9 +22,9 @@ module-path = [
 
 # each module's own file, and curve_test.py for what curve_group.py
 # defines and only it asserts: `CurveGroup.__init__`'s parameter checks,
-# `_is_prime`, `p_is_3_mod_4`, and the y-symmetry and coordinate
-# extraction methods. curve_group_f_test.py stays out, its subject being
-# curve_group_f.py, a module this scope does not name
+# `p_is_3_mod_4`, and the y-symmetry and coordinate extraction methods.
+# curve_group_f_test.py stays out, its subject being curve_group_f.py, a
+# module this scope does not name
 test-command = """python -m pytest -x -q -n0 -p no:randomly \
   tests/curves/curve_group_test.py tests/curves/curve_group_2_test.py \
   tests/curves/curve_test.py"""
