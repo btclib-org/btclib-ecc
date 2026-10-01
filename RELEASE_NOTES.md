@@ -11,6 +11,15 @@ before upgrading, rather than a digit.
 
 ## v2026.10 (work in progress, not released yet)
 
+- **`mult_pub_key`, `ecies.derive_keys`, `dsa.assert_as_valid`,
+  `dsa.assert_as_valid_` and `dsa.sign_`'s `pub_key` refuse a hybrid public
+  key (prefix `0x06` or `0x07`) as `not a public key`** (closes #75). With
+  `btclib-secp256k1` installed they accepted it, and without it they refused
+  it.
+
+  Act on it if you pass such a key: convert it first, with
+  `point_from_octets(key, hybrid=True)`, and pass the point.
+
 ## v2026.9.30
 
 No breaking changes. An installed `btclib-secp256k1` older than the floor

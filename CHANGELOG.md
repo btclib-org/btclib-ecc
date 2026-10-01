@@ -111,6 +111,12 @@ that records it (issue btclib-org/.github#1362).
 A base-2 Fermat pseudoprime such as 341 or 561 is refused as p or n
 (closes #80).
 
+### A hybrid public key is refused on both arms
+
+`mult_pub_key`, `ecies.derive_keys`, `dsa.assert_as_valid`,
+`dsa.assert_as_valid_` and `dsa.sign_` raise `BTClibEccValueError` for a key
+with the prefix `0x06` or `0x07`, as `point_from_octets` does (closes #75).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
