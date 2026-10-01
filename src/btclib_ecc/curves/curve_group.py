@@ -24,7 +24,12 @@ from typing_extensions import override
 from btclib_ecc._utils import assert_type, hex_string, int_from_integer, is_integer
 from btclib_ecc.alias import INF, INFJ, Integer, JacPoint, Point
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
-from btclib_ecc.number_theory import mod_inv_batch_var, mod_inv_var, mod_sqrt_var
+from btclib_ecc.number_theory import (
+    _is_prime,
+    mod_inv_batch_var,
+    mod_inv_var,
+    mod_sqrt_var,
+)
 
 __all__ = [
     "BOS_COSTER_THRESHOLD",
@@ -35,26 +40,6 @@ __all__ = [
 ]
 
 HEX_THRESHOLD = 0xFFFFFFFF
-
-
-def _is_prime(x: int) -> bool:
-    """Return True if x is an odd prime, to a Fermat base-2 test.
-
-    Probabilistic is enough for the two numbers this is asked about, a
-    curve's p and the order n of its subgroup: both are parameters a
-    caller states rather than numbers the library searches for, so a
-    base-2 Fermat liar there is a number somebody picked to be one, and a
-    curve built to lie about its own parameters is not what a primality
-    test defends against.
-
-    Two answers False, being even, and neither caller wants it otherwise:
-    the short Weierstrass equation defines no curve in characteristic 2,
-    and a subgroup of order 2 holds one point besides infinity.
-
-    Private, and out of btclib_ecc.number_theory: one Fermat base is not the
-    primality test a caller reading that module would take it for.
-    """
-    return x >= 2 and x % 2 != 0 and pow(2, x - 1, x) == 1
 
 
 def _jac_from_aff(Q: Point) -> JacPoint:

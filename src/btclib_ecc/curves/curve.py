@@ -65,7 +65,6 @@ from btclib_ecc.curves.curve_group import (
     HEX_THRESHOLD,
     CurveGroup,
     _blinded_jac,
-    _is_prime,
     _jac_from_aff,
     _mult,
     _mult_fixed_base,
@@ -78,7 +77,7 @@ from btclib_ecc.curves.curve_group_2 import (
     _mult_endomorphism_secp256k1,
 )
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
-from btclib_ecc.number_theory import legendre_symbol_var
+from btclib_ecc.number_theory import _is_prime, legendre_symbol_var
 
 __all__ = [
     "CURVES",
@@ -171,10 +170,9 @@ def _assert_mov_resistant(p: int, n: int) -> None:
     rejects the curves whose logarithm the MOV attack carries into an
     extension field where it is easy, and nothing downstream would notice.
 
-    Its 99 modular exponentiations are the second cost of building a
-    curve, once nG is gated: more than half of what the catalogue would
-    spend at import time, which is why the catalogue passes
-    weakness_check=False and test_catalogued_curves runs it instead.
+    Its 99 modular exponentiations are a cost of building a curve, which
+    is why the catalogue passes weakness_check=False and
+    test_catalogued_curves runs it instead.
 
     A BTClibEccValueError, as every other rejection in this constructor
     is: the embedding degree is a parameter of the curve being refused, so the
@@ -328,7 +326,7 @@ class Curve(CurveGroup):
         # n*G is by far the most expensive check here -- a Python
         # double-and-add over nlen bits -- and it dominates the cost of
         # building a curve: at import time the catalogued curves would
-        # spend most of it on n*G alone, and next to none of it on the
+        # spend most of it on n*G alone, and a small part of it on the
         # primality of n. The catalogue therefore passes
         # order_check=False, as it does weakness_check=False below: its
         # parameters are constants, and test_catalogued_curves rebuilds

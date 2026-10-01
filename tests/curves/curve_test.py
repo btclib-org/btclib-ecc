@@ -205,6 +205,17 @@ def test_exceptions() -> None:
     with pytest.raises(BTClibEccValueError, match="n is not prime: "):
         Curve(13, 0, 2, (1, 9), 20, 1, False)
 
+    # 341 = 11 * 31 and 561 = 3 * 11 * 17 are base-2 Fermat pseudoprimes
+    with pytest.raises(BTClibEccValueError, match="n is not prime: 341"):
+        Curve(307, 1, 66, (0, 56), 341, 1, False)
+    with pytest.raises(BTClibEccValueError, match="n is not prime: 561"):
+        Curve(307, 1, 66, (0, 56), 561, 1, False)
+    # no factor up to 37 and a strong base-2 pseudoprime: the Lucas step
+    with pytest.raises(BTClibEccValueError, match="n is not prime: 3215031751"):
+        Curve(307, 1, 66, (0, 56), 3215031751, 1, False)
+    with pytest.raises(BTClibEccValueError, match="p is not prime: 341"):
+        Curve(341, 1, 66, (0, 56), 19, 1, False)
+
     with pytest.raises(BTClibEccValueError, match=r"cofactor\*n not in "):
         Curve(13, 0, 2, (1, 9), 71, 1, False)
 
