@@ -417,7 +417,7 @@ def _prove_params(value: int, min_value: int, exp: int, min_bits: int) -> _Prove
         return _ProveParams(0, (1,), (0,), value, 0, 1, -1)
 
     if (min_value and value > _INT64_MAX) or (value and min_value >= _INT64_MAX):
-        err_msg = f"rangeproof range {min_value}..{value} does not fit 2**64"
+        err_msg = f"rangeproof range from min value {min_value} does not fit 2**64"
         raise BTClibEccValueError(err_msg)
 
     # precision above what the floor leaves is precision about octets
@@ -856,14 +856,14 @@ class RangeProof:
         """
         min_value = self.min_value or 0
         if not min_value <= value <= self.max_value:
-            err_msg = f"rangeproof value not in {min_value}..{self.max_value}: {value}"
+            err_msg = f"rangeproof value not in {min_value}..{self.max_value}"
             raise BTClibEccValueError(err_msg)
         # mypy reads `int ** int` as `Any`, a negative exponent being
         # what makes that operator answer a float
         scale: int = 10 ** max(self.exp, 0)
         v, remainder = divmod(value - min_value, scale)
         if remainder:
-            err_msg = f"rangeproof value {value} is not the exponent's own multiple"
+            err_msg = "rangeproof value is not the exponent's own multiple"
             raise BTClibEccValueError(err_msg)
         return v
 
@@ -1117,9 +1117,9 @@ def sign(
     """
     blind_int = scalar_from_prv_key(blind, secp256k1)
     if not 0 <= value <= _UINT64_MAX:
-        raise BTClibEccValueError(f"rangeproof value not in 0..2**64-1: {value}")
+        raise BTClibEccValueError("rangeproof value not in 0..2**64-1")
     if not 0 <= min_value <= value:
-        err_msg = f"rangeproof min value not in 0..{value}: {min_value}"
+        err_msg = f"rangeproof min value not in 0..value: {min_value}"
         raise BTClibEccValueError(err_msg)
     if not -1 <= exp <= _MAX_EXP:
         raise BTClibEccValueError(f"rangeproof exponent not in -1..18: {exp}")

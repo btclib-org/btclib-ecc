@@ -960,9 +960,9 @@ def test_INF() -> None:
     """Verify INF's y is 0 and its x is no coordinate of secp256k1."""
     assert INF[1] == 0
 
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: "):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
         secp256k1.y_var(INF[0])
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: "):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
         secp256k1.y_var(INF[0] + secp256k1.n)
 
 

@@ -582,7 +582,7 @@ def test_a_commitment_refuses_an_x_no_point_of_the_curve_has() -> None:
     with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen.commitment_from_octets(b"\x08" + secp256k1.p.to_bytes(32, "big"))
 
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: 0"):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
         pedersen.commitment_from_octets(b"\x08" + bytes(32))
 
 

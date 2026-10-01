@@ -13,7 +13,6 @@ from btclib_ecc._libsecp256k1 import shared_point as libsecp256k1_shared_point
 from btclib_ecc._utils import (
     assert_type,
     bytes_from_octets,
-    hex_string,
     int_from_integer,
 )
 from btclib_ecc.alias import Integer, Octets, Point
@@ -204,12 +203,8 @@ def point_from_octets(
             err_msg += f"{bsize} instead of {ec.p_size + 1}"
             raise BTClibEccValueError(err_msg)
         x_Q = int.from_bytes(pub_key[1:], byteorder="big")
-        try:
-            y_Q = _y_even_var(x_Q, ec)  # also check x_Q validity
-            Q = x_Q, y_Q if prefix == 0x02 else ec.p - y_Q
-        except BTClibEccValueError as e:
-            msg = f"invalid x-coordinate: '{hex_string(x_Q)}'"
-            raise BTClibEccValueError(msg) from e
+        y_Q = _y_even_var(x_Q, ec)  # also check x_Q validity
+        Q = x_Q, y_Q if prefix == 0x02 else ec.p - y_Q
         # y_Q == 0 is possible here: x_Q is this curve's real two-torsion
         # x on a curve of cofactor above 1, _y_even_var lifting it to 0
         # without complaint, exactly the ambiguous tuple Curve.is_on_curve
@@ -244,7 +239,7 @@ def point_from_octets(
         if ec.is_on_curve(Q):
             _assert_in_subgroup(Q, ec)
             return Q
-        raise BTClibEccValueError(f"point not on curve: {Q}")
+        raise BTClibEccValueError("point not on curve")
     # never echo the octets: a 33-byte 0x00-prefixed input
     # is the key field of an xprv, i.e. a private key
     raise BTClibEccValueError(f"not a point: prefix 0x{pub_key[:1].hex()}")
@@ -309,14 +304,14 @@ def point_from_pub_key(pub_key: PubKey, ec: Curve = secp256k1) -> Point:
         if ec.is_on_curve(pub_key) and pub_key[1] != 0:
             _assert_in_subgroup(pub_key, ec)
             return pub_key[0], pub_key[1]
-        raise BTClibEccValueError(f"not a valid public key: {pub_key}")
+        raise BTClibEccValueError("not a valid public key")
     # it must be octets
-    try:
+    # never echo the input, which may be private material passed by mistake,
+    # nor chain the parse failure that may have: raised outside the handler,
+    # so that __context__ is empty too
+    with contextlib.suppress(TypeError, ValueError):
         return point_from_octets(pub_key, ec)
-    except (TypeError, ValueError) as e:
-        # never echo the input: it may be private material passed by
-        # mistake; the chained exception carries the parsing reason
-        raise BTClibEccValueError("not a public key") from e
+    raise BTClibEccValueError("not a public key")
 
 
 # one byte each, to be compared with `sec[:1]`
@@ -357,15 +352,13 @@ def _sec_from_pub_key(pub_key: PubKey, ec: Curve) -> bytes:
         # bytes_from_point is this package's own arithmetic and not a parse: it
         # refuses what is not a point of the curve, and infinity
         return bytes_from_point(pub_key, ec, False)
-    try:
+    sec: bytes | None = None
+    # as in `point_from_pub_key`: no echo, no chain
+    with contextlib.suppress(TypeError, ValueError):
         sec = bytes_from_octets(pub_key, (ec.p_size + 1, 2 * ec.p_size + 1))
-    except (TypeError, ValueError) as e:
-        # never echo the input: it may be private material passed by
-        # mistake; the chained exception carries the parsing reason
-        raise BTClibEccValueError("not a public key") from e
     # the bindings' parse takes the hybrid prefixes 0x06 and 0x07, which
     # `point_from_pub_key` refuses: refusing them here makes both arms agree
-    if sec[:1] in _HYBRID_PREFIXES:
+    if sec is None or sec[:1] in _HYBRID_PREFIXES:
         raise BTClibEccValueError("not a public key")
     return sec
 

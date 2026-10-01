@@ -296,11 +296,7 @@ def generator_from_seed(seed: Octets, blind: Integer | None = None) -> Point:
 
     blind_int = int_from_integer(blind)
     if not 0 <= blind_int < secp256k1.n:
-        err_msg = "blinding factor not in 0..n-1: "
-        err_msg += (
-            f"{hex_string(blind_int)}" if blind_int > HEX_THRESHOLD else f"{blind_int}"
-        )
-        raise BTClibEccValueError(err_msg)
+        raise BTClibEccValueError("blinding factor not in 0..n-1")
     return _add(Q, mult(blind_int, secp256k1.G, secp256k1), secp256k1)
 
 

@@ -640,16 +640,14 @@ class CurveGroup:
     def y_var(self, x: int) -> int:
         """Return the y coordinate from x, as in (x, y)."""
         if not 0 <= x < self.p:
-            err_msg = "x-coordinate not in 0..p-1: "
-            err_msg += f"{hex_string(x)}" if x > HEX_THRESHOLD else f"{x}"
-            raise BTClibEccValueError(err_msg)
-        y2 = self._y2(x)
+            raise BTClibEccValueError("x-coordinate not in 0..p-1")
         try:
-            return mod_sqrt_var(y2, self.p)
-        except BTClibEccValueError as e:
-            err_msg = "invalid x-coordinate: "
-            err_msg += f"{hex_string(x)}" if x > HEX_THRESHOLD else f"{x}"
-            raise BTClibEccValueError(err_msg) from e
+            return mod_sqrt_var(self._y2(x), self.p)
+        except BTClibEccValueError:
+            pass
+        # raised outside the handler, so that neither __cause__ nor __context__
+        # carries mod_sqrt_var's message, which names y**2 and so x
+        raise BTClibEccValueError("invalid x-coordinate")
 
     def require_on_curve(self, Q: Point) -> None:
         """Require the input curve Point to be on the curve.
@@ -671,17 +669,15 @@ class CurveGroup:
         # `is_integer` is where this library says a bool is not a number
         # (issue btclib-org/btclib#1249)
         if not is_integer(Q[0]):
-            raise BTClibEccTypeError(f"non-integer x-coordinate: {Q[0]}")
+            raise BTClibEccTypeError(f"non-integer x-coordinate: {type(Q[0]).__name__}")
         if not is_integer(Q[1]):
-            raise BTClibEccTypeError(f"non-integer y-coordinate: {Q[1]}")
+            raise BTClibEccTypeError(f"non-integer y-coordinate: {type(Q[1]).__name__}")
         # before the y==0 check too: _y2 reduces x mod p, so an x outside
         # 0..p-1 would otherwise be accepted -- x + p and x - p read back
         # as a second, third encoding of the same point (issue
         # btclib-org/btclib-ecc#7)
         if not 0 <= Q[0] < self.p:
-            err_msg = "x-coordinate not in 0..p-1: "
-            err_msg += f"{hex_string(Q[0])}" if Q[0] > HEX_THRESHOLD else f"{Q[0]}"
-            raise BTClibEccValueError(err_msg)
+            raise BTClibEccValueError("x-coordinate not in 0..p-1")
         if Q[1] == 0:  # Infinity point in affine coordinates
             # true of every point this class enumerates on its own --
             # find_all_points walks a bare CurveGroup with no G and no n,
@@ -693,9 +689,7 @@ class CurveGroup:
             # btclib-org/btclib-ecc#16)
             return True
         if not 0 < Q[1] < self.p:  # y cannot be zero
-            raise BTClibEccValueError(
-                f"y-coordinate not in 1..p-1: '{hex_string(Q[1])}'"
-            )
+            raise BTClibEccValueError("y-coordinate not in 1..p-1")
         return self._y2(Q[0]) == (Q[1] * Q[1] % self.p)
 
     #  y-symmetry tiebreaker criteria: even/odd, low/high, or quadratic residue

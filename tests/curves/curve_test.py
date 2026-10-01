@@ -889,25 +889,25 @@ def test_is_on_curve() -> None:
         with pytest.raises(BTClibEccValueError, match="point must be a tuple"):
             ec.is_on_curve((1, 2, 3))  # type: ignore[arg-type]
 
-        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1: "):
+        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1$"):
             ec.y_var(ec.p)
 
         # just a point, not INF
         Q = ec.G
-        with pytest.raises(BTClibEccValueError, match="y-coordinate not in 1..p-1: "):
+        with pytest.raises(BTClibEccValueError, match="y-coordinate not in 1..p-1$"):
             ec.is_on_curve((Q[0], ec.p))
 
         # x is reduced mod p by _y2, which read x + p and x - p back as
         # the same point Q names, both a second SEC octet encoding of a
         # key already accepted and, for x - p, a negative int no encoding
         # can even carry (issue btclib-org/btclib-ecc#7)
-        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1: "):
+        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1$"):
             ec.is_on_curve((Q[0] + ec.p, Q[1]))
-        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1: "):
+        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1$"):
             ec.is_on_curve((Q[0] - ec.p, Q[1]))
         # the x check ahead of the y == 0 shortcut too, an out-of-range x
         # otherwise slipping through as a fourth spelling of infinity
-        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1: "):
+        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1$"):
             ec.is_on_curve((Q[0] + ec.p, 0))
 
         # a bool coordinate before either check above: `Q[1] == 0` is how
@@ -1116,11 +1116,11 @@ def test_symmetry() -> None:
                 with pytest.raises(BTClibEccValueError, match=err_msg):
                     mod_sqrt_var(y_even_var, ec.p)
 
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: "):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
         secp256k1.y_even_var(INF[0])
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: "):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
         secp256k1.y_low_var(INF[0])
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: "):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
         secp256k1.y_quadratic_residue_var(INF[0])
 
 
@@ -1829,10 +1829,10 @@ def test_x_coordinate_lift(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> N
             refused += 1
             python_msg = str(e)
             assert not _is_x_coordinate_var(x, ec)
-            # the message names the value, which is why the refusal stays
-            # curve_group's to phrase rather than the bindings' to raise
+            # the refusal stays curve_group's to phrase rather than the
+            # bindings' to raise, and names no value
             with pytest.raises(
-                BTClibEccValueError, match="invalid x-coordinate: "
+                BTClibEccValueError, match="invalid x-coordinate$"
             ) as err:
                 _y_even_var(x, ec)
             assert str(err.value) == python_msg

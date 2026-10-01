@@ -261,11 +261,11 @@ package is used to teach and to prototype as much as to build:
     that arm and infinity is not delegated at all --
     `curve._libsecp256k1_mult` at
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
-    (`src/btclib_ecc/curves/curve.py:907`). `dh.diffie_hellman` at
+    (`src/btclib_ecc/curves/curve.py:906`). `dh.diffie_hellman` at
     `sec = libsecp256k1_shared_point(`
     (`src/btclib_ecc/ecc/dh.py:119`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
-    (`src/btclib_ecc/curves/sec_point.py:396`), under
+    (`src/btclib_ecc/curves/sec_point.py:389`), under
     `sec_point.mult_pub_key` and `ecies.derive_keys`, make the same call
     on the octets they already hold.
     `double_mult_var` and `multi_mult_var`, and `ssa.batch_verify`, are
@@ -279,10 +279,10 @@ package is used to teach and to prototype as much as to build:
     scalars are secrets, is a `mult` of each and their sum instead --
     `pedersen._commit` at
     `return _add(mult(r, ec.G, ec), mult(v, gen, ec), ec)`
-    (`src/btclib_ecc/ecc/pedersen.py:379`), under `pedersen.commit`,
+    (`src/btclib_ecc/ecc/pedersen.py:375`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/btclib_ecc/curves/curve.py:1353`):
+    (`src/btclib_ecc/curves/curve.py:1352`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at

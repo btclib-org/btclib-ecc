@@ -116,9 +116,9 @@ def test_octets2point() -> None:
     ec = CURVES["secp256k1"]
     x_Q = 0xEEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34
     xstr = format(x_Q, "32X")
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: "):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
         point_from_octets(f"03{xstr}", ec)
-    with pytest.raises(BTClibEccValueError, match="point not on curve: "):
+    with pytest.raises(BTClibEccValueError, match="point not on curve$"):
         point_from_octets("04" + 2 * xstr, ec)
     with pytest.raises(BTClibEccValueError, match="point not on curve"):
         bytes_from_point((x_Q, x_Q), ec)
@@ -295,12 +295,13 @@ def test_point_from_octets_refuses_the_real_two_torsion_point(
         with pytest.raises(BTClibEccValueError, match=err_msg):
             point_from_octets(octets, ec)
         # point_from_pub_key's octets branch translates whatever
-        # point_from_octets raises into its own "not a public key",
-        # chaining the original as __cause__ (never echoing the octets,
-        # which may be private material passed by mistake)
+        # point_from_octets raises into its own "not a public key", with no
+        # cause and no context: the octets may be private material passed by
+        # mistake, and what point_from_octets said of them is no safer
         with pytest.raises(BTClibEccValueError, match="not a public key") as exc:
             point_from_pub_key(octets, ec)
-        assert err_msg in str(exc.value.__cause__)
+        assert exc.value.__cause__ is None
+        assert exc.value.__context__ is None
 
     # 0x02 lifts the two-torsion x to y == 0 itself, the tuple
     # Curve.is_on_curve refuses as ambiguous with INF
@@ -315,7 +316,8 @@ def test_point_from_octets_refuses_the_real_two_torsion_point(
         point_from_octets(b"\x04" + x_bytes + y_bytes, ec)
     with pytest.raises(BTClibEccValueError, match="not a public key") as exc:
         point_from_pub_key(b"\x04" + x_bytes + y_bytes, ec)
-    assert inf_msg in str(exc.value.__cause__)
+    assert exc.value.__cause__ is None
+    assert exc.value.__context__ is None
     # hybrid has no point_from_pub_key spelling: that function takes no
     # hybrid flag, so 0x06 there is "not a point" rather than this refusal
     with pytest.raises(BTClibEccValueError, match=inf_msg):
@@ -368,7 +370,7 @@ def test_mult_sec(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
     # what the fallthrough exists to keep saying
     ec = CURVES["secp256k1"]
     x_Q = 0xEEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: "):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
         _mult_sec(b"\x02" + x_Q.to_bytes(ec.p_size, "big"), 2, ec)
 
 
