@@ -540,16 +540,16 @@ def test_a_ring_commitment_x_resolves_against_residuosity() -> None:
 def test_sign_key_idx_refuses_a_value_this_proof_has_no_digit_for() -> None:
     """Outside the range the header states, or between two of its steps."""
     proof = RangeProof.parse(_octets("padded sign bits"))
-    err_msg = f"rangeproof value not in 1000..{proof.max_value}: "
-    with pytest.raises(BTClibEccValueError, match=f"{err_msg}999"):
+    err_msg = f"rangeproof value not in 1000..{proof.max_value}$"
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         proof.sign_key_idx(999)
-    with pytest.raises(BTClibEccValueError, match=f"{err_msg}{proof.max_value + 1}"):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         proof.sign_key_idx(proof.max_value + 1)
 
     # an exponent of 2, so the proof steps by a hundred and says nothing
     # about what lies between two steps
     scaled = RangeProof.parse(_octets("scaled exponent"))
-    err_msg = "rangeproof value 100001 is not the exponent's own multiple"
+    err_msg = "rangeproof value is not the exponent's own multiple"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         scaled.sign_key_idx(100001)
 
@@ -610,7 +610,7 @@ def test_pubk_rings_refuses_what_names_no_public_key() -> None:
     # 7 is no x-coordinate of this curve, and it is a ring commitment
     # `assert_valid` takes: what a proof states there is an integer of
     # the field's width and this is where it has to name a point
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate: 7"):
+    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
         replace_unchecked(
             proof, ring_commitments=(7, *proof.ring_commitments[1:])
         ).pubk_rings(commitment, _GEN)
@@ -979,10 +979,10 @@ def test_sign_public_value_refuses_what_it_has_no_octets_for() -> None:
     with pytest.raises(BTClibEccValueError, match="private key not in 1..n-1"):
         sign_public_value(0, 1, _NONCE, _GEN)
 
-    err_msg = "rangeproof value not in 0..2\\*\\*64-1: "
-    with pytest.raises(BTClibEccValueError, match=f"{err_msg}-1"):
+    err_msg = "rangeproof value not in 0..2\\*\\*64-1$"
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         sign_public_value(_BLIND, -1, _NONCE, _GEN)
-    with pytest.raises(BTClibEccValueError, match=f"{err_msg}18446744073709551616"):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         sign_public_value(_BLIND, 2**64, _NONCE, _GEN)
 
     with pytest.raises(
@@ -1152,13 +1152,13 @@ def test_sign_refuses_what_it_has_no_octets_for() -> None:
     with pytest.raises(BTClibEccValueError, match="private key not in 1..n-1"):
         sign(0, 1, _NONCE, _GEN)
 
-    err_msg = "rangeproof value not in 0..2\\*\\*64-1: "
-    with pytest.raises(BTClibEccValueError, match=f"{err_msg}-1"):
+    err_msg = "rangeproof value not in 0..2\\*\\*64-1$"
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         sign(_BLIND, -1, _NONCE, _GEN)
-    with pytest.raises(BTClibEccValueError, match=f"{err_msg}18446744073709551616"):
+    with pytest.raises(BTClibEccValueError, match=err_msg):
         sign(_BLIND, 2**64, _NONCE, _GEN)
 
-    with pytest.raises(BTClibEccValueError, match="min value not in 0..7: 8"):
+    with pytest.raises(BTClibEccValueError, match="min value not in 0..value: 8"):
         sign(_BLIND, 7, _NONCE, _GEN, min_value=8)
     with pytest.raises(BTClibEccValueError, match="exponent not in -1..18: 19"):
         sign(_BLIND, 7, _NONCE, _GEN, exp=19)

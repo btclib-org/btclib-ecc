@@ -95,7 +95,6 @@ from btclib_ecc.curves.curve import (
     _y_even_var,
     mult,
 )
-from btclib_ecc.curves.curve_group import HEX_THRESHOLD
 from btclib_ecc.ecc.bip340_nonce import bip340_nonce_
 from btclib_ecc.ecc.commit_nonce import (
     commit_entropy_,
@@ -302,7 +301,7 @@ def _x_from_bip340pub_key(x_Q: BIP340PubKey, ec: Curve) -> int:
         # no affine point of a prime-order group having y = 0
         if ec.is_on_curve(x_Q) and x_Q[1] != 0:
             return x_Q[0]
-        raise BTClibEccValueError(f"not a valid public key: {x_Q}")
+        raise BTClibEccValueError("not a valid public key")
 
     if is_octets(x_Q):
         # every spelling `Octets` names, which is what
@@ -385,9 +384,11 @@ def challenge_(msg: Octets, x_Q: int, x_K: int, ec: Curve, hf: HashF) -> int:
     # would refuse a bool for on the coerced spelling (issue
     # btclib-org/btclib#1248, CONTRIBUTING.md's "This repository in particular")
     if not is_integer(x_Q):
-        raise BTClibEccTypeError(f"non-integer x-coordinate: {x_Q}")
+        raise BTClibEccTypeError(f"non-integer x-coordinate: {type(x_Q).__name__}")
     if not is_integer(x_K):
-        raise BTClibEccTypeError(f"non-integer nonce x-coordinate: {x_K}")
+        raise BTClibEccTypeError(
+            f"non-integer nonce x-coordinate: {type(x_K).__name__}"
+        )
 
     # the message, of any size ("Messages of Arbitrary Size" in BIP340):
     # the tagged hash below absorbs any length unambiguously, x_K and x_Q
@@ -962,10 +963,8 @@ def _assert_commitment_(
             raise BTClibEccRuntimeError("commitment verification failed")
 
 
-def _invalid_x(x: int) -> str:
-    """Return the message an x that is no x-coordinate is refused with."""
-    err_msg = "invalid x-coordinate: "
-    return err_msg + (f"{hex_string(x)}" if x > HEX_THRESHOLD else f"{x}")
+# names no value: the x may be a private key passed by mistake
+_INVALID_X = "invalid x-coordinate"
 
 
 def _x_only_bytes(x: int, ec: Curve) -> bytes:
@@ -979,13 +978,11 @@ def _x_only_bytes(x: int, ec: Curve) -> bytes:
 
     Whether the x is an x-coordinate at all is not asked. What asks is the
     verification these octets are on their way to, whose parse is that same lift
-    (issue btclib-org/btclib#887); `_invalid_x` is the message for what it
+    (issue btclib-org/btclib#887); `_INVALID_X` is the message for what it
     refuses.
     """
     if not 0 <= x < ec.p:
-        err_msg = "x-coordinate not in 0..p-1: "
-        err_msg += f"{hex_string(x)}" if x > HEX_THRESHOLD else f"{x}"
-        raise BTClibEccValueError(err_msg)
+        raise BTClibEccValueError("x-coordinate not in 0..p-1")
     return x.to_bytes(ec.p_size, byteorder="big")
 
 
@@ -1044,10 +1041,14 @@ def assert_as_valid_(
         # it would run again is the lift of r, which is not free even
         # delegated and costs many times more where it is not
         sig_bytes = sig.serialize(check_validity=False)
+        verified: bool | None
         try:
             verified = libsecp256k1_ssa.verify(msg, x_bytes, sig_bytes)
-        except ValueError as e:
-            raise BTClibEccValueError(_invalid_x(x_Q)) from e
+        except ValueError:
+            # raised outside the handler: no cause, no context
+            verified = None
+        if verified is None:
+            raise BTClibEccValueError(_INVALID_X)
         if not verified:
             # one fixed sentence, because libsecp256k1 answers a bool and this
             # is this package's own wording for it, not a report of which BIP340

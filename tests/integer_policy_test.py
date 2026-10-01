@@ -172,12 +172,12 @@ _WORDINGS = [
     (
         "BIP340 challenge x-coordinate",
         lambda v: ssa_challenge_(b"msg", v, 1, secp256k1, hashlib.sha256),
-        "non-integer x-coordinate: True",
+        "non-integer x-coordinate: bool",
     ),
     (
         "BIP340 challenge nonce x-coordinate",
         lambda v: ssa_challenge_(b"msg", 1, v, secp256k1, hashlib.sha256),
-        "non-integer nonce x-coordinate: True",
+        "non-integer nonce x-coordinate: bool",
     ),
     (
         "dsa recovery key_id",
@@ -194,22 +194,22 @@ _WORDINGS = [
     (
         "point x-coordinate",
         lambda v: secp256k1.is_on_curve((v, secp256k1.G[1])),
-        "non-integer x-coordinate: True",
+        "non-integer x-coordinate: bool",
     ),
     (
         "point y-coordinate",
         lambda v: secp256k1.is_on_curve((secp256k1.G[0], v)),
-        "non-integer y-coordinate: True",
+        "non-integer y-coordinate: bool",
     ),
     (
         "public key point",
         lambda v: point_from_pub_key((v, secp256k1.G[1])),
-        "non-integer x-coordinate: True",
+        "non-integer x-coordinate: bool",
     ),
     (
         "prepared point",
         lambda v: PreparedPoint((v, secp256k1.G[1])),
-        "non-integer x-coordinate: True",
+        "non-integer x-coordinate: bool",
     ),
 ]
 
