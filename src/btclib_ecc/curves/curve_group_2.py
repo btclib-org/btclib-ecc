@@ -177,7 +177,7 @@ def _mult_sliding_window_var(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> Jac
     groups of order n).
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     # a number cannot be written in basis 1 (ie w=0)
     if w <= 0:
@@ -229,7 +229,7 @@ def _mult_w_NAF_var(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoint:
 
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     # a number cannot be written in basis 1 (ie w=0)
     if w <= 0:
@@ -321,9 +321,9 @@ def _double_mult_w_NAF_var(
     (e.g. cyclic groups of order n).
     """
     if u < 0:
-        raise BTClibEccValueError(f"negative first coefficient: {hex(u)}")
+        raise BTClibEccValueError("negative first coefficient")
     if v < 0:
-        raise BTClibEccValueError(f"negative second coefficient: {hex(v)}")
+        raise BTClibEccValueError("negative second coefficient")
     # a number cannot be written in basis 1 (ie w=0)
     if w <= 0:
         raise BTClibEccValueError(f"non positive w: {w}")
@@ -379,9 +379,9 @@ def _double_mult_regular_window(
     (e.g. cyclic groups of order n).
     """
     if u < 0:
-        raise BTClibEccValueError(f"negative first coefficient: {hex(u)}")
+        raise BTClibEccValueError("negative first coefficient")
     if v < 0:
-        raise BTClibEccValueError(f"negative second coefficient: {hex(v)}")
+        raise BTClibEccValueError("negative second coefficient")
     # a number cannot be written in basis 1 (ie w=0)
     if w <= 0:
         raise BTClibEccValueError(f"non positive w: {w}")
@@ -525,7 +525,7 @@ def _mult_endomorphism_secp256k1(
     than at w=5, over 30 random 256-bit scalars, best of five.
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     m1, P, m2, K = _endomorphism_split_secp256k1(m, Q, ec)
     return _double_mult_regular_window(m1, P, m2, K, ec, w, _HALF_LEN)
@@ -555,7 +555,7 @@ def _mult_endomorphism_secp256k1_var(
     call it w=4's own noise.
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     m1, P, m2, K = _endomorphism_split_secp256k1(m, Q, ec)
     return _double_mult_w_NAF_var(m1, P, m2, K, ec, w, ec._fixed_points)
@@ -612,9 +612,9 @@ def _double_mult_endomorphism_secp256k1_var(
     contributes.
     """
     if u < 0:
-        raise BTClibEccValueError(f"negative first coefficient: {hex(u)}")
+        raise BTClibEccValueError("negative first coefficient")
     if v < 0:
-        raise BTClibEccValueError(f"negative second coefficient: {hex(v)}")
+        raise BTClibEccValueError("negative second coefficient")
 
     u1, U1, u2, U2 = _endomorphism_split_secp256k1(u, HJ, ec)
     v1, V1, v2, V2 = _endomorphism_split_secp256k1(v, QJ, ec)

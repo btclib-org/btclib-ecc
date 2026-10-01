@@ -23,6 +23,7 @@ from typing import Any
 
 import pytest
 
+from btclib_ecc import number_theory as nt
 from btclib_ecc.curves import (
     mult_pub_key,
     point_from_octets,
@@ -30,6 +31,7 @@ from btclib_ecc.curves import (
     secp256k1,
 )
 from btclib_ecc.curves.curve import is_x_coordinate_var
+from btclib_ecc.curves.curve_group import signed_odd_digits
 from btclib_ecc.ecc import dleq, dsa, ecies, musig2, pedersen, rangeproof, ssa
 from btclib_ecc.exceptions import BTClibEccException
 from tests import needs_bindings
@@ -50,9 +52,14 @@ _G_SEC = secp256k1.G[0].to_bytes(32, "big")
 _MSG = b"a message"
 
 
-def _echoes(text: str, secret: int) -> bool:
+def _echoes(text: str, secret: int | bytes) -> bool:
+    if isinstance(secret, bytes):
+        # a bytes repr is neither its hexadecimal nor its decimal
+        return repr(secret)[2:-1] in text or _echoes(
+            text, int.from_bytes(secret, "big")
+        )
     flat = re.sub(r"[\s']", "", text).lower()
-    return f"{secret:x}".lower() in flat or str(secret) in flat
+    return f"{abs(secret):x}" in flat or str(abs(secret)) in flat
 
 
 def _chain(exc: BaseException) -> list[BaseException]:
@@ -80,7 +87,7 @@ def _forbid(*_: object) -> bytes:  # pragma: no cover -- refused before it is as
     raise AssertionError("a key that is no point was handed to the cipher")
 
 
-_CASES: dict[str, tuple[Callable[[], Any], int]] = {
+_CASES: dict[str, tuple[Callable[[], Any], int | bytes]] = {
     "ssa.assert_as_valid": (lambda: ssa.assert_as_valid(_MSG, PRV, _sig()), PRV_INT),
     "ssa.assert_as_valid, int key": (
         lambda: ssa.assert_as_valid(_MSG, PRV_INT, _sig()),
@@ -133,6 +140,52 @@ _CASES: dict[str, tuple[Callable[[], Any], int]] = {
     "rangeproof.sign, committed value": (
         lambda: rangeproof.sign(1, VALUE, bytes(32), secp256k1.G, min_value=MIN_VALUE),
         VALUE,
+    ),
+    # a scalar or a field element the call refuses: negative, even, too
+    # large, no inverse or root, or no integer at all
+    "signed_odd_digits, negative": (
+        lambda: signed_odd_digits(-PRV_INT, 4, 70),
+        PRV_INT,
+    ),
+    "signed_odd_digits, even": (
+        lambda: signed_odd_digits(PRV_INT & ~1, 4, 70),
+        PRV_INT & ~1,
+    ),
+    "signed_odd_digits, too large": (
+        lambda: signed_odd_digits(PRV_INT | 1, 4, 10),
+        PRV_INT | 1,
+    ),
+    "signed_odd_digits, bytes": (
+        lambda: signed_odd_digits(PRV, 4, 70),  # type: ignore[arg-type]
+        PRV,
+    ),
+    "mod_inv, bytes": (
+        lambda: nt.mod_inv(PRV, secp256k1.n),  # type: ignore[arg-type]
+        PRV,
+    ),
+    "mod_inv_var, no inverse": (
+        lambda: nt.mod_inv_var(PRV_INT & ~1, 2**256),
+        PRV_INT & ~1,
+    ),
+    "mod_inv, no inverse": (
+        lambda: nt.mod_inv(PRV_INT & ~1, 2**256),
+        PRV_INT & ~1,
+    ),
+    "mod_sqrt_var, bytes": (
+        lambda: nt.mod_sqrt_var(PRV, secp256k1.p),  # type: ignore[arg-type]
+        PRV,
+    ),
+    "mod_sqrt_var, no root": (
+        lambda: nt.mod_sqrt_var(PRV_INT + 1, secp256k1.p),
+        PRV_INT + 1,
+    ),
+    "tonelli_var, no root": (
+        lambda: nt.tonelli_var(PRV_INT + 1, secp256k1.p),
+        PRV_INT + 1,
+    ),
+    "legendre_symbol_var, bytes": (
+        lambda: nt.legendre_symbol_var(PRV, secp256k1.p),  # type: ignore[arg-type]
+        PRV,
     ),
     "rangeproof.sign, value out of range": (
         lambda: rangeproof.sign(1, 2**64, bytes(32), secp256k1.G),

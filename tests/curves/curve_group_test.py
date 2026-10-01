@@ -71,7 +71,7 @@ def test_mult_recursive_aff() -> None:
         assert _mult_recursive_aff_var(ec.n, ec.G, ec) == INF
         assert _mult_recursive_aff_var(ec.n, INF, ec) == INF
 
-        with pytest.raises(BTClibEccValueError, match="negative m: "):
+        with pytest.raises(BTClibEccValueError, match="negative m$"):
             _mult_recursive_aff_var(-1, ec.G, ec)
 
     for ec in low_card_curves.values():
@@ -105,7 +105,7 @@ def test_mult_recursive_jac() -> None:
         assert ec.is_jac_equal(_mult_recursive_jac_var(ec.n, ec.GJ, ec), INFJ)
         assert ec.is_jac_equal(_mult_recursive_jac_var(ec.n, INFJ, ec), INFJ)
 
-        with pytest.raises(BTClibEccValueError, match="negative m: "):
+        with pytest.raises(BTClibEccValueError, match="negative m$"):
             _mult_recursive_jac_var(-1, ec.GJ, ec)
 
     ec = ec23_31
@@ -134,7 +134,7 @@ def test_mult_aff() -> None:
         assert _mult_aff_var(ec.n, ec.G, ec) == INF
         assert _mult_aff_var(ec.n, INF, ec) == INF
 
-        with pytest.raises(BTClibEccValueError, match="negative m: "):
+        with pytest.raises(BTClibEccValueError, match="negative m$"):
             _mult_aff_var(-1, ec.G, ec)
 
     for ec in low_card_curves.values():
@@ -168,7 +168,7 @@ def test_mult_jac() -> None:
         assert ec.is_jac_equal(_mult_jac_var(ec.n, ec.GJ, ec), INFJ)
         assert ec.is_jac_equal(_mult_jac_var(ec.n, INFJ, ec), INFJ)
 
-        with pytest.raises(BTClibEccValueError, match="negative m: "):
+        with pytest.raises(BTClibEccValueError, match="negative m$"):
             _mult_jac_var(-1, ec.GJ, ec)
 
     ec = ec23_31
@@ -197,7 +197,7 @@ def test_mont_ladder() -> None:
         assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, ec.GJ, ec), INFJ)
         assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
 
-        with pytest.raises(BTClibEccValueError, match="negative m: "):
+        with pytest.raises(BTClibEccValueError, match="negative m$"):
             _mult_mont_ladder_var(-1, ec.GJ, ec)
 
     ec = ec23_31
@@ -226,7 +226,7 @@ def test_mult_base_3() -> None:
         assert ec.is_jac_equal(_mult_base_3_var(ec.n, ec.GJ, ec), INFJ)
         assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
 
-        with pytest.raises(BTClibEccValueError, match="negative m: "):
+        with pytest.raises(BTClibEccValueError, match="negative m$"):
             _mult_base_3_var(-1, ec.GJ, ec)
 
     ec = ec23_31
@@ -327,7 +327,7 @@ def test_mult_fixed_window() -> None:
             )
             assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
 
-            with pytest.raises(BTClibEccValueError, match="negative m: "):
+            with pytest.raises(BTClibEccValueError, match="negative m$"):
                 _mult_fixed_window_var(-1, ec.GJ, ec, w, cached=False)
 
             with pytest.raises(BTClibEccValueError, match="non positive w: "):
@@ -365,16 +365,16 @@ def test_signed_odd_digits() -> None:
     with pytest.raises(BTClibEccTypeError, match="non-integer size: None"):
         signed_odd_digits(43, 4, None)  # type: ignore[arg-type]
 
-    err_msg = "negative m: "
+    err_msg = "negative m$"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         signed_odd_digits(-1, 4, 2)
     with pytest.raises(BTClibEccValueError, match="non positive w: "):
         signed_odd_digits(1, 0, 2)
-    with pytest.raises(BTClibEccValueError, match="even m: "):
+    with pytest.raises(BTClibEccValueError, match="even m$"):
         signed_odd_digits(4, 4, 2)
     with pytest.raises(BTClibEccValueError, match="size too low: "):
         signed_odd_digits(1, 4, 0)
-    with pytest.raises(BTClibEccValueError, match="does not fit 1 digits: "):
+    with pytest.raises(BTClibEccValueError, match="does not fit 1 digits$"):
         signed_odd_digits(17, 4, 1)
 
 
@@ -558,7 +558,7 @@ def test_mult_fixed_base() -> None:
                 ), (m, w, ec)
             assert ec.is_jac_equal(_mult_fixed_base(1, INFJ, ec, w), INFJ)
 
-            with pytest.raises(BTClibEccValueError, match="negative m: "):
+            with pytest.raises(BTClibEccValueError, match="negative m$"):
                 _mult_fixed_base(-1, ec.GJ, ec, w)
             with pytest.raises(BTClibEccValueError, match="non positive w: "):
                 _mult_fixed_base(1, ec.GJ, ec, -w)
@@ -593,7 +593,7 @@ def test_mult_regular_window() -> None:
             assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
             assert ec.is_jac_equal(_mult_regular_window(ec.n, ec.GJ, ec, w), INFJ)
 
-            with pytest.raises(BTClibEccValueError, match="negative m: "):
+            with pytest.raises(BTClibEccValueError, match="negative m$"):
                 _mult_regular_window(-1, ec.GJ, ec, w)
 
             with pytest.raises(BTClibEccValueError, match="non positive w: "):
@@ -648,7 +648,7 @@ def test_mult_fixed_window_cached() -> None:
             )
             assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
 
-            with pytest.raises(BTClibEccValueError, match="negative m: "):
+            with pytest.raises(BTClibEccValueError, match="negative m$"):
                 _mult_fixed_window_cached_var(-1, ec.GJ, ec, w=4)
 
             with pytest.raises(BTClibEccValueError, match="non positive w: "):
@@ -719,13 +719,13 @@ def test_assorted_jac_mult() -> None:
             with pytest.raises(BTClibEccValueError, match=err_msg):
                 _multi_mult_var([k1, k2, k3, k4], [ec.GJ, HJ, ec.GJ], ec)
 
-            err_msg = "negative coefficient: "
+            err_msg = "negative coefficient$"
             with pytest.raises(BTClibEccValueError, match=err_msg):
                 _multi_mult_var([k1, k2, -k3], [ec.GJ, HJ, ec.GJ], ec)
 
-    with pytest.raises(BTClibEccValueError, match="negative first coefficient: "):
+    with pytest.raises(BTClibEccValueError, match="negative first coefficient$"):
         _double_mult_var(-5, HJ, 1, ec.GJ, ec)
-    with pytest.raises(BTClibEccValueError, match="negative second coefficient: "):
+    with pytest.raises(BTClibEccValueError, match="negative second coefficient$"):
         _double_mult_var(1, HJ, -5, ec.GJ, ec)
 
 
@@ -914,7 +914,7 @@ def test_multi_mult_dispatch() -> None:
         err_msg = "mismatch between number of scalars and points: "
         with pytest.raises(BTClibEccValueError, match=err_msg):
             _multi_mult_var(scalars, points[1:], ec)
-        with pytest.raises(BTClibEccValueError, match="negative coefficient: "):
+        with pytest.raises(BTClibEccValueError, match="negative coefficient$"):
             _multi_mult_var([-1, *scalars[1:]], points, ec)
 
     with pytest.raises(BTClibEccValueError, match="not a multi_mult_var"):

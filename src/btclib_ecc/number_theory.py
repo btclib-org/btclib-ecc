@@ -46,7 +46,7 @@ def _assert_valid_operand(a: int) -> None:
     its docstring says why a bool is excluded.
     """
     if not is_integer(a):
-        raise BTClibEccTypeError(f"not an integer: {a!r}")
+        raise BTClibEccTypeError(f"not an integer: {type(a).__name__}")
 
 
 def _assert_valid_modulus(m: int) -> None:
@@ -114,10 +114,8 @@ def mod_inv_var(a: int, m: int) -> int:
     try:
         return pow(a, -1, m)
     except ValueError:
-        a %= m
-        err_msg = "no inverse for "
-        err_msg += f"{hex_string(a)}" if a > 0xFFFFFFFF else f"{a}"
-        err_msg += " mod "
+        # the operand is not named: it may be a secret
+        err_msg = "no inverse mod "
         err_msg += f"{hex_string(m)}" if m > 0xFFFFFFFF else f"{m}"
         raise BTClibEccValueError(err_msg) from None
 
@@ -364,9 +362,7 @@ def mod_sqrt_var(a: int, p: int) -> int:
         return tonelli_var(a, p)
 
     if r * r % p != a:
-        err_msg = "no root for "
-        err_msg += f"'{hex_string(a)}'" if a > 0xFFFFFFFF else f"{a}"
-        err_msg += " mod "
+        err_msg = "no root mod "
         err_msg += f"'{hex_string(p)}'" if p > 0xFFFFFFFF else f"{p}"
         raise BTClibEccValueError(err_msg)
     return r
@@ -387,9 +383,7 @@ def tonelli_var(a: int, p: int) -> int:
 
     # Check solution existence for an odd prime p
     if legendre_symbol_var(a, p) != 1:
-        err_msg = "no root for "
-        err_msg += f"'{hex_string(a)}'" if a > 0xFFFFFFFF else f"{a}"
-        err_msg += " mod "
+        err_msg = "no root mod "
         err_msg += f"'{hex_string(p)}'" if p > 0xFFFFFFFF else f"{p}"
         raise BTClibEccValueError(err_msg)
 

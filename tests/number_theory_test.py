@@ -109,7 +109,7 @@ def test_a_float_is_no_operand_and_zero_is_no_modulus() -> None:
 def test_mod_inv_prime() -> None:
     """Verify the inverse mod a prime, and refuse the zero residue."""
     for p in primes:
-        with pytest.raises(BTClibEccValueError, match="no inverse for 0 mod"):
+        with pytest.raises(BTClibEccValueError, match="no inverse mod"):
             mod_inv_var(0, p)
         for a in range(1, min(p, 500)):  # exhausted only for small p
             inv = mod_inv_var(a, p)
@@ -131,7 +131,7 @@ def test_mod_inv() -> None:
                 inv = mod_inv_var(a + m, m)
                 assert a * inv % m == 1
             else:
-                err_msg = "no inverse for "
+                err_msg = "no inverse mod "
                 with pytest.raises(BTClibEccValueError, match=err_msg):
                     mod_inv_var(a, m)
 
@@ -172,7 +172,7 @@ def test_mod_sqrt() -> None:
                 if p % 4 == 3 or p % 8 == 5:
                     assert tonelli_var(i, p) in {root1, root2}
             else:
-                with pytest.raises(BTClibEccValueError, match="no root for "):
+                with pytest.raises(BTClibEccValueError, match="no root mod "):
                     mod_sqrt_var(i, p)
 
 
@@ -214,7 +214,7 @@ def test_minus_one_quadr_res() -> None:
     """Ensure that if p = 3 (mod 4) then p - 1 is not a quadratic residue."""
     for p in primes:
         if (p % 4) == 3:
-            with pytest.raises(BTClibEccValueError, match="no root for "):
+            with pytest.raises(BTClibEccValueError, match="no root mod "):
                 mod_sqrt_var(p - 1, p)
         else:
             assert p == 2 or p % 4 == 1, "something is badly broken"
@@ -287,7 +287,7 @@ def test_mod_sqrt_squares_back(a: int, p: int) -> None:
     symbol = legendre_symbol_var(a, p)
     assert symbol in {-1, 0, 1}
     if symbol == -1:
-        with pytest.raises(BTClibEccValueError, match="no root for "):
+        with pytest.raises(BTClibEccValueError, match="no root mod "):
             mod_sqrt_var(a, p)
         return
     root = mod_sqrt_var(a, p)
@@ -316,9 +316,9 @@ def test_mod_inv_batch_names_the_element_that_has_no_inverse() -> None:
     So the batch fails whenever one element does, and names that element
     as `mod_inv_var` does rather than the product a caller never formed.
     """
-    with pytest.raises(BTClibEccValueError, match="no inverse for 0 mod 7"):
+    with pytest.raises(BTClibEccValueError, match="no inverse mod 7"):
         mod_inv_batch_var([1, 2, 0, 3], 7)
-    with pytest.raises(BTClibEccValueError, match="no inverse for 3 mod 9"):
+    with pytest.raises(BTClibEccValueError, match="no inverse mod 9"):
         mod_inv_batch_var([2, 3], 9)
 
     # the arguments are checked as every other function of the module
@@ -364,7 +364,7 @@ def test_mod_inv_blinded_is_mod_inv() -> None:
             if math.gcd(a, m) == 1:
                 assert mod_inv(a, m) == mod_inv_var(a, m)
             else:
-                with pytest.raises(BTClibEccValueError, match="no inverse for "):
+                with pytest.raises(BTClibEccValueError, match="no inverse mod "):
                     mod_inv(a, m)
 
     assert mod_inv(7, 1) == mod_inv_var(7, 1) == 0
@@ -430,7 +430,7 @@ def test_mod_inv_blinded_answers_a_factor_that_is_a_zero_divisor(
 
     # and an operand that has no inverse of its own still reports one,
     # naming itself rather than the product the caller never formed
-    with pytest.raises(BTClibEccValueError, match="no inverse for 2 mod 8"):
+    with pytest.raises(BTClibEccValueError, match="no inverse mod 8"):
         mod_inv(2, 8)
 
 
@@ -464,9 +464,9 @@ def test_mod_inv_batch_is_mod_inv_batch_var() -> None:
     assert mod_inv_batch([], 7) == []
     assert mod_inv_batch([7], 1) == [0]
 
-    with pytest.raises(BTClibEccValueError, match="no inverse for 0 mod 7"):
+    with pytest.raises(BTClibEccValueError, match="no inverse mod 7"):
         mod_inv_batch([1, 2, 0, 3], 7)
-    with pytest.raises(BTClibEccValueError, match="no inverse for 3 mod 9"):
+    with pytest.raises(BTClibEccValueError, match="no inverse mod 9"):
         mod_inv_batch([2, 3], 9)
 
     for value in (2.0, True, None):
