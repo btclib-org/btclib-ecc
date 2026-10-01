@@ -90,6 +90,11 @@ The `dist` job writes the bill of materials with btclib-org/.github's
 only the second is a required check on `main` (issue
 btclib-org/.github#1494).
 
+### `Dependency review` is a required check
+
+- **`REPOSITORY.md` reads `lint / Dependency review` back with the other
+  required checks** (issue btclib-org/.github#1465).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
