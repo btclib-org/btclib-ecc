@@ -139,7 +139,10 @@ a ciphertext.
 **Files.** The package opens no file a caller names. What it reads is
 its own catalogue of curve parameters, four json files under
 `src/btclib_ecc/curves/_data/`, once, at import, in
-`src/btclib_ecc/curves/curve.py`.
+`src/btclib_ecc/curves/curve.py`. It also reads the metadata of the
+installed distributions: its own version, in `src/btclib_ecc/__init__.py`,
+and in `src/btclib_ecc/_libsecp256k1.py` its requirements and the
+bindings' version.
 
 **The environment.** `BTCLIB_ECC_NO_LIBSECP256K1` is read once, at
 import, in `src/btclib_ecc/_libsecp256k1.py`, and can only turn the
@@ -184,7 +187,8 @@ describes beside them.
   so a caller can tell a forgery from a mistake (CONTRIBUTING.md's *The
   public surface*, and `tests/bool_contract_test.py`).
 - **Layering.** `curves` does not import `ecc`, and the package imports
-  nothing of this organization's other packages:
+  nothing of this organization's other packages but the optional
+  `btclib_secp256k1`:
   `tests/imports_test.py` imports each module alone and refuses one that
   loads anything above it.
 
@@ -205,8 +209,10 @@ to, and what counters each.
   boundaries*, and `tests/name_contract_test.py`, which holds a public
   name to what its prefix promises about its answer.
 - **Uncaught exceptions on hostile input (CWE-248, CWE-755).**
-  `tests/fuzz_test.py` asserts that every decoder fails the way the
-  package says it fails, whatever it is handed. The targets under `fuzz/`
+  `tests/fuzz_test.py` asserts that every class decoder, and each
+  module-level decoder it lists, fails the way the package says it fails,
+  whatever it is handed. The wire inputs of musig2, frost and dleq are
+  outside it. The targets under `fuzz/`
   run under ClusterFuzzLite in `.github/workflows/fuzz.yml`, and
   `tests/fuzz_corpus_test.py` checks that every seed of their corpus
   still parses.
@@ -248,8 +254,10 @@ to, and what counters each.
   `.github/workflows/codeql.yml`.
 - **Supply chain.** SECURITY.md's *Supported versions* describes the
   attestations and the bill of materials. `uv.lock` pins every
-  dependency, and CONTRIBUTING.md's *Reproducing what CI runs* runs each
-  job's command with `--locked`. Every third-party action is pinned to a
+  dependency, and CONTRIBUTING.md's *Reproducing what CI runs* takes
+  `--locked` in every command except in the `dist` job, where `uv build`
+  resolves the build backend from the index and `uv pip install` the
+  wheel's dependencies. Every third-party action is pinned to a
   commit sha, the organization's own reusable workflows being called at
   `@main` as `.github/zizmor.yml` permits and gives the reason for;
   `actionlint`, `zizmor` and `detect-secrets` run as hooks in

@@ -16,8 +16,9 @@ against.
 ## Architecture
 
 `src/btclib_ecc/` is the package, and it imports nothing of this
-organization's other packages: it is the arithmetic they are built on,
-and `tests/imports_test.py` imports each module alone to hold that.
+organization's other packages but the optional `btclib_secp256k1`: it is
+the arithmetic they are built on, and `tests/imports_test.py` imports each
+module alone to hold that.
 `btclib-secp256k1` is an optional extra, never a dependency.
 
 Layers, bottom-up: `number_theory` and `hashes`, then `curves/` (curve
@@ -26,7 +27,7 @@ dleq, dh, ellswift, ecies, pedersen, borromean, rangeproof, and the
 rfc6979, bip340 and sign-to-contract nonces). `ecc` imports `curves`, and
 never the reverse. `alias`, `exceptions` and the private `_utils` are the
 substrate every layer uses, and `_libsecp256k1` is the one module that
-imports the bindings.
+imports the bindings at run time.
 
 secp256k1 arithmetic is delegated to the bindings conditionally, which is
 the single most important thing to know before touching `curves/` or
