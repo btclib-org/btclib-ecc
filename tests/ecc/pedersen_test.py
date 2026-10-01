@@ -54,13 +54,14 @@ from btclib_ecc.curves import (
     point_from_octets,
     secp256k1,
 )
-from btclib_ecc.curves.curve import CURVES
+from btclib_ecc.curves.curve import CURVES, _assert_in_subgroup
 from btclib_ecc.ecc import pedersen
 from btclib_ecc.exceptions import (
     BTClibEccRuntimeError,
     BTClibEccValueError,
 )
 from tests import load, needs_bindings, needs_zkp, vector_id
+from tests.curves.curve_test import secp112r2_order_4_point
 
 # guarded module scope, the same shape `btclib_ecc._libsecp256k1` uses: this
 # file is collected in every job, including the no-bindings one where
@@ -860,3 +861,39 @@ def test_verify_tells_an_opening_that_is_no_number_from_one_that_fails() -> None
     assert not pedersen.verify(r, v + 1, commitment, _H)
     assert not pedersen.verify(0, v, commitment, _H)
     assert not pedersen.verify(r, v, (1, 1), _H)
+
+
+def test_a_generator_at_infinity_is_refused() -> None:
+    """At INF every commitment is rG, so it opens to any value."""
+    for call in (
+        lambda: pedersen.commit(5, 10, INF),
+        lambda: pedersen.verify(5, 10, pedersen.commit(5, 10, _H), INF),
+        lambda: pedersen.assert_as_valid(5, 10, pedersen.commit(5, 10, _H), INF),
+    ):
+        with pytest.raises(BTClibEccValueError, match="infinity"):
+            call()
+
+
+def test_a_generator_outside_the_subgroup_is_refused() -> None:
+    """On secp112r2, of cofactor 4, n*C cycles with v for such a generator."""
+    ec = CURVES["secp112r2"]
+    t = secp112r2_order_4_point()
+    assert ec.is_on_curve(t)
+    ok = pedersen.commit(5, 10, mult(3, ec.G, ec), ec)
+    for call in (
+        lambda: pedersen.commit(5, 10, t, ec),
+        lambda: pedersen.verify(5, 10, ok, t, ec),
+        lambda: pedersen.assert_as_valid(5, 10, ok, t, ec),
+    ):
+        with pytest.raises(BTClibEccValueError, match="subgroup"):
+            call()
+    assert pedersen.verify(5, 10, ok, mult(3, ec.G, ec), ec)
+
+
+def test_the_second_generator_is_in_the_subgroup_on_every_curve() -> None:
+    """H is in the subgroup, which on a cofactor curve is not every point."""
+    for ec in CURVES.values():
+        H = pedersen.second_generator(ec)
+        _assert_in_subgroup(H, ec)
+    for name in ("secp112r2", "secp128r2"):
+        assert CURVES[name].cofactor > 1

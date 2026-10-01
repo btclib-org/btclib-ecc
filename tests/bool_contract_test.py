@@ -58,6 +58,7 @@ from typing import Any
 
 import pytest
 
+from btclib_ecc.alias import INF
 from btclib_ecc.curves import bytes_from_point, mult, secp256k1
 from btclib_ecc.ecc import dleq, dsa, pedersen, ssa
 from btclib_ecc.hashes import reduce_to_hlen
@@ -161,9 +162,25 @@ _CASES = (
             3: mult(2, _GEN, secp256k1),
         },
         # an `Integer` spelled as text that is no number at all: the
-        # points are not here, `assert_as_valid` reading the commitment's
-        # type and deliberately not its value (issue btclib-org/btclib#814)
+        # commitment is read for its type only, `assert_as_valid`
+        # deliberately not reading its value (issue btclib-org/btclib#814)
         {0: _WRONG_INTEGER_VALUE, 1: _WRONG_INTEGER_VALUE},
+    ),
+    # a generator no commitment is made under is refused like an
+    # unreadable r, one value per position and so one case each
+    _Case(
+        "pedersen.verify, generator at INF",
+        pedersen.verify,
+        (1, 2, _COMMITMENT, _GEN),
+        {},
+        {3: INF},
+    ),
+    _Case(
+        "pedersen.verify, generator off the curve",
+        pedersen.verify,
+        (1, 2, _COMMITMENT, _GEN),
+        {},
+        {3: (1, 1)},
     ),
     _Case(
         "dleq.verify_proof",
