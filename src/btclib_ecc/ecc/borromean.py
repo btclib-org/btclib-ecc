@@ -122,7 +122,7 @@ proof they write and read carries this signature inside it --
 from __future__ import annotations
 
 import secrets
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from hashlib import sha256
 
@@ -132,6 +132,8 @@ from btclib_ecc._utils import (
     bytesio_from_binarydata,
     hex_string,
     int_from_bits,
+    is_integer,
+    is_octets,
     read_exactly,
 )
 from btclib_ecc.alias import BinaryData, HashF, Integer, Octets, Point
@@ -147,6 +149,7 @@ from btclib_ecc.curves.curve import _assert_valid_ec
 from btclib_ecc.exceptions import (
     BorromeanRingError,
     BTClibEccRuntimeError,
+    BTClibEccTypeError,
     BTClibEccValueError,
 )
 
@@ -224,6 +227,25 @@ def _get_msg_format(
 SValues = Sequence[list[int]]
 
 
+def _rings_from(s: object) -> tuple[Iterable[object], ...]:
+    """Return the rings of s, refusing what is no iterable of rings.
+
+    Asked before the tuples are built: an `s` or a ring that is no iterable
+    would raise a bare TypeError there, and a ring of octets would be read as
+    the integers its bytes are. The parameter is `object` because that is
+    what a caller may hand over, whatever `SValues` declares.
+    """
+    if not isinstance(s, Iterable):
+        msg = f"s must be an iterable of rings, not {type(s).__name__}"
+        raise BTClibEccTypeError(msg)
+    rings = tuple(s)
+    for i, ring in enumerate(rings):
+        if is_octets(ring) or not isinstance(ring, Iterable):
+            msg = f"ring {i} must be an iterable of ints, not {type(ring).__name__}"
+            raise BTClibEccTypeError(msg)
+    return rings
+
+
 @dataclass(frozen=True, init=False)
 class BorromeanSig:
     """A borromean ring signature: e0 and one s per ring member.
@@ -258,18 +280,29 @@ class BorromeanSig:
         *,
         check_validity: bool = True,
     ) -> None:
+        rings = _rings_from(s)
         object.__setattr__(self, "e0", e0)
-        object.__setattr__(self, "s", tuple(tuple(ring) for ring in s))
+        object.__setattr__(self, "s", tuple(tuple(ring) for ring in rings))
         object.__setattr__(self, "ec", ec)
 
         if check_validity:
             self.assert_valid()
 
     def assert_valid(self) -> None:
-        """Refuse a bad curve, no rings, an empty ring, or an out-of-range s."""
+        """Refuse a bad curve, a bad e0, no rings, an empty ring, or a bad s."""
         # the curve first, as in dsa.Sig.assert_valid and ssa.Sig.assert_valid
         # and for their reason: every s below is read against it
         _assert_valid_ec(self.ec)
+
+        # e0 is an hf digest and hf is not a field, so only what holds for
+        # every hash function is checked: bytes, and not empty. Another
+        # width is a signature of another hash function, which `verify`
+        # answers False
+        if not isinstance(self.e0, bytes):
+            msg = f"e0 must be bytes, not {type(self.e0).__name__}"  # type: ignore[unreachable]
+            raise BTClibEccTypeError(msg)
+        if not self.e0:
+            raise BTClibEccValueError("e0 is empty")
 
         # a ring signature with no ring signs nothing: refusing it here
         # is what keeps BorromeanSig.parse's rsizes default -- (), kept
@@ -295,6 +328,10 @@ class BorromeanSig:
             if not ring:
                 raise BTClibEccValueError(f"ring {i} has no keys")
             for j, value in enumerate(ring):
+                if not is_integer(value):
+                    msg = f"s must be int, not {type(value).__name__}"
+                    msg += f" (ring {i}, position {j})"
+                    raise BTClibEccTypeError(msg)
                 if not 0 <= value < self.ec.n:
                     err_msg = "scalar s not in 0..n-1: "
                     err_msg += (
@@ -687,11 +724,16 @@ def _assert_structurally_valid_(
     `BorromeanSig.assert_valid` for it below, on the object this
     returns, as it already does for one a caller builds.
 
-    A `BorromeanSig` argument is handed back untouched. Its octets were
-    never read, so there is no encoding of one to be wrong; its shape
-    against `pubk_rings` is a disagreement between two arguments rather
-    than a property of either, which is the line `ecc.ssa`'s own batch
-    check draws, and it stays False.
+    A `BorromeanSig` argument is handed back untouched. Its octets were never
+    read, so there is no encoding of one to be wrong; its shape against
+    `pubk_rings` is a disagreement between two arguments rather than a property
+    of either, which is the line `ecc.ssa`'s own batch check draws, and it stays
+    False.
+
+    A field of the wrong type is refused by `BorromeanSig.assert_valid` as a
+    `BTClibEccTypeError`, which the `except` of `verify` does not catch. An `e0`
+    of another width is False: a signature does not say which hash function
+    made it.
 
     The message is not asked here, as in `ecc.dsa` and `ecc.ssa`: it is what the
     signature is verified about, and issue btclib-org/btclib#814 is where that

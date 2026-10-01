@@ -930,3 +930,61 @@ def test_verify_tells_octets_that_are_no_signature_from_one_that_fails() -> None
     # not close over: answers about the signature
     assert not borromean.verify(b"another message", octets, pubk_rings)
     assert not borromean.verify(msg, sig, [pubk_rings[1], pubk_rings[0]])
+
+
+def test_a_malformed_borromean_sig_field_is_refused_not_answered() -> None:
+    """Issue btclib-org/btclib-ecc#81: `e0` and every `s` are checked.
+
+    A `BorromeanSig` built directly with a field of the wrong type is a
+    value of a type `verify` does not declare, so it raises
+    `BTClibEccTypeError` rather than a built-in `TypeError` or False
+    (CONTRIBUTING.md, *The public surface*). A value, whatever its width,
+    stays False: `e0`'s width is `hf`'s, which a signature does not carry.
+    """
+    key = dsa.gen_keys()
+    pubk_rings = [[key[1]]]
+    msg = b"Borromean ring signature"
+    good = borromean.sign(msg, [1], [0], [key[0]], pubk_rings)
+    e0, s = good.e0, good.s
+
+    def built(e0_: object, s_: object) -> BorromeanSig:
+        return BorromeanSig(e0_, s_, check_validity=False)  # type: ignore[arg-type]
+
+    for bad_e0 in ("a" * 32, None, 5, bytearray(e0)):
+        sig = built(bad_e0, s)
+        with pytest.raises(BTClibEccTypeError, match="e0 must be bytes"):
+            sig.assert_valid()
+        for call in (borromean.verify, borromean.assert_as_valid):
+            with pytest.raises(BTClibEccTypeError, match="e0 must be bytes"):
+                call(msg, sig, pubk_rings)
+
+    for bad_s in ("1", None, 1.0, True, b"1"):
+        sig = built(e0, [[bad_s]])
+        with pytest.raises(BTClibEccTypeError, match=r"s must be int.*ring 0"):
+            sig.assert_valid()
+        for call in (borromean.verify, borromean.assert_as_valid):
+            with pytest.raises(BTClibEccTypeError, match="s must be int"):
+                call(msg, sig, pubk_rings)
+
+    # an s, a ring or a ring of octets that is no ring of ints, at construction
+    for bad_shape in (5, None, [5], [None], [b"\x05"], ["ab"], [bytearray(b"\x05")]):
+        for check in (True, False):
+            with pytest.raises(BTClibEccTypeError):
+                BorromeanSig(e0, bad_shape, check_validity=check)  # type: ignore[arg-type]
+
+    with pytest.raises(BTClibEccTypeError, match="e0 must be bytes"):
+        BorromeanSig("a" * 32, s)  # type: ignore[arg-type]
+    with pytest.raises(BTClibEccTypeError, match="s must be int"):
+        BorromeanSig(e0, [["1"]])  # type: ignore[list-item]
+
+    with pytest.raises(BTClibEccValueError, match="e0 is empty"):
+        BorromeanSig(b"", [list(r) for r in s])
+    # an empty or another-width e0 is a value: False, a signature of
+    # another hash function being one that does not verify
+    for other in (b"", e0[:-1], e0 + b"\x00"):
+        assert not borromean.verify(msg, built(other, s), pubk_rings)
+
+    # well formed and not verifying is False
+    assert borromean.verify(msg, good, pubk_rings)
+    assert not borromean.verify(msg, built(e0, [[secp256k1.n]]), pubk_rings)
+    assert not borromean.verify(msg, built(bytes(32), s), pubk_rings)

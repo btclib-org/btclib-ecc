@@ -134,6 +134,12 @@ The assurance case no longer claims every decoder is fuzzed, that the package
 imports none of the organization's packages, or `--locked` everywhere; four
 more module-level decoders are fuzzed (closes #82).
 
+### `BorromeanSig` checks the types of `e0` and of every `s`
+
+`BorromeanSig` raises `BTClibEccTypeError`, from `verify` too, for an `e0` that
+is not bytes, an `s` that is not an int or a ring that is not an iterable of
+ints. A signature of the right types that does not verify is False (closes #81).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip

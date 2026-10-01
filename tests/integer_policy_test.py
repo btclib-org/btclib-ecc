@@ -35,6 +35,7 @@ from btclib_ecc.curves import (
     secp256k1,
 )
 from btclib_ecc.ecc import frost
+from btclib_ecc.ecc.borromean import BorromeanSig
 from btclib_ecc.ecc.dsa import recover_pub_key_, recover_sec_
 from btclib_ecc.ecc.dsa import sign as dsa_sign
 from btclib_ecc.ecc.ssa import challenge_ as ssa_challenge_
@@ -130,6 +131,10 @@ _CASES: list[tuple[str, Callable[[Any], object]]] = [
     ),
     ("prepared point", lambda v: PreparedPoint((v, secp256k1.G[1]))),
     ("point to sec bytes", lambda v: bytes_from_point((v, secp256k1.G[1]))),
+    (
+        "borromean s",
+        lambda v: BorromeanSig(bytes(32), [[v]], check_validity=False).assert_valid(),
+    ),
 ]
 
 _IDS = [case[0] for case in _CASES]
