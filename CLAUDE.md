@@ -94,11 +94,12 @@ constraints. Do not use Fable unless instructed.
   release-only suffix) with cancel-in-progress, so the next push kills
   the run for the previous commit. The local gates are the evidence;
   `cancelled` is not `failure`.
-- **A draft pull request is checked by nothing but an aggregate that
-  fails to say it is a draft.** Every job doing work declines a draft in
-  its `if:`, and `test.yml`'s `test: every job passed` runs anyway and
-  fails on its first step, so that the required check reads red rather
-  than skipped. Mark the pull request ready to be checked.
+- **A draft pull request is checked by nothing but aggregates that fail
+  to say it is a draft.** The jobs doing work decline a draft in their
+  `if:`; `test: every job passed` and `codeql: every job passed` run
+  anyway and fail on their first step, so they read red rather than
+  skipped. Only the first is a required check on `main`. Mark the pull
+  request ready to be checked.
 - **mypy is a *local* hook shelling out to uv on purpose.** The
   mirrors-mypy hook injects `--ignore-missing-imports`, and it type
   checks in an isolated environment where the project is not installed —

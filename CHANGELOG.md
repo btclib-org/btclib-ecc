@@ -84,6 +84,12 @@ The `dist` job writes the bill of materials with btclib-org/.github's
 `generate_sbom.py`, served from `main`, and the tree keeps no copy of it
 (issue btclib-org/.github#1478).
 
+### `CLAUDE.md` names both aggregates a draft pull request fails
+
+`codeql: every job passed` fails a draft as `test: every job passed` does;
+only the second is a required check on `main` (issue
+btclib-org/.github#1494).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
