@@ -158,6 +158,12 @@ A private key passed where a public key belongs, and a committed value, are
 not repeated in the message of the exception, of its cause or of its context
 (closes #74).
 
+### A `Signed-off-by:` trailer on every commit of a pull request
+
+*Pull requests* says every commit of a pull request carries a
+`Signed-off-by:` trailer, and how to add it (issue
+btclib-org/.github#1467).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
