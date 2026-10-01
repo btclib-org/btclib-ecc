@@ -419,6 +419,40 @@ def test_mult_pub_key(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
         mult_pub_key(5, 7)  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize(
+    "bindings",
+    [
+        pytest.param(True, marks=needs_bindings, id="bindings"),
+        pytest.param(False, id="python"),
+    ],
+)
+def test_a_hybrid_key_is_refused_on_both_arms(
+    bindings: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The bindings parse 0x06 and 0x07 and `point_from_octets` does not.
+
+    A multiplication has to refuse a hybrid key on either arm, as
+    `point_from_octets` does without `hybrid=True`: a key valid on one
+    install and invalid on another is the defect (issue
+    btclib-org/btclib-ecc#75).
+    """
+    if not bindings:
+        monkeypatch.setattr(curve, "_libsecp256k1_available", False)
+
+    ec = CURVES["secp256k1"]
+    Q = mult(3)
+    body = Q[0].to_bytes(ec.p_size, "big") + Q[1].to_bytes(ec.p_size, "big")
+    hybrid = (b"\x07" if Q[1] & 1 else b"\x06") + body
+    assert point_from_octets(hybrid, ec, hybrid=True) == Q
+
+    for pub_key in (hybrid, hybrid.hex()):
+        with pytest.raises(BTClibEccValueError, match="not a public key"):
+            mult_pub_key(5, pub_key)
+    for m in (0, 5):
+        with pytest.raises(BTClibEccValueError, match="not a point: prefix "):
+            _mult_sec(hybrid, m, ec)
+
+
 def test_a_scalar_is_an_int_or_its_octets_and_nothing_else() -> None:
     """What a private key may be spelled as here (btclib-org/btclib#1188).
 

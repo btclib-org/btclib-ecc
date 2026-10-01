@@ -319,6 +319,10 @@ def point_from_pub_key(pub_key: PubKey, ec: Curve = secp256k1) -> Point:
         raise BTClibEccValueError("not a public key") from e
 
 
+# one byte each, to be compared with `sec[:1]`
+_HYBRID_PREFIXES = (b"\x06", b"\x07")
+
+
 def _sec_from_pub_key(pub_key: PubKey, ec: Curve) -> bytes:
     """Return the SEC octets of a public key, unproven, however spelled.
 
@@ -354,11 +358,16 @@ def _sec_from_pub_key(pub_key: PubKey, ec: Curve) -> bytes:
         # refuses what is not a point of the curve, and infinity
         return bytes_from_point(pub_key, ec, False)
     try:
-        return bytes_from_octets(pub_key, (ec.p_size + 1, 2 * ec.p_size + 1))
+        sec = bytes_from_octets(pub_key, (ec.p_size + 1, 2 * ec.p_size + 1))
     except (TypeError, ValueError) as e:
         # never echo the input: it may be private material passed by
         # mistake; the chained exception carries the parsing reason
         raise BTClibEccValueError("not a public key") from e
+    # the bindings' parse takes the hybrid prefixes 0x06 and 0x07, which
+    # `point_from_pub_key` refuses: refusing them here makes both arms agree
+    if sec[:1] in _HYBRID_PREFIXES:
+        raise BTClibEccValueError("not a public key")
+    return sec
 
 
 def _mult_sec(sec: bytes, m: int, ec: Curve) -> Point:
@@ -378,8 +387,11 @@ def _mult_sec(sec: bytes, m: int, ec: Curve) -> Point:
     bindings' own parse refuses what is not a point, and what they decline falls
     through to the lift, whose `point_from_octets` is that same refusal on the
     Python arm.
+
+    Hybrid octets are kept from the bindings, whose parse takes them, so that
+    the lift refuses them on both arms.
     """
-    if m and _libsecp256k1_serves(ec, None):
+    if m and sec[:1] not in _HYBRID_PREFIXES and _libsecp256k1_serves(ec, None):
         with contextlib.suppress(ValueError):
             return _point_from_sec(libsecp256k1_shared_point(sec, m, False))
 

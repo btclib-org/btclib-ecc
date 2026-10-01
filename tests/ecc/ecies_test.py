@@ -25,14 +25,20 @@ from typing import Any
 import pytest
 
 from btclib_ecc.alias import Point
-from btclib_ecc.curves import bytes_from_point, mult, secp256k1
+from btclib_ecc.curves import bytes_from_point, curve, mult, secp256k1
 from btclib_ecc.ecc import ecies
 from btclib_ecc.exceptions import (
     BTClibEccRuntimeError,
     BTClibEccTypeError,
     BTClibEccValueError,
 )
-from tests import aes_decrypt_block, aes_encrypt_block, aes_expand_key, aes_xor
+from tests import (
+    aes_decrypt_block,
+    aes_encrypt_block,
+    aes_expand_key,
+    aes_xor,
+    needs_bindings,
+)
 
 # --------------------------------------------------------------------------
 # AES-128-CBC with PKCS#7, for this file alone. The block cipher itself is
@@ -317,6 +323,32 @@ def test_derive_keys_is_the_same_on_both_sides() -> None:
     assert sender == recipient
     iv, key_e, key_m = sender
     assert (len(iv), len(key_e), len(key_m)) == (16, 16, 32)
+
+
+@pytest.mark.parametrize(
+    "bindings",
+    [
+        pytest.param(True, marks=needs_bindings, id="bindings"),
+        pytest.param(False, id="python"),
+    ],
+)
+def test_derive_keys_refuses_a_hybrid_key_on_both_arms(
+    bindings: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """0x06 and 0x07 are refused as `point_from_octets` refuses them.
+
+    The bindings parse them, so without the refusal the same key is valid
+    on one install and invalid on another (issue btclib-org/btclib-ecc#75).
+    """
+    if not bindings:
+        monkeypatch.setattr(curve, "_libsecp256k1_available", False)
+
+    Q = mult(3)
+    body = Q[0].to_bytes(32, "big") + Q[1].to_bytes(32, "big")
+    hybrid = (b"\x07" if Q[1] & 1 else b"\x06") + body
+    with pytest.raises(BTClibEccValueError, match="not a public key"):
+        ecies.derive_keys(5, hybrid)
+    assert ecies.derive_keys(5, b"\x04" + body) == ecies.derive_keys(5, Q)
 
 
 def test_derive_keys_is_the_sha512_of_the_compressed_point() -> None:

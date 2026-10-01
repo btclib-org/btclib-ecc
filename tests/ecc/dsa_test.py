@@ -2831,3 +2831,39 @@ def test_recovery_without_the_bindings_is_python_throughout(
         libsecp256k1_recovery.recover(bytes(32), bytes(64), 0, True)
 
     assert dsa.recover_pub_keys(msg, sig) == delegated
+
+
+@pytest.mark.parametrize("bindings", _ARMS)
+def test_a_hybrid_key_is_refused_on_both_arms(
+    bindings: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The bindings parse 0x06 and 0x07 and `point_from_octets` does not.
+
+    Verifying and signing under a hybrid key are refused on either arm, as
+    `point_from_octets` refuses it without `hybrid=True`: a key valid on one
+    install and invalid on another is the defect (issue
+    btclib-org/btclib-ecc#75). `verify_` and `verify` parse the key before
+    either arm runs, and are pinned here too.
+    """
+    if not bindings:
+        no_bindings(monkeypatch)
+
+    q, Q = dsa.gen_keys(0x1234567890ABCDEF)
+    msg_hash = sha256(b"a message").digest()
+    sig = dsa.sign_(msg_hash, q)
+    body = Q[0].to_bytes(32, "big") + Q[1].to_bytes(32, "big")
+    hybrid = (b"\x07" if Q[1] & 1 else b"\x06") + body
+    assert point_from_octets(hybrid, hybrid=True) == Q
+    dsa.assert_as_valid_(msg_hash, b"\x04" + body, sig)
+
+    for key in (hybrid, hybrid.hex()):
+        with pytest.raises(BTClibEccValueError, match="not a public key"):
+            dsa.assert_as_valid_(msg_hash, key, sig)
+        with pytest.raises(BTClibEccValueError, match="not a public key"):
+            dsa.assert_as_valid(b"a message", key, sig)
+        with pytest.raises(BTClibEccValueError, match="not a public key"):
+            dsa.verify_(msg_hash, key, sig)
+        with pytest.raises(BTClibEccValueError, match="not a public key"):
+            dsa.verify(b"a message", key, sig)
+        with pytest.raises(BTClibEccValueError, match="not a public key"):
+            dsa.sign_(msg_hash, q, pub_key=key)
