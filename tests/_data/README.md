@@ -57,7 +57,12 @@ is the same in each: there is no upstream file whose name they could take
 Where an entry pins to a commit, it gives the upstream repository, the
 path in it, and the commit. A `blob` line, where the entry carries one,
 gives the git blob SHA-1 of what that entry pins; what it pins, and
-whether it was compared byte for byte, is the entry's own to say. Most
+whether it was compared byte for byte, is the entry's own to say. An
+`ours` line gives the blob of the file kept here where that is not the
+`blob`, or where the entry has no upstream blob to name: a file with its
+line endings or trailing newline changed, a transcription, a set derived
+from a directory. The weekly job holds the file to `ours`, or to `blob`
+where there is no `ours`. Most
 entries close on a verdict; one with nothing upstream to compare
 against says so in prose instead. The verdicts used:
 
@@ -92,9 +97,9 @@ repository's own default branch -- a fork's pull-request branch, so
 far the only case. `.github/scripts/check_vendored_vectors.py` reads it
 as the `sha` parameter of GitHub's "commits touching a path" API, which
 otherwise walks the default branch alone and finds no commit touching a
-path that only exists elsewhere, reading as the file having been
-deleted upstream regardless of whether the pin is current. Absent, the
-call walks the default branch.
+path that only exists elsewhere, reported as a path the default branch
+never held regardless of whether the pin is current. Absent, the call
+walks the default branch.
 
 A vector this package fails is vendored anyway and marked `xfail`, never
 left out: an absent vector hides the defect it would have shown, and
@@ -122,6 +127,14 @@ already carries, so nothing has to be downloaded, and `git hash-object`
 reproduces it locally. Not the contents API, which is the obvious
 alternative and caps out on a large file.
 
+The weekly job runs this comparison for every entry whose heading is one
+file's path and which carries a `blob` or an `ours` line, and fails,
+naming the file, on a mismatch. It compares the file with `ours` (or
+`blob`) and the entry's `blob` with upstream's at `commit`, so a file
+edited here and a pin whose blob is not the one at its commit both fail.
+Add an `ours` line to a new entry whose file is not upstream's bytes,
+and a `-text` line for the file to `.gitattributes`.
+
 The two hashes match for every file whose verdict is **identical**. Where
 upstream is CRLF they cannot, this repository being LF throughout, and the
 entry says so with our own blob alongside. Every csv file vendored from
@@ -140,6 +153,7 @@ repo    bitcoin/bips
 path    bip-0340/test-vectors.csv
 commit  200f9b26fe0a2f235a2af8b30c4be9f12f6bc9cb  2023-04-20
 blob    672339129a844a060591bb22f444158ff45438ed
+ours    aa317a3b3d53aa904def8b5a625b13073898b349
 pulled  2020-04-04, refreshed 2020-11-22 and 2026-07-30
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -339,7 +353,7 @@ branch alone unless told otherwise, and `bip-0445/` exists on that
 branch and not on `siv2r/bips`' own default, `master`. Asked with no
 ref the weekly job's call would find no commit touching any of these
 paths regardless of whether the pin below is current, and would report
-every one of them as upstream having deleted the file -- which is what
+every one of them as a path the default branch never held -- which is what
 it did before `ref` was a field `check_vendored_vectors.py` knew to
 send (btclib-org/btclib#2160, closed by the same change that added it). With the
 branch named, the pins below are checked exactly as a default-branch
@@ -360,6 +374,7 @@ path    bip-0445/python/vectors/nonce_gen_vectors.json
 ref     bip-frost-signing
 commit  f0cc3aec157f9a0a1a290e8b835b242312a9ee53  2026-07-27
 blob    2ba04502ebd28a839d12bb787f5ea093a9125005
+ours    a5ebaa6573cf409f89b957d4be176b7ec4e5cb4e
 pulled  2026-09-17
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -376,6 +391,7 @@ path    bip-0445/python/vectors/nonce_agg_vectors.json
 ref     bip-frost-signing
 commit  4343f72cbccc3a6b032279c5ac1dc4a46672c87c  2026-06-10
 blob    92a223927318b18681ec269a5735b07692094147
+ours    3b5e5f57d8048009e967476ce1284707ea7ad398
 pulled  2026-09-17
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -392,6 +408,7 @@ path    bip-0445/python/vectors/sign_verify_vectors.json
 ref     bip-frost-signing
 commit  8e25d57911c33f1daadcadb0161a60a56ef7145a  2026-08-26
 blob    622d859bcd742e9caf37e1541bf2409aa7c6c333
+ours    ead53ab18f87c5d46ec82962204fa31a0bcdc132
 pulled  2026-09-17
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -408,6 +425,7 @@ path    bip-0445/python/vectors/tweak_vectors.json
 ref     bip-frost-signing
 commit  8e25d57911c33f1daadcadb0161a60a56ef7145a  2026-08-26
 blob    ed876b4eeca7ee18e9918cd18f59141870670f12
+ours    6451ef707698f5bdb277002c9fd5601416ae37e1
 pulled  2026-09-17
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -424,6 +442,7 @@ path    bip-0445/python/vectors/det_sign_vectors.json
 ref     bip-frost-signing
 commit  8e25d57911c33f1daadcadb0161a60a56ef7145a  2026-08-26
 blob    57ce53754a413b4087486bbbe16c641b5edfc245
+ours    a6def920dac3d46a7d4032728b97cdb94b3f4940
 pulled  2026-09-17
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -440,6 +459,7 @@ path    bip-0445/python/vectors/sig_agg_vectors.json
 ref     bip-frost-signing
 commit  8e25d57911c33f1daadcadb0161a60a56ef7145a  2026-08-26
 blob    4f20b42562a79b4443736269184ebec7870a7e0c
+ours    a9b9140d2ade6e7337f322023aa8555440e1d08a
 pulled  2026-09-17
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -465,6 +485,7 @@ repo    bitcoin/bips
 path    bip-0324/ellswift_decode_test_vectors.csv
 commit  cc177ab7bc5abcdcdf9c956ee88afd1052053328  2023-01-11
 blob    1bab96b721e2f3ab90142c318523551eb520f753
+ours    bcc5b31958ca8be59e799226afa1766f99fb5df8
 pulled  2026-08-03, split into its own pin 2026-08-06
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -481,6 +502,7 @@ repo    bitcoin/bips
 path    bip-0324/xswiftec_inv_test_vectors.csv
 commit  cc177ab7bc5abcdcdf9c956ee88afd1052053328  2023-01-11
 blob    138c4cf85c040785a45c6552c0169c8c12fd3cfc
+ours    135958f62813cee4cfbbe68bdba257344f43afc1
 pulled  2026-08-03, split into its own pin 2026-08-06
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -527,6 +549,7 @@ repo    bitcoin/bips
 path    bip-0374/test_vectors_generate_proof.csv
 commit  24b4354e64e162ad0154d54f12b29602fe562d9f  2025-02-27
 blob    f913508df1ed633e9dde3de30b49f3c8c4e595d1
+ours    78d7870472fea2cdffbbaa11198c8838b71b53e2
 pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -548,6 +571,7 @@ repo    bitcoin/bips
 path    bip-0374/test_vectors_verify_proof.csv
 commit  fc874dd5d34239e070c0fdb8c4ed6a1dd2a94147  2026-08-19
 blob    1368013b03521c97984b65ba0586b99dd8818564
+ours    2d4acdf1fa0ca3d49c5f853196f934bd91b790a6
 pulled  2026-09-21
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -578,6 +602,7 @@ builds each.
 repo    bitcoin-core/secp256k1
 path    src
 commit  b819a790f06122d5a53c0320e79c0dc486349fbd  2026-09-28
+ours    77be29e88b8d76602f416de9c47bcd2a13cf542d
 pulled  2026-09-10, refreshed 2026-09-14
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -668,6 +693,7 @@ repo    rustyrussell/secp256k1-py
 path    tests/data/pubkey.json
 commit  ead56b92a8229e16941318d953c6444268beaa1a  2015-09-18
 blob    8aaa0c59d182b126cfedc505473dbdc961aaea1a
+ours    9d9546e742a71d322d412176d38b2c46764b6197
 pulled  2023-01-16
 behind  0 revisions; still the blob on master
 ```
@@ -683,6 +709,7 @@ repo    rustyrussell/secp256k1-py
 path    tests/data/ecdsa_sig.json
 commit  ead56b92a8229e16941318d953c6444268beaa1a  2015-09-18
 blob    af16179725c10c409c7929ac0576161c1f5e72ad
+ours    9d3db82654b611b1c3ef5d4ccbd62d63bdf4ccf4
 pulled  2023-01-16
 behind  0 revisions; still the blob on master
 ```
@@ -696,6 +723,7 @@ repo    rustyrussell/secp256k1-py
 path    tests/data/ecdsa_custom_nonce_sig.json
 commit  3caf31d20c668cf54a1621e21b7f1d943f0db048  2016-03-30
 blob    e9d61e267f2e8fcd21c660aab17fe5de44cae0f0
+ours    b002bb6f0934dcdfe7b37b6c2aeafbd615bf85ca
 pulled  2023-01-16
 behind  0 revisions; still the blob on master
 ```
@@ -954,6 +982,7 @@ repo    C2SP/wycheproof
 path    LICENSE
 commit  31387e2cd596587c859c611027b6a44d2e2b65ff  2018-04-04
 blob    7a4a3ea2424c09fbe48d455aed1eaa94d9124835
+ours    d645695673349e3947e8e5ae42332d0ac3164cd7
 pulled  2026-09-08
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -989,6 +1018,7 @@ repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/rangeproof/tests_impl.h
 commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
 blob    1137404643ab667715e2c5eedd3463dcb20740e6
+ours    572c4e396cffc71a03aaab2e3bef968fed4b6d24
 pulled  2026-09-09
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -1045,6 +1075,7 @@ repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/generator/tests_impl.h
 commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
 blob    a5dd39f8b2b645ed23988f62fc2bfd612a3c4358
+ours    455c1177bf612d12fcb0897b5f33fabc4f877af8
 pulled  2026-09-11
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -1085,6 +1116,7 @@ repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/ecdsa_s2c/tests_impl.h
 commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
 blob    88eeb1e9e7156d8c99a032ce3eef4423825792c9
+ours    d6ae47ad1802c65b55d52eff6ada843b9c84b5c2
 pulled  2026-08-02
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -1233,15 +1265,16 @@ is the fixed point being checked against, not a moving target.
   neither makes "identical" a claim that can be made about them. What was
   checked is stated in each entry: matching every value verbatim against
   the pinned text, or a check the entry states on its own.
-- **Nothing here is enforced by the suite.** No hook re-fetches an
-  upstream and no test compares a blob, and that is a deliberate stopping
-  point: a network call in the test suite would trade a documented drift
-  for a flaky one. Where a pin goes stale is
-  `.github/workflows/vendored-vectors.yml`'s to say instead, weekly and
-  outside the suite, and it opens an issue rather than refreshing
-  anything -- which vector to take next is a decision. What it does not
-  reach is an entry whose `behind` already reads other than 0, a gap
-  somebody has decided not to close being one it would report every week.
+- **The suite checks the local half, offline.**
+  `tests/check_vendored_vectors_test.py` holds each file this ledger names
+  to its `ours` line, or its `blob` where there is none. No test asks
+  upstream for a blob: a network call in the suite would trade a
+  documented drift for a flaky one.
+  `.github/workflows/vendored-vectors.yml` asks upstream, weekly. A byte
+  mismatch fails the run. A stale pin opens an issue rather than being
+  refreshed -- which vector to take next is a decision. The staleness
+  check skips an entry whose `behind` reads other than 0, a gap somebody
+  has decided not to close being one it would report every week.
 
 ## Summary
 
