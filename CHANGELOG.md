@@ -198,6 +198,12 @@ refuse, except a modulus, and name a non-integer by its type (closes #100).
 off, and that a local review of a named sha by a reviewer other than the
 author stands in for it (issue btclib-org/.github#1527).
 
+### The release publishes the files the build job built
+
+The publish jobs, `github-release` and `test.yml`'s `dist` job on a release
+stop where the `dist` they download differs from the digests
+`reusable-build.yml` outputs (issue #83, btclib-org/btclib#2449).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip

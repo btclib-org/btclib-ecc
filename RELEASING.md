@@ -106,10 +106,14 @@ one, and TestPyPI's rehearsal does the same there.
    which `release.yml`'s `build` job calls, holds `id-token: write` too,
    for its own Sigstore exchange, and no environment: it signs the
    distribution files before either reviewed job starts, and signs only
-   files whose digests the build job printed. `pypi` is additionally restricted
-   to `v*` tags, which is the only ref its job runs on anyway — the
-   restriction is what makes that true of the environment and not just
-   of an `if:` in a file a pull request could change.
+   files whose digests the build job printed. `publish-testpypi`,
+   `publish-pypi`, `github-release` and the `dist` job check what they
+   download against those digests, and fail where a file differs, is added
+   or is missing.
+   `pypi` is additionally restricted to `v*` tags, which is the only ref
+   its job runs on anyway — the restriction is what makes that true of
+   the environment and not just of an `if:` in a file a pull request could
+   change.
 
    Self-review stays allowed: the environment does not require the
    approver to differ from whoever pushed the tag, so the tag's own
