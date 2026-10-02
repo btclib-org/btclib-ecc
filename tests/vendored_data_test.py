@@ -172,7 +172,7 @@ _EXEMPT: dict[str, str] = {
     "Verdict: **identical**. Key agreement, with the public key X.509-encoded": _UPSTREAM_FACT,
     "above with the keys JWK-encoded (RFC 7517) rather than X.509: `WrongCurve`": _UPSTREAM_FACT,
     "Verdict: **transcribed**. Appendix A.2 of RFC 6979 gives 50 vectors, ten each": _UPSTREAM_FACT,
-    "  reach is an entry whose `behind` already reads other than 0, a gap": _UPSTREAM_FACT,
+    "  check skips an entry whose `behind` reads other than 0, a gap somebody": _UPSTREAM_FACT,
     "request vendoring a file is guaranteed to have -- and two branches moving": _UPSTREAM_FACT,
     "giving the reason RFC 9591 gives for shipping none over `vss_verify`: it": _UPSTREAM_FACT,
     "266 cases between them, and `tests/ecc/frost_test.py` runs every one: 5": _UPSTREAM_FACT,

@@ -216,6 +216,24 @@ SECURITY.md, RELEASING.md and RELEASE_NOTES.md said a `reusable-attest.yml`
 release took no `--source-ref`; it takes the tag, and v2026.9.26 takes
 `--repo btclib-org/ellipticcurves` (issue #83, btclib-org/btclib#2447).
 
+### The weekly vendored-vectors check compares bytes
+
+`check_vendored_vectors.py` hashes each vendored file against the blob the
+ledger records and compares that blob with upstream's at the pinned commit
+(issue #83, btclib-org/btclib#2439).
+
+### `check_vendored_vectors` does not read a removed pin as changed content
+
+A pin whose file upstream deleted or renamed is reported as the commit that
+removed it, which the report says may be a deletion or a rename; "no commit"
+names a path the branch walked never held (issue #83, btclib-org/btclib#2312).
+
+### A drift line names both commits whole
+
+`check_vendored_vectors.py` prints the pinned commit and upstream's tip as
+full shas, so two commits alike in their first twelve characters print as
+two (issue #83, btclib-org/.github#1343).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip

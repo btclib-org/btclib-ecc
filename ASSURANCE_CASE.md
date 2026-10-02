@@ -231,9 +231,11 @@ to, and what counters each.
 - **Improper verification of a signature (CWE-347).** A scheme whose
   specification publishes vectors is checked against them, and against
   Wycheproof's adversarial secp256k1 vectors in
-  `tests/ecc/wycheproof_test.py`, all pinned in `tests/_data/README.md`
-  and compared with upstream on a schedule by
-  `.github/workflows/vendored-vectors.yml`. `.github/workflows/zkp-oracle.yml`
+  `tests/ecc/wycheproof_test.py`, all pinned in `tests/_data/README.md`.
+  `.github/workflows/vendored-vectors.yml` runs weekly: it hashes each
+  vendored file against the blob recorded there, compares that blob with
+  upstream's at the pinned commit, and reports a pin that is no longer
+  upstream's tip. `.github/workflows/zkp-oracle.yml`
   builds the flagged libsecp256k1-zkp extension and runs the tests
   marked `zkp` against it.
 - **Exposure of sensitive information (CWE-200).** `dsa.Signer.wipe`
