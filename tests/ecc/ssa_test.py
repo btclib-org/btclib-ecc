@@ -23,7 +23,7 @@ from btclib_ecc.curves import (
     mult,
     secp256k1,
 )
-from btclib_ecc.curves.curve import CURVES, Curve
+from btclib_ecc.curves.curve import CURVES, Curve, _is_x_coordinate_var
 from btclib_ecc.curves.curve_group import _jac_from_aff
 from btclib_ecc.ecc import second_generator, ssa
 from btclib_ecc.ecc.bip340_nonce import bip340_nonce_
@@ -1330,6 +1330,39 @@ def test_recover_infinity_pub_key(monkeypatch: pytest.MonkeyPatch) -> None:
     no_bindings(monkeypatch)
     with pytest.raises(BTClibEccRuntimeError, match=err_msg):
         ssa._recover_pub_key_(1, secp256k1.G[0], 1, secp256k1)
+
+
+@pytest.mark.parametrize("name", list(cofactor_curves))
+def test_recovery_answers_only_keys_of_the_subgroup(name: str) -> None:
+    """A nonce point outside <G> recovers nothing.
+
+    Issue btclib-org/btclib-ecc#125.
+
+    Every x that lifts, every s and every challenge: the key answered is one
+    `point_from_bip340pub_key` accepts, and an x whose lift is outside <G> is
+    refused.
+    """
+    ec = cofactor_curves[name]
+    answered = 0
+    refusals: list[str] = []
+    for r in range(ec.p):
+        if not _is_x_coordinate_var(r, ec):
+            continue
+        for s in range(1, ec.n):
+            for c in range(1, ec.n):
+                try:
+                    x_Q = ssa._recover_pub_key_(c, r, s, ec)
+                except BTClibEccRuntimeError:  # the INF key
+                    continue
+                except BTClibEccValueError as e:
+                    refusals.append(str(e))
+                    continue
+                assert ssa.point_from_bip340pub_key(x_Q, ec)[0] == x_Q
+                answered += 1
+    assert answered
+    # outside <G>, or the two-torsion point of y = 0
+    assert refusals
+    assert all("subgroup" in m or "ambiguous point" in m for m in refusals)
 
 
 def test_recovery_multiplies_in_libsecp256k1(
