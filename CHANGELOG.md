@@ -234,6 +234,12 @@ names a path the branch walked never held (issue #83, btclib-org/btclib#2312).
 full shas, so two commits alike in their first twelve characters print as
 two (issue #83, btclib-org/.github#1343).
 
+### `ssa` keys and nonce points of a cofactor curve are points of ⟨G⟩
+
+On a curve of cofactor above 1 (secp112r2, secp128r2), `ssa` refuses a key
+outside ⟨G⟩, and a batch an `r` whose point is outside it, with `dsa`'s message
+(GHSA-r5pw-9wrg-m3mj). secp256k1 is unchanged.
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip

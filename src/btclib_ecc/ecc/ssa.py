@@ -87,6 +87,7 @@ from btclib_ecc.curves import (
     secp256k1,
 )
 from btclib_ecc.curves.curve import (
+    _assert_in_subgroup,
     _assert_valid_ec,
     _is_x_coordinate_var,
     _jac_double_mult_var,
@@ -300,6 +301,10 @@ def _x_from_bip340pub_key(x_Q: BIP340PubKey, ec: Curve) -> int:
         # and a y that is not zero -- `alias` marks infinity that way,
         # no affine point of a prime-order group having y = 0
         if ec.is_on_curve(x_Q) and x_Q[1] != 0:
+            # a point of the curve is a key only where it is a point of
+            # <G>, which a cofactor above 1 leaves open
+            if ec.cofactor > 1:
+                _assert_in_subgroup(x_Q, ec)
             return x_Q[0]
         raise BTClibEccValueError("not a valid public key")
 
@@ -330,6 +335,24 @@ def _x_from_bip340pub_key(x_Q: BIP340PubKey, ec: Curve) -> int:
     raise BTClibEccTypeError("not a BIP340 public key")
 
 
+def _y_even_in_subgroup_var(x: int, ec: Curve) -> int:
+    """Return the even y of an x, refusing a point outside <G>.
+
+    `_y_even_var` and nothing more where the cofactor is 1. Where it is
+    above 1 the lifted point need not be in <G>, and one of small order
+    is no key and no nonce point: verification reads its multiples
+    modulo n, which is wrong for such a point. The point is asked to be
+    on the curve first, as `point_from_octets` does: the curve's real
+    two-torsion x lifts to y = 0, which `_assert_in_subgroup` would read
+    as infinity and accept.
+    """
+    y = _y_even_var(x, ec)
+    if ec.cofactor > 1:
+        ec.require_on_curve((x, y))
+        _assert_in_subgroup((x, y), ec)
+    return y
+
+
 def point_from_bip340pub_key(x_Q: BIP340PubKey, ec: Curve = secp256k1) -> Point:
     """Return a verified-as-valid BIP340 public key as Point tuple.
 
@@ -349,7 +372,7 @@ def point_from_bip340pub_key(x_Q: BIP340PubKey, ec: Curve = secp256k1) -> Point:
     # a fraction of the modular square root it replaces, and the Python
     # one for every other curve
     x = _x_from_bip340pub_key(x_Q, ec)
-    return x, _y_even_var(x, ec)
+    return x, _y_even_in_subgroup_var(x, ec)
 
 
 def gen_keys(prv_key: Integer | None = None, ec: Curve = secp256k1) -> tuple[int, int]:
@@ -1063,7 +1086,7 @@ def assert_as_valid_(
 
     # the lift the branch above does not need, and the validation of x_Q
     # with it: `_x_from_bip340pub_key` reads the key and proves nothing
-    y_Q = _y_even_var(x_Q, sig.ec)
+    y_Q = _y_even_in_subgroup_var(x_Q, sig.ec)
     # the key's own memoized tables where the caller prepared it, as in
     # `dsa.assert_as_valid_`, which is a fifth off a verification under
     # one key. The negation is in that set too, which is what makes it
@@ -1494,6 +1517,14 @@ def assert_batch_as_valid_(
         # preimage and answering an OverflowError for what is no field element
         x_Q = _x_from_bip340pub_key(Q, ec)
         _x_only_bytes(x_Q, ec)
+
+        # where a cofactor leaves room for points outside <G>: the key, and
+        # the nonce point too, whose part outside <G> a random coefficient
+        # of 0 mod the cofactor would annihilate while the single
+        # verification refuses it. Nothing is asked on secp256k1
+        if ec.cofactor > 1:
+            _y_even_in_subgroup_var(x_Q, ec)
+            _y_even_in_subgroup_var(sig.r, ec)
 
         c = challenge_(msg, x_Q, sig.r, ec, hf)
 
