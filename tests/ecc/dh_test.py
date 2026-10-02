@@ -19,7 +19,11 @@ from btclib_ecc.exceptions import (
 )
 from btclib_ecc.kdf import ansi_x9_63_kdf
 from tests import needs_bindings
-from tests.curves.curve_test import secp112r2_order_4_point
+from tests.curves.curve_test import (
+    cofactor_curves,
+    secp112r2_order_4_point,
+    small_order_points,
+)
 
 
 def test_ecdh() -> None:
@@ -306,3 +310,19 @@ def test_cofactor_dh_agrees_with_ordinary_dh_where_cofactor_is_1() -> None:
     a, A = dsa.gen_keys(ec=ec)
     b, B = dsa.gen_keys(ec=ec)
     assert diffie_hellman(a, B, 32, ec=ec) == diffie_hellman(b, A, 32, ec=ec)
+
+
+@pytest.mark.parametrize("name", list(cofactor_curves))
+def test_cofactor_dh_on_a_cofactor_curve(name: str) -> None:
+    """Keys of <G> agree, and a point of small order is refused for every dU."""
+    ec = cofactor_curves[name]
+    a, A = dsa.gen_keys(ec=ec)
+    b, B = dsa.gen_keys(ec=ec)
+    assert diffie_hellman(a, B, 32, ec=ec) == diffie_hellman(b, A, 32, ec=ec)
+
+    _, torsion = small_order_points[name]
+    err_msg = r"invalid \(INF\) key"
+    for T in torsion:
+        for d in range(1, ec.n):
+            with pytest.raises(BTClibEccRuntimeError, match=err_msg):
+                diffie_hellman(d, T, 32, ec=ec)

@@ -84,26 +84,29 @@ from btclib_ecc.number_theory import _is_prime, mod_inv_var, mod_sqrt_var
 from tests import load, needs_bindings, vector_id
 
 # test curves: very low cardinality. The name is p and n, in that order,
-# so the four with the larger second number are the n > p ones -- ec13_19,
-# ec17_23, ec19_23 and ec23_31 -- and test_curves_with_n_above_p below is
-# what keeps that spread from disappearing in an edit
+# so the ones with the larger second number are the n > p ones -- ec7_11,
+# ec13_19, ec17_23, ec19_23 and ec23_31 -- and test_curves_with_n_above_p
+# below is what keeps that spread from disappearing in an edit
+#
+# All of cofactor 1, so that the exhaustive (private key, nonce, challenge)
+# loops over them stay free of the points a cofactor adds: cofactor_curves
+# below is where those are. ec7_11 and ec23_17 have a = p - 3, the case
+# the `_a_is_minus_3` doubling of curve_group.py is for
+#
+# 7 % 4 = 3; 7 % 8 = 7
+low_card_curves = {"ec7_11": Curve(7, 4, 6, (1, 2), 11, 1, False)}
 # 13 % 4 = 1; 13 % 8 = 5
-low_card_curves = {"ec13_11": Curve(13, 7, 6, (1, 1), 11, 1, False)}
+low_card_curves["ec13_11"] = Curve(13, 7, 6, (1, 1), 11, 1, False)
 low_card_curves["ec13_19"] = Curve(13, 0, 2, (1, 9), 19, 1, False)
 # 17 % 4 = 1; 17 % 8 = 1
 #
 # 13 points, brute force over every (x, y) plus INF, so cofactor 1: this
 # curve was built with a false cofactor of 2 until issue
 # btclib-org/btclib-ecc#32, back when #19's bug forced it -- Curve()
-# accepted no other value for an n this close to p. A low-cardinality
-# curve genuinely of cofactor 2 is not a fixture this suite can hold: its
-# curve order is then even, so a rational two-torsion point at y = 0
-# exists on it by group theory, and `Curve.is_on_curve` refuses that
-# point outright (issue btclib-org/btclib-ecc#16) rather than
-# reading it as off-curve -- and a genuinely cofactor-2 candidate tried
-# here landed a real signature's recovery on exactly that point on its
-# first (private key, nonce, challenge) triple, raising rather than
-# dropping the candidate as step 1.6 does for every other kind of miss
+# accepted no other value for an n this close to p. A curve of cofactor 2
+# has a rational two-torsion point at y = 0, which affine coordinates
+# cannot tell from INF: `Curve.is_on_curve` refuses it (issue
+# btclib-org/btclib-ecc#16), and cofactor_curves below holds one
 low_card_curves["ec17_13"] = Curve(17, 6, 8, (0, 12), 13, 1, False)
 low_card_curves["ec17_23"] = Curve(17, 3, 5, (1, 14), 23, 1, False)
 # 19 % 4 = 3; 19 % 8 = 3
@@ -113,8 +116,39 @@ low_card_curves["ec17_23"] = Curve(17, 3, 5, (1, 14), 23, 1, False)
 low_card_curves["ec19_13"] = Curve(19, 0, 2, (4, 16), 13, 1, False)
 low_card_curves["ec19_23"] = Curve(19, 2, 9, (0, 16), 23, 1, False)
 # 23 % 4 = 3; 23 % 8 = 7
+low_card_curves["ec23_17"] = Curve(23, 20, 15, (1, 6), 17, 1, False)
 low_card_curves["ec23_19"] = Curve(23, 9, 7, (5, 4), 19, 1, False)
 low_card_curves["ec23_31"] = Curve(23, 5, 1, (0, 1), 31, 1, False)
+
+# test curves of cofactor 2 to 5, named by p, n and the cofactor. The
+# group is not of prime order, so points outside <G> are on the curve:
+# small_order_points lists them. ec17_11h2 and ec37_11h4 have a two-torsion
+# point at y = 0
+cofactor_curves = {
+    "ec17_11h2": Curve(17, 10, 2, (0, 6), 11, 2, False),
+    "ec31_13h3": Curve(31, 0, 10, (11, 15), 13, 3, False),
+    "ec37_11h4": Curve(37, 1, 7, (4, 1), 11, 4, False),
+    "ec43_11h5": Curve(43, 1, 8, (1, 15), 11, 5, False),
+}
+
+# the points of small order outside <G> that each cofactor curve has, as
+# (order, points); the two-torsion point is not among them, being a tuple
+# Curve.is_on_curve refuses
+small_order_points = {
+    "ec17_11h2": (2, ()),
+    "ec31_13h3": (3, ((0, 14), (0, 17))),
+    "ec37_11h4": (4, ((22, 13), (22, 24))),
+    "ec43_11h5": (5, ((5, 3), (5, 40), (31, 17), (31, 26))),
+}
+
+# test curves where p and n differ in byte length: ec251_257 has n of 9 bits
+# and p of 8, ec257_251 the reverse. Their order is too large for a loop over
+# every (private key, nonce, challenge) triple, and a loop over every
+# (private key, nonce) pair fits
+byte_boundary_curves = {
+    "ec251_257": Curve(251, 248, 78, (2, 64), 257, 1, False),
+    "ec257_251": Curve(257, 254, 1, (0, 1), 251, 1, False),
+}
 
 # the union operator, as in curves.curve: it builds a new dict, leaving
 # low_card_curves and CURVES untouched
@@ -292,19 +326,19 @@ def test_curves_with_n_above_p() -> None:
     never fired: p and n are within 2*sqrt(p) of each other, so which is the
     larger is a property of the curve and not of the library, and `secp112r1`,
     `secp128r1`, `secp160k1`, `secp160r1`, `secp160r2` and `secp224k1` all have
-    the order above the field prime. `ec13_19`, `ec17_23`, `ec19_23` and
-    `ec23_31` are on that side too, which is what makes the case testable at
-    all: every (private key, nonce, challenge) triple of a curve of order 19
-    fits in a test.
+    the order above the field prime. `ec7_11`, `ec13_19`, `ec17_23`,
+    `ec19_23` and `ec23_31` are on that side too, which is what makes the
+    case testable at all: every (private key, nonce, challenge) triple of a
+    curve of order 19 fits in a test.
 
     What n > p decides is whether `r = x_K % ec.n` can reduce, and it
     cannot: x_K < p < n. tests/ecc/dsa_test.py draws the consequence for
     key recovery.
     """
     above = {name for name, ec in low_card_curves.items() if ec.n > ec.p}
-    assert above == {"ec13_19", "ec17_23", "ec19_23", "ec23_31"}
+    assert above == {"ec7_11", "ec13_19", "ec17_23", "ec19_23", "ec23_31"}
     below = {name for name, ec in low_card_curves.items() if ec.n < ec.p}
-    assert below == {"ec13_11", "ec17_13", "ec19_13", "ec23_19"}
+    assert below == {"ec13_11", "ec17_13", "ec19_13", "ec23_17", "ec23_19"}
     # no curve has n == p: Curve refuses to build one, anomalous curves
     # being weak (test_anomalous_curve)
     assert not [ec for ec in all_curves.values() if ec.n == ec.p]
@@ -525,6 +559,33 @@ def _jac_spellings(ec: CurveGroup, P: Point | None) -> list[JacPoint]:
     return [(P[0] * z * z % ec.p, P[1] * z**3 % ec.p, z) for z in (1, 2)]
 
 
+def _assert_addition_exhaustive(
+    name: str, ec: CurveGroup, two_torsion: tuple[Point, ...] = ()
+) -> None:
+    """Add every pair of points of ec, in every Jacobian frame and in affine.
+
+    A point at y == 0 is the one affine coordinates cannot tell from INF,
+    so the affine routine is held to the sums that neither have it as an
+    operand nor reach it: the Jacobian one is held to all of them.
+    """
+    points: list[Point | None] = [None]
+    points.extend(
+        (x, y) for x in range(ec.p) for y in range(ec.p) if ec._y2(x) == y * y % ec.p
+    )
+    for P in points:
+        for Q in points:
+            expected = _textbook_add(ec, P, Q)
+            for PJ in _jac_spellings(ec, P):
+                for QJ in _jac_spellings(ec, Q):
+                    RJ = ec.add_jac(PJ, QJ)
+                    got = None if RJ[2] == 0 else ec.aff_from_jac_var(RJ)
+                    assert got == expected, f"{name}: {PJ} + {QJ}"
+            if any(point in two_torsion for point in (P, Q, expected)):
+                continue
+            R = ec.add_aff_var(INF if P is None else P, INF if Q is None else Q)
+            assert (INF if expected is None else expected) == R, f"{name}: {P} + {Q}"
+
+
 def test_point_addition_exhaustive() -> None:
     """Every pair of points of every low-cardinality curve, both routines.
 
@@ -539,28 +600,84 @@ def test_point_addition_exhaustive() -> None:
         # no curve in the table has a point with y == 0, which is the one
         # affine coordinates cannot tell from INF. Asserted rather than
         # worked around, so that a curve added to the table cannot
-        # quietly weaken the affine half below
+        # quietly weaken the affine half of `_assert_addition_exhaustive`
         assert all(ec._y2(x) for x in range(ec.p)), name
+        _assert_addition_exhaustive(name, ec)
 
-        points: list[Point | None] = [None]
-        points.extend(
-            (x, y)
-            for x in range(ec.p)
-            for y in range(ec.p)
-            if ec._y2(x) == y * y % ec.p
-        )
-        for P in points:
-            for Q in points:
-                expected = _textbook_add(ec, P, Q)
-                for PJ in _jac_spellings(ec, P):
-                    for QJ in _jac_spellings(ec, Q):
-                        RJ = ec.add_jac(PJ, QJ)
-                        got = None if RJ[2] == 0 else ec.aff_from_jac_var(RJ)
-                        assert got == expected, f"{name}: {PJ} + {QJ}"
-                R = ec.add_aff_var(INF if P is None else P, INF if Q is None else Q)
-                assert (INF if expected is None else expected) == R, (
-                    f"{name}: {P} + {Q}"
-                )
+
+def test_point_addition_exhaustive_with_cofactor() -> None:
+    """The same over the cofactor curves, whose group is not prime.
+
+    Their small-order points are added to everything, and the real
+    two-torsion point of the two curves that have one is handled in
+    Jacobian coordinates only (issue btclib-org/btclib-ecc#16).
+    """
+    for name, ec in cofactor_curves.items():
+        two_torsion = tuple((x, 0) for x in range(ec.p) if ec._y2(x) == 0)
+        assert len(two_torsion) == (name in {"ec17_11h2", "ec37_11h4"}), name
+        _assert_addition_exhaustive(name, ec, two_torsion)
+
+
+@pytest.mark.parametrize("name", list(cofactor_curves))
+def test_assert_in_subgroup_on_a_cofactor_curve(name: str) -> None:
+    """Refuse exactly the points outside <G>, every one of the curve's.
+
+    The cofactor is the true one here: the curve has cofactor * n points,
+    and the points `_assert_in_subgroup` accepts are the n multiples of G.
+    """
+    ec = cofactor_curves[name]
+    points = [
+        (x, y) for x in range(ec.p) for y in range(ec.p) if ec._y2(x) == y * y % ec.p
+    ]
+    assert len(points) + 1 == ec.cofactor * ec.n
+
+    subgroup = {
+        ec.aff_from_jac_var(_mult_jac_var(i, ec.GJ, ec)) for i in range(1, ec.n)
+    }
+    assert len(subgroup) == ec.n - 1
+
+    for Q in points:
+        if Q[1] == 0:  # the two-torsion point, which is_on_curve refuses
+            err_msg = f"ambiguous point: .* two-torsion point at x = {Q[0]}$"
+            with pytest.raises(BTClibEccValueError, match=err_msg):
+                ec.is_on_curve(Q)
+            continue
+        assert ec.is_on_curve(Q)
+        if Q in subgroup:
+            _assert_in_subgroup(Q, ec)
+        else:
+            err_msg = "point not in the subgroup generated by G"
+            with pytest.raises(BTClibEccValueError, match=err_msg):
+                _assert_in_subgroup(Q, ec)
+
+    order, torsion = small_order_points[name]
+    for Q in torsion:
+        assert Q in points
+        assert Q not in subgroup
+        assert _mult_jac_var(order, _jac_from_aff(Q), ec)[2] == 0
+        assert _mult_jac_var(1, _jac_from_aff(Q), ec)[2] != 0
+    # and these are all of them: a point killed by the cofactor is of
+    # small order, the two-torsion point excepted
+    small = {
+        Q
+        for Q in points
+        if Q[1] and _mult_jac_var(ec.cofactor, _jac_from_aff(Q), ec)[2] == 0
+    }
+    assert small == set(torsion)
+
+
+def test_the_constructor_accepts_a_false_cofactor() -> None:
+    """Hasse's interval, not the point count, is what the cofactor is held to.
+
+    These curves have a cofactor other than the one given and build
+    all the same, which is the limit of issue btclib-org/btclib-ecc#19: a
+    cofactor is only as true as the caller's word for it.
+    """
+    for name, false_cofactor in (("ec17_11h2", 1), ("ec31_13h3", 2), ("ec43_11h5", 4)):
+        true = cofactor_curves[name]
+        assert true.cofactor != false_cofactor
+        false = Curve(true.p, true._a, true._b, true.G, true.n, false_cofactor, False)
+        assert false.cofactor == false_cofactor
 
 
 def test_add_jac_infinity_is_not_a_doubling() -> None:

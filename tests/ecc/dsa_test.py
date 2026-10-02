@@ -42,8 +42,16 @@ from btclib_ecc.exceptions import (
 )
 from btclib_ecc.hashes import reduce_to_hlen
 from btclib_ecc.number_theory import mod_inv_var
-from tests import key_pair_spellings, load, needs_bindings, vector_id
+from tests import (
+    Sha256FirstByte,
+    key_pair_spellings,
+    load,
+    needs_bindings,
+    vector_id,
+)
 from tests.curves.curve_test import (
+    byte_boundary_curves,
+    cofactor_curves,
     low_card_curves,
     no_bindings,
     no_bindings_anywhere,
@@ -326,6 +334,149 @@ def test_low_cardinality(name: str) -> None:
                     assert Qs == candidates
 
 
+@pytest.mark.parametrize(
+    "name, j_max",
+    [("ec17_11h2", 1), ("ec31_13h3", 2), ("ec37_11h4", 2), ("ec43_11h5", 3)],
+)
+def test_low_cardinality_with_cofactor(name: str, j_max: int) -> None:
+    """Sign and recover over every key, nonce and challenge of a cofactor curve.
+
+    j_max is the largest `key_id >> 1` a signature reaches: above 1 is
+    x_K = r + j*ec.n with j above 1, which no curve of cofactor 1 here
+    reaches. The signer's key is recovered by its key_id and from the list.
+    """
+    ec = cofactor_curves[name]
+    j_reached = 0
+    for q in range(1, ec.n):
+        QJ = _mult(q, ec.GJ, ec)
+        Q = ec.aff_from_jac_var(QJ)
+        for k in range(1, ec.n):
+            x_K = ec.x_aff_from_jac_var(_mult(k, ec.GJ, ec))
+            r = x_K % ec.n
+            k_inv = mod_inv_var(k, ec.n)
+            for e in range(ec.n):
+                if r == 0 or k_inv * (e + q * r) % ec.n == 0:
+                    with pytest.raises(BTClibEccRuntimeError, match="failed to sign: "):
+                        dsa._sign_recoverable_(e, q, k, False, ec)
+                    continue
+                sig, key_id = dsa._sign_recoverable_(e, q, k, False, ec)
+                assert key_id >> 1 == x_K // ec.n
+                j_reached = max(j_reached, key_id >> 1)
+                dsa._assert_as_valid_(
+                    e, QJ, sig.r, sig.s, ec, ec._fixed_points, lower_s=False
+                )
+
+                # the key_id names the signer
+                recovered = dsa._recover_pub_key_(
+                    key_id, e, sig.r, sig.s, ec, lower_s=False
+                )
+                assert ec.aff_from_jac_var(recovered) == Q
+
+                # and so does the list, which has no INF in it
+                jac_keys = dsa._recover_pub_keys_(e, sig.r, sig.s, ec, lower_s=False)
+                Qs = [ec.aff_from_jac_var(key) for key in jac_keys]
+                assert Q in Qs
+                assert INF not in Qs
+                # not asserted: that every key in Qs is a multiple of G.
+                # Some are not (issue btclib-org/btclib-ecc#125)
+    assert j_reached == j_max
+
+
+@pytest.mark.parametrize("name", list(cofactor_curves))
+def test_sign_and_recover_with_cofactor(name: str) -> None:
+    """The public path, RFC6979 and sha256, on a cofactor curve."""
+    ec = cofactor_curves[name]
+    signed = 0
+    for q in range(1, ec.n):
+        Q = mult(q, ec.G, ec)
+        msg_hash = sha256(f"btclib {name} {q}".encode()).digest()
+        try:
+            sig = dsa.sign_(msg_hash, q, None, True, ec)
+        except BTClibEccRuntimeError:  # the nonce gave r == 0 or s == 0
+            continue
+        dsa.assert_as_valid_(msg_hash, Q, sig)
+        assert Q in dsa.recover_pub_keys_(msg_hash, sig)
+        signed += 1
+    assert signed
+
+
+@pytest.mark.parametrize("name", list(byte_boundary_curves))
+def test_every_key_and_nonce_at_the_byte_boundary(name: str) -> None:
+    """DER and compact encodings round trip where n_size and p_size differ.
+
+    One challenge, every private key and every nonce. r is below p and
+    below n, so on ec251_257 it fits one octet where n takes two, and
+    on ec257_251 it is x_K reduced and its high bit is set for about half
+    of the nonces, which DER pays a 0x00 octet for.
+    """
+    ec = byte_boundary_curves[name]
+    assert ec.n_size != ec.p_size
+    c = 1
+    padded = 0
+    for q in range(1, ec.n):
+        QJ = _mult(q, ec.GJ, ec)
+        for k in range(1, ec.n):
+            try:
+                sig = dsa._sign_(c, q, k, True, ec)
+            except BTClibEccRuntimeError:  # r == 0 or s == 0
+                continue
+            dsa._assert_as_valid_(
+                c, QJ, sig.r, sig.s, ec, ec._fixed_points, lower_s=True
+            )
+
+            compact = dsa._compact(sig)
+            assert len(compact) == 2 * ec.n_size
+            assert dsa._sig_from_compact(compact, ec) == sig
+
+            der = sig.serialize()
+            parsed = dsa.Sig.parse(der, check_validity=False)
+            assert (parsed.r, parsed.s) == (sig.r, sig.s)
+            # 0x30 len, then 0x02 len value for each of the two scalars
+            pads = (sig.r >= 128) + (sig.s >= 128)
+            assert len(der) == 8 + pads
+            padded += pads > 0
+    assert padded
+
+
+def test_low_r_at_the_byte_boundary() -> None:
+    """`_is_low_r` follows n_size: all r on ec251_257, r < 128 on ec257_251."""
+    ec = byte_boundary_curves["ec251_257"]
+    assert all(dsa._is_low_r(r, ec) for r in range(ec.n))
+
+    ec = byte_boundary_curves["ec257_251"]
+    high = [
+        k
+        for k in range(1, ec.n)
+        if not dsa._is_low_r(ec.x_aff_from_jac_var(_mult(k, ec.GJ, ec)) % ec.n, ec)
+    ]
+    assert len(high) == 124
+
+
+def test_grinding_retries_at_the_byte_boundary() -> None:
+    """Grinding finds a low r on ec257_251, where half of the r are high.
+
+    The hash is one octet, as the curve's order. A signature that is low
+    already is the plain one, grinding or not.
+    """
+    ec = byte_boundary_curves["ec257_251"]
+    retried = unchanged = 0
+    for q in range(1, ec.n):
+        Q = mult(q, ec.G, ec)
+        msg_hash = Sha256FirstByte(f"btclib grind {q}".encode()).digest()
+        try:
+            plain = dsa.sign_(msg_hash, q, None, True, ec, Sha256FirstByte, grind=False)
+            ground = dsa.sign_(msg_hash, q, None, True, ec, Sha256FirstByte)
+        except BTClibEccRuntimeError:  # a nonce gave r == 0 or s == 0
+            continue
+        assert dsa._is_low_r(ground.r, ec)
+        dsa.assert_as_valid_(msg_hash, Q, ground, Sha256FirstByte)
+        assert (plain == ground) == dsa._is_low_r(plain.r, ec)
+        retried += plain != ground
+        unchanged += plain == ground
+    assert retried
+    assert unchanged
+
+
 def test_pub_key_recovery() -> None:
     """Recover four keys on secp112r2, all verifying the signature."""
     ec = CURVES["secp112r2"]
@@ -348,14 +499,12 @@ def test_pub_key_recovery() -> None:
 def test_step_1_6_1_agrees_above_cofactor_1() -> None:
     """`_step_1_6_1` and `_recover_pub_keys_` agree above cofactor 1 too.
 
-    `test_low_cardinality` held the two to the same list over every key,
-    nonce and challenge a curve admits, cofactor above 1 included, until
-    issue btclib-org/btclib-ecc#32: every low-cardinality curve this
-    suite can hold is now cofactor 1, an exhaustive sweep over a curve
-    whose cofactor is genuinely above 1 not being safe at that size (the
-    issue has the reason). One explicit (private key, nonce, challenge)
-    triple on secp112r2 is what is left to reach `_step_1_6_1`'s
-    reduction branch and `_verifies`, in place of the sweep.
+    `test_low_cardinality` holds the two to the same list over every key,
+    nonce and challenge of a curve of cofactor 1. Above 1, one explicit
+    (private key, nonce, challenge) triple on secp112r2 reaches
+    `_step_1_6_1`'s reduction branch and `_verifies`;
+    `test_low_cardinality_with_cofactor` sweeps the cofactor curves of
+    the suite for the signer's key alone.
     """
     ec = CURVES["secp112r2"]
     assert ec.cofactor > 1

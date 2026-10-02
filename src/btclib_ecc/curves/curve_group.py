@@ -585,14 +585,15 @@ class CurveGroup:
         # a two-torsion point, the one real point with y == 0, has no
         # affine form at all -- Jacobian coordinates do hold it, Z != 0
         # telling it from infinity, and add_jac doubles it to infinity
-        # correctly; none of the low-cardinality test curves has one, and
-        # two catalogued curves of cofactor 4 do (issue
-        # btclib-org/btclib-ecc#16). This method still assumes its
-        # operands on the curve and reads either one's y == 0 as infinity
-        # whatever it stands for, as add_jac's own stand-ins do; on a
-        # Curve, add_var -- the validated entry point -- never reaches it
-        # with the real two-torsion point, Curve.is_on_curve refusing
-        # that one tuple ahead of this call for exactly this reason. A
+        # correctly; none of the test curves of cofactor 1 has one, and
+        # two catalogued curves of cofactor 4 and two test curves of
+        # cofactor 2 and 4 do (issue btclib-org/btclib-ecc#16). This method
+        # still assumes its operands on the curve and reads either one's
+        # y == 0 as infinity whatever it stands for, as add_jac's own
+        # stand-ins do; on a Curve, add_var -- the validated entry point --
+        # never reaches it with the real two-torsion point,
+        # Curve.is_on_curve refusing that one tuple ahead of this call for
+        # exactly this reason. A
         # bare CurveGroup makes no such refusal, off ⟨G⟩ entirely.
         # The order is load-bearing too, and it is this one rather than
         # the doubling test first: INF is (5, 0), its x-coordinate

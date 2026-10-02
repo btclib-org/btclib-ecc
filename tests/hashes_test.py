@@ -12,6 +12,7 @@ import pytest
 
 from btclib_ecc.exceptions import BTClibEccTypeError
 from btclib_ecc.hashes import _assert_valid_hf, tagged_hash
+from tests import Sha256FirstByte
 
 
 @pytest.mark.parametrize(
@@ -57,3 +58,17 @@ def test_tagged_hash_refuses_a_hash_function_that_is_not_one() -> None:
     """
     with pytest.raises(BTClibEccTypeError, match="not a hash function"):
         tagged_hash(b"t", b"m", sha256())  # type: ignore[arg-type]
+
+
+def test_the_one_byte_hash_is_sha256_cut_to_its_first_byte() -> None:
+    """The test helper is a hash function, and copies absorb independently."""
+    _assert_valid_hf(Sha256FirstByte)
+    hf = Sha256FirstByte(b"abc")
+    assert hf.digest_size == len(hf.digest()) == 1
+    assert hf.digest() == sha256(b"abc").digest()[:1]
+    assert hf.hexdigest() == hf.digest().hex()
+
+    clone = hf.copy()
+    clone.update(b"d")
+    assert clone.digest() == sha256(b"abcd").digest()[:1]
+    assert hf.digest() == sha256(b"abc").digest()[:1]
