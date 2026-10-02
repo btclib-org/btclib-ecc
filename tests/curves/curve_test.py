@@ -1085,7 +1085,7 @@ def test_symmetry() -> None:
             assert quad_res == (root * root) % ec.p
 
             assert ec.p - quad_res not in hasRoot
-            with pytest.raises(BTClibEccValueError, match="no root for "):
+            with pytest.raises(BTClibEccValueError, match="no root mod "):
                 mod_sqrt_var(ec.p - quad_res, ec.p)
         else:
             assert ec.p % 4 == 1
@@ -1110,7 +1110,7 @@ def test_symmetry() -> None:
                 root = ec.p - root
                 assert y_even_var == (root * root) % ec.p
             else:
-                err_msg = "no root for "
+                err_msg = "no root mod "
                 with pytest.raises(BTClibEccValueError, match=err_msg):
                     mod_sqrt_var(y_odd, ec.p)
                 with pytest.raises(BTClibEccValueError, match=err_msg):

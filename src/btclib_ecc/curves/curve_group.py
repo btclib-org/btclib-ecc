@@ -751,7 +751,7 @@ def _mult_recursive_aff_var(m: int, Q: Point, ec: CurveGroup) -> Point:
     groups of order n).
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     if m == 0:
         return INF
@@ -773,7 +773,7 @@ def _mult_recursive_jac_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     groups of order n).
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     if m == 0:
         return INFJ
@@ -795,7 +795,7 @@ def _mult_aff_var(m: int, Q: Point, ec: CurveGroup) -> Point:
     groups of order n).
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     # R[0] is the running result, R[1] = R[0] + Q is an ancillary variable
     R = [INF, Q]
@@ -829,7 +829,7 @@ def _mult_jac_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     groups of order n).
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     # R[0] is the running result, R[1] = R[0] + Q is an ancillary variable
     R = [INFJ, Q]
@@ -992,22 +992,22 @@ def signed_odd_digits(m: int, w: int, size: int) -> list[int]:
     is what is left of m and is not reduced further.
     """
     if not is_integer(m):
-        raise BTClibEccTypeError(f"non-integer m: {m}")
+        raise BTClibEccTypeError(f"non-integer m: {type(m).__name__}")
     if not is_integer(w):
         raise BTClibEccTypeError(f"non-integer w: {w}")
     if not is_integer(size):
         raise BTClibEccTypeError(f"non-integer size: {size}")
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
     # a number cannot be written in basis 1 (ie w=0)
     if w <= 0:
         raise BTClibEccValueError(f"non positive w: {w}")
     if m % 2 == 0:
-        raise BTClibEccValueError(f"even m: {hex(m)}")
+        raise BTClibEccValueError("even m")
     if size < 1:
         raise BTClibEccValueError(f"size too low: {size}")
     if m >> (w * size):
-        raise BTClibEccValueError(f"m does not fit {size} digits: {hex(m)}")
+        raise BTClibEccValueError(f"m does not fit {size} digits")
 
     w2 = 1 << w
     digits: list[int] = []
@@ -1193,7 +1193,7 @@ def _mult_fixed_base(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoint:
     point of the library satisfies, each reducing mod n first.
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     # a number cannot be written in basis 1 (ie w=0)
     if w <= 0:
@@ -1236,7 +1236,7 @@ def _mult_mont_ladder_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     if appropriate (e.g. cyclic groups of order n).
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     # R[0] is the running resultR[1] = R[0] + Q is an ancillary variable
     R = [INFJ, Q]
@@ -1257,7 +1257,7 @@ def _mult_base_3_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     groups of order n).
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     # at each step one of the points in T will be added
     T = [INFJ, Q, ec.double_jac(Q)]
@@ -1289,7 +1289,7 @@ def _mult_fixed_window_var(
     groups of order n).
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     # a number cannot be written in basis 1 (ie w=0)
     if w <= 0:
@@ -1326,7 +1326,7 @@ def _mult_fixed_window_cached_var(
     groups of order n).
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     # a number cannot be written in basis 1 (ie w=0)
     if w <= 0:
@@ -1393,7 +1393,7 @@ def _mult_regular_window(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoin
     mod n first.
     """
     if m < 0:
-        raise BTClibEccValueError(f"negative m: {hex(m)}")
+        raise BTClibEccValueError("negative m")
 
     # a number cannot be written in basis 1 (ie w=0)
     if w <= 0:
@@ -1467,9 +1467,9 @@ def _double_mult_var(
     if appropriate (e.g. cyclic groups of order n).
     """
     if u < 0:
-        raise BTClibEccValueError(f"negative first coefficient: {hex(u)}")
+        raise BTClibEccValueError("negative first coefficient")
     if v < 0:
-        raise BTClibEccValueError(f"negative second coefficient: {hex(v)}")
+        raise BTClibEccValueError("negative second coefficient")
 
     # at each step one of the following points will be added
     T = [INFJ, HJ, QJ, ec.add_jac(HJ, QJ)]
@@ -1518,7 +1518,7 @@ def _multi_mult_pairs(
     pairs: list[tuple[int, JacPoint]] = []
     for n, PJ in zip(scalars, jac_points, strict=True):
         if n < 0:
-            raise BTClibEccValueError(f"negative coefficient: {hex(n)}")
+            raise BTClibEccValueError("negative coefficient")
         if n:
             pairs.append((n, PJ))
     return pairs
