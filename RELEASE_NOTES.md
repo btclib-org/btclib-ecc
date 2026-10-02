@@ -31,6 +31,12 @@ before upgrading, rather than a digit.
   `second_generator` or `generator_from_seed`, or catch `BTClibEccValueError`.
   Commitments made under that old H no longer verify.
 
+- **Verifying a release's attestation names a new signer and the tag.**
+  `gh attestation verify` takes
+  `--signer-workflow btclib-org/.github/.github/workflows/reusable-build.yml@refs/heads/main`
+  and `--source-ref refs/tags/v<version>`; SECURITY.md has the command.
+  Earlier releases keep `reusable-attest.yml`.
+
 ## v2026.9.30
 
 No breaking changes. An installed `btclib-secp256k1` older than the floor
