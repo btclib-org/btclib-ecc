@@ -205,6 +205,7 @@ source-exclude = [
     "/tests/interpreters_test.py",
     "/tests/mutation_sessions_test.py",
     "/tests/normalize_sdist_test.py",
+    "/tests/release_digests_test.py",
     # where `make html` writes
     "/docs/build",
     # a cache a tool writes beside what it has just read, taken out by the
