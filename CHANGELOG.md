@@ -210,6 +210,12 @@ CONTRIBUTING.md and `ASSURANCE_CASE.md` no longer say every job passes
 `--locked`: they list the exceptions, none of which installs the project's
 dependencies unpinned in the build job (btclib-org/btclib#2440, issue #83).
 
+### The verification command pins the tag for every signer
+
+SECURITY.md, RELEASING.md and RELEASE_NOTES.md said a `reusable-attest.yml`
+release took no `--source-ref`; it takes the tag, and v2026.9.26 takes
+`--repo btclib-org/ellipticcurves` (issue #83, btclib-org/btclib#2447).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
