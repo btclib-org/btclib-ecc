@@ -9,7 +9,9 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
-## v2026.10 (work in progress, not released yet)
+## v2026.11 (work in progress, not released yet)
+
+## v2026.10.2
 
 - **`mult_pub_key`, `ecies.derive_keys`, `dsa.assert_as_valid`,
   `dsa.assert_as_valid_` and `dsa.sign_`'s `pub_key` refuse a hybrid public
@@ -45,6 +47,19 @@ before upgrading, rather than a digit.
 
   Act on it if you signed with `ssa` on such a pair: rotate the key, and
   re-pin any deterministic signature you stored.
+
+- **`musig2.partial_sig_verify` raises `BTClibEccValueError` for a signer
+  index outside `0..len(pub_keys)-1`** (closes #78). A negative index used to
+  select a signer from the end.
+
+  Act on it if you pass one: pass the index counted from the front.
+
+- **FROST takes only an int where it takes an integer** (closes #77, closes
+  #79). `n`, `t`, an id and the signer index raise `BTClibEccTypeError` for
+  anything else, a bool, a float or a str included, where `int()` converted
+  `n`, `t` and the ids. `partial_sig_verify_` raises for an id not in `ids`.
+
+  Act on it if you pass such a value: pass an int.
 
 ## v2026.9.30
 
