@@ -21,9 +21,10 @@ from btclib_ecc.curves.curve import CURVES, Curve, secp256k1
 from btclib_ecc.ecc import dsa
 from btclib_ecc.ecc.bip340_nonce import _bip340_nonce_, bip340_nonce_
 from btclib_ecc.ecc.rfc6979_nonce import _rfc6979_nonce_, challenge_, rfc6979_nonce_
+from btclib_ecc.exceptions import BTClibEccRuntimeError
 from btclib_ecc.hashes import reduce_to_hlen
-from tests import load, vector_id
-from tests.curves.curve_test import low_card_curves
+from tests import Sha256FirstByte, load, vector_id
+from tests.curves.curve_test import byte_boundary_curves, low_card_curves
 
 # secp256k1 with sha256, the pair RFC6979's own appendix A.2 does not cover: the
 # five vectors of `Test_RFC6979` in petertodd/python-bitcoinlib's
@@ -407,3 +408,25 @@ def test_what_each_nonce_derivation_costs() -> None:
     hf = CountingSha256()
     bip340_nonce_(b"btclib", 7, AUX, hf=hf)
     assert hf.calls == 6
+
+
+def test_rfc6979_over_a_one_byte_hash() -> None:
+    """HMAC over a hash of 8 bits derives a nonce that signs, for every key.
+
+    ec257_251 has n of 8 bits and p of 9, so the nonce is one octet and
+    the signature is made with it: r is the x-coordinate of its point.
+    """
+    ec = byte_boundary_curves["ec257_251"]
+    signed = 0
+    for q in range(1, ec.n):
+        msg_hash = Sha256FirstByte(f"btclib {q}".encode()).digest()
+        k = rfc6979_nonce_(msg_hash, q, ec, Sha256FirstByte)
+        assert 0 < k < ec.n
+        try:
+            sig = dsa.sign_(msg_hash, q, None, True, ec, Sha256FirstByte, grind=False)
+        except BTClibEccRuntimeError:  # r == 0 or s == 0
+            continue
+        assert sig.r == mult(k, ec.G, ec)[0] % ec.n
+        dsa.assert_as_valid_(msg_hash, mult(q, ec.G, ec), sig, Sha256FirstByte)
+        signed += 1
+    assert signed

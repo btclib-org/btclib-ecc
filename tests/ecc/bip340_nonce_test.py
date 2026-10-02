@@ -17,6 +17,8 @@ from btclib_ecc.curves.curve import CURVES
 from btclib_ecc.ecc import bip340_nonce, ssa
 from btclib_ecc.ecc.bip340_nonce import bip340_nonce_
 from btclib_ecc.hashes import tagged_hash
+from tests import Sha256FirstByte
+from tests.curves.curve_test import byte_boundary_curves
 
 # a hash shorter than the curve order
 SHORT_HASH = [
@@ -108,3 +110,29 @@ def test_a_hash_as_long_as_the_curve_order_keeps_its_nonce(
         b"unchanged", 0x1234567890ABCDEF, bytes(hf().digest_size), ec, hf
     )
     assert k == expected
+
+
+@pytest.mark.parametrize("name, stretched", [("ec251_257", True), ("ec257_251", False)])
+def test_a_one_byte_hash_is_stretched_when_n_has_more_bits(
+    name: str, stretched: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The counter-mode branch runs when nlen exceeds the 8 bits of the hash.
+
+    ec251_257 has nlen 9; ec257_251 has nlen 8, which one digest covers.
+    """
+    ec = byte_boundary_curves[name]
+    assert (ec.nlen > 8) == stretched
+
+    calls: list[int] = []
+    stretch = bip340_nonce._stretch
+
+    def spy(tag: bytes, m: bytes, size: int, hf: HashF) -> bytes:
+        calls.append(size)
+        return stretch(tag, m, size, hf)
+
+    monkeypatch.setattr(bip340_nonce, "_stretch", spy)
+    for q in range(1, ec.n):
+        calls.clear()
+        k, _, _, _ = bip340_nonce_(b"a message", q, bytes(1), ec, Sha256FirstByte)
+        assert 0 < k < ec.n
+        assert bool(calls) == stretched

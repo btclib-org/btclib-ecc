@@ -372,6 +372,42 @@ else:
 
 needs_zkp = pytest.mark.zkp
 
+
+class Sha256FirstByte:
+    """sha256 cut to its first byte, a hashlib-like object.
+
+    One octet is shorter than the order of every curve whose n has nine
+    bits or more, so the paths for a hash shorter than n run on a curve
+    small enough to sweep. Not collision resistant.
+    """
+
+    digest_size = 1
+    block_size = 64
+    name = "sha256-first-byte"
+
+    def __init__(self, data: bytes = b"") -> None:
+        """Start from data, as hashlib's constructors do."""
+        self._sha256 = hashlib.sha256(data)
+
+    def update(self, data: Any, /) -> None:
+        """Absorb more data."""
+        self._sha256.update(data)
+
+    def digest(self) -> bytes:
+        """Return the first byte of the sha256 of everything absorbed."""
+        return self._sha256.digest()[:1]
+
+    def hexdigest(self) -> str:
+        """Return the digest as a hex string."""
+        return self.digest().hex()
+
+    def copy(self) -> "Sha256FirstByte":
+        """Return a clone that absorbs independently."""
+        clone = Sha256FirstByte()
+        clone._sha256 = self._sha256.copy()
+        return clone
+
+
 # --------------------------------------------------------------------------
 # AES-128, for `ecc/ecies_test.py`'s CBC vectors.
 #
