@@ -192,6 +192,12 @@ publish jobs wait for approval (issue btclib-org/.github#1506).
 helpers of `curve_group` and `curve_group_2` print no scalar or operand they
 refuse, except a modulus, and name a non-integer by its type (closes #100).
 
+### While the bot review is off, `CONTRIBUTING.md` says what stands in for the ack
+
+*The review* says there is no ack of record while `claude-review.yml` is
+off, and that a local review of a named sha by a reviewer other than the
+author stands in for it (issue btclib-org/.github#1527).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
