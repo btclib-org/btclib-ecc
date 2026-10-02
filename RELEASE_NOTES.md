@@ -38,6 +38,14 @@ before upgrading, rather than a digit.
   Earlier releases keep `reusable-attest.yml` and take the same
   `--source-ref`.
 
+- **`ssa` signs with a different nonce on a curve whose order is longer than
+  the hash's output, such as sha256 on secp384r1 or secp521r1**
+  (GHSA-m38m-987v-j55h). Every other pair, secp256k1 with sha256 included,
+  signs as before, and old signatures still verify.
+
+  Act on it if you signed with `ssa` on such a pair: rotate the key, and
+  re-pin any deterministic signature you stored.
+
 ## v2026.9.30
 
 No breaking changes. An installed `btclib-secp256k1` older than the floor
