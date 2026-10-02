@@ -13,7 +13,7 @@ What this module exports is the class, the three multiplications,
 its own will come back, so that the tables built for it are kept -- the
 catalogue, the standards it is the union of, and the `*_params2` each of
 those is built from, which is what test_catalogued_curves rebuilds every
-curve out of with both expensive checks on. Beside the multiplications
+curve out of with every check on. Beside the multiplications
 are `sum_var`, `tweak_add_var` and `is_x_coordinate_var`, each checking
 its arguments for a private twin the library composes internally, and
 `TweakChain`, which checks its own. The standards are SEC2v1,
@@ -281,7 +281,7 @@ class Curve(CurveGroup):
         self.scalar_len = self.nlen
 
         # 5. Check that n is prime.
-        if not _is_prime(n):
+        if not self._primes_are_trusted and not _is_prime(n):
             err_msg = "n is not prime: "
             err_msg += f"{hex_string(n)}" if n > HEX_THRESHOLD else f"{n}"
             raise BTClibEccValueError(err_msg)
@@ -328,9 +328,9 @@ class Curve(CurveGroup):
         # building a curve: at import time the catalogued curves would
         # spend most of it on n*G alone, and a small part of it on the
         # primality of n. The catalogue therefore passes
-        # order_check=False, as it does weakness_check=False below: its
-        # parameters are constants, and test_catalogued_curves rebuilds
-        # every one of them from the json data with both checks on, while
+        # order_check=False and weakness_check=False below and skips the
+        # prime tests: its parameters are constants, and test_catalogued_curves
+        # rebuilds each from the json data with every check on, while
         # tests/curves/curve_group_test.py asserts n*G == INF for every
         # curve of CURVES through the affine and Jacobian double-and-adds
         # and their recursive forms. It stays on by default all the same,
@@ -489,20 +489,29 @@ def _catalogued_curve(params: list[Any], name: str) -> Curve:
     """Build one curve of the shipped catalogue, from its json parameters.
 
     One function for every catalogue, so that the flags cannot drift
-    apart. Both expensive checks are off: these parameters are the
+    apart. The expensive checks are off: these parameters are the
     standardized constants of SEC 2, FIPS 186-4 and RFC 5639, and
     re-deriving from them at every interpreter start that n is the order
     of G, and that the curve is not MOV-weak, would cost most of a
     module import, order_check the large majority of that and
-    weakness_check a small remainder. What is verified once, by
+    weakness_check a small remainder. The Baillie-PSW test of p and n is
+    skipped too, through _primes_are_trusted: every process that imports a
+    curve would pay for it. What is verified once, by
     test_catalogued_curves rebuilding each curve from the same json data
-    with both checks on, does not have to be verified again on the way to
+    with every check on, does not have to be verified again on the way to
     every signature.
+
+    A curve a caller builds always has p and n tested: only this function
+    sets `_primes_are_trusted`, and only while it constructs.
     """
     p, a, b, G, n, cofactor = params
-    return Curve(
-        p, a, b, G, n, cofactor, weakness_check=False, order_check=False, name=name
+    ec = Curve.__new__(Curve)
+    ec._primes_are_trusted = True
+    Curve.__init__(
+        ec, p, a, b, G, n, cofactor, weakness_check=False, order_check=False, name=name
     )
+    del ec._primes_are_trusted
+    return ec
 
 
 # Elliptic Curve Cryptography (ECC)

@@ -80,7 +80,7 @@ from btclib_ecc.curves.curve_group import (
 )
 from btclib_ecc.ecc import second_generator
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
-from btclib_ecc.number_theory import mod_inv_var, mod_sqrt_var
+from btclib_ecc.number_theory import _is_prime, mod_inv_var, mod_sqrt_var
 from tests import load, needs_bindings, vector_id
 
 # test curves: very low cardinality. The name is p and n, in that order,
@@ -378,13 +378,14 @@ def test_catalogued_curves() -> None:
     """Rebuild the catalogue from its json data, with every check on.
 
     btclib_ecc.curves.curve builds it with order_check=False and
-    weakness_check=False, since re-deriving them at every interpreter
-    start would cost most of a module import; this is where they happen
-    instead, and both default to on, so constructing the curves here is
-    what runs them. A wrong n in the json data, or a curve whose
-    embedding degree is small, fails a test rather than nothing at all.
+    weakness_check=False, and without testing p and n prime, since
+    re-deriving them at every interpreter start would cost most of a
+    module import; this is where they happen instead, the constructor
+    doing all three by default. A wrong n in the json data, a composite
+    p or n, or a curve whose embedding degree is small, fails a test
+    rather than nothing at all.
 
-    Not the only place either check happens -- test_ec_repr rebuilds each
+    Not the only place these checks happen -- test_ec_repr rebuilds each
     curve from its repr, and tests/curves/curve_group_test.py asserts n*G
     == INF for every curve of CURVES through the affine and Jacobian
     double-and-adds and their recursive forms -- but the one that is
@@ -396,6 +397,8 @@ def test_catalogued_curves() -> None:
         for name, (p, a, b, G, n, cofactor) in params2.items():
             rebuilt = Curve(p, a, b, G, n, cofactor, name=name)
             assert rebuilt == CURVES[name]
+            assert _is_prime(CURVES[name].p)
+            assert _is_prime(CURVES[name].n)
             checked.add(name)
     assert checked == set(CURVES)
 

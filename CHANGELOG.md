@@ -25,6 +25,12 @@ driver that would keep both sides' numbers.
 
 ## v2026.11 (work in progress, not released yet)
 
+### The catalogue no longer tests its primes at import
+
+The catalogue builds its curves without testing p and n prime, and the
+test suite tests them. A caller's curve is checked as before
+(closes #112).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge

@@ -104,6 +104,10 @@ class CurveGroup:
     alone.
     """
 
+    # Set on an instance by `curve._catalogued_curve` alone, to skip the
+    # test that p (and n, for a Curve) is prime
+    _primes_are_trusted = False
+
     def __init__(self, p: Integer, a: Integer, b: Integer) -> None:
         # Parameters are checked according to SEC 1 v.2 3.1.1.2.1
         p = int_from_integer(p)
@@ -111,7 +115,7 @@ class CurveGroup:
         b = int_from_integer(b)
 
         # 1) check that p is a prime
-        if not _is_prime(p):
+        if not self._primes_are_trusted and not _is_prime(p):
             err_msg = "p is not prime: "
             err_msg += f"'{hex_string(p)}'" if p > HEX_THRESHOLD else f"{p}"
             raise BTClibEccValueError(err_msg)
