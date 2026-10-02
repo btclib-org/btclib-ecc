@@ -1361,7 +1361,9 @@ def _recover_pub_key_(c: int, r: int, s: int, ec: Curve) -> int:
     if c == 0:
         raise BTClibEccRuntimeError("invalid zero challenge")
 
-    KJ = r, _y_even_var(r, ec), 1
+    # a nonce point outside <G> is no signature's, and the key recovered
+    # from it would be outside <G> as well: refused, as verification does
+    KJ = r, _y_even_in_subgroup_var(r, ec), 1
 
     e1 = mod_inv_var(c, ec.n)
     # libsecp256k1 recovers no x-only key -- its recovery module is ECDSA
