@@ -44,6 +44,18 @@ __all__ = [
 ]
 
 
+def _stretch(tag: bytes, m: bytes, size: int, hf: HashF) -> bytes:
+    """Return size bytes of TaggedHash(tag, m || I2OSP(i, 4)), i = 0, 1, ...
+
+    MGF1's counter mode (RFC 8017 B.2.1), with the tagged hash as its hash.
+    """
+    blocks = -(-size // hf().digest_size)
+    digests = b"".join(
+        tagged_hash(tag, m + i.to_bytes(4, "big"), hf) for i in range(blocks)
+    )
+    return digests[:size]
+
+
 def _bip340_nonce_(msg: bytes, q: int, Q: int, aux: bytes, ec: Curve, hf: HashF) -> int:
     # assume the random oracle model for the hash function,
     # i.e. hash values can be considered uniformly random
@@ -54,11 +66,20 @@ def _bip340_nonce_(msg: bytes, q: int, Q: int, aux: bytes, ec: Curve, hf: HashF)
     # then the bias is not observable:
     # e.g. for secp256k1 and sha256 1-n/2^256 it is about 1.27*2^-128
     #
-    # the unbiased implementation is provided here,
-    # which works also for very-low-cardinality test curves
-    randomizer = tagged_hash(b"BIP0340/aux", aux, hf)
+    # where one digest covers nlen bits, the loop below is the
+    # unbiased implementation, which works also for
+    # very-low-cardinality test curves
+    hf_len = hf().digest_size
+    # a hash shorter than the curve order takes the counter-mode branch,
+    # for the aux mask here and for the nonce below: one digest would
+    # mask only the low hlen bits of q
+    stretched = hf_len * 8 < ec.nlen
+    if stretched:
+        randomizer = _stretch(b"BIP0340/aux", aux, ec.n_size, hf)
+    else:
+        randomizer = tagged_hash(b"BIP0340/aux", aux, hf)
     xor = q ^ int.from_bytes(randomizer, "big", signed=False)
-    max_len = max(ec.n_size, hf().digest_size)
+    max_len = max(ec.n_size, hf_len)
     t = b"".join(
         [
             xor.to_bytes(max_len, byteorder="big", signed=False),
@@ -68,6 +89,19 @@ def _bip340_nonce_(msg: bytes, q: int, Q: int, aux: bytes, ec: Curve, hf: HashF)
     )
 
     nonce_tag = b"BIP0340/nonce"
+    if stretched:
+        # One digest would leave every nonce below 2^hlen: a few
+        # signatures then give the key away as a hidden number problem.
+        # So whole digests are drawn in counter mode until they give at
+        # least nlen + 64 bits, and reduced as FIPS 186-5 A.3.1 and
+        # A.4.1 reduce them: the bias is below 2^-64 and the nonce is
+        # never zero.
+        # Whether this branch is taken depends on ec and hf alone, so
+        # one pair never mixes the two derivations.
+        size = -(-(ec.nlen + 64) // (hf_len * 8)) * hf_len
+        digests = _stretch(nonce_tag, t, size, hf)
+        return int.from_bytes(digests, "big") % (ec.n - 1) + 1
+
     while True:
         t = tagged_hash(nonce_tag, t, hf)
         # reducing the hash mod n -- whether the whole of it or its
@@ -96,6 +130,12 @@ def bip340_nonce_(
     The message is of any size: BIP340 puts no size restriction on it,
     and the nonce tagged hash absorbs any length just as the challenge
     does.
+
+    A hash function shorter than the curve order gets as many tagged
+    hashes as make at least nlen + 64 bits, reduced into 1..n-1: one
+    digest would leave every nonce shorter than n. Its aux mask is
+    stretched the same way to the size of n, so that it covers all of
+    the key.
     """
     hf_len = hf().digest_size
     msg = bytes_from_octets(msg)

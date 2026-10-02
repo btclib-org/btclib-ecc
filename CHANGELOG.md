@@ -240,6 +240,12 @@ On a curve of cofactor above 1 (secp112r2, secp128r2), `ssa` refuses a key
 outside ⟨G⟩, and a batch an `r` whose point is outside it, with `dsa`'s message
 (GHSA-r5pw-9wrg-m3mj). secp256k1 is unchanged.
 
+### The BIP340 nonce covers the curve order when the hash is shorter
+
+With a hash shorter than the curve order, such as sha256 on secp521r1, the aux
+mask covers the whole key and the nonce the whole order: the `ssa` signatures
+of those pairs change, and no other pair's do (GHSA-m38m-987v-j55h).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip
