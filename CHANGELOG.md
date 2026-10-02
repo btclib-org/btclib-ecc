@@ -204,6 +204,12 @@ The publish jobs, `github-release` and `test.yml`'s `dist` job on a release
 stop where the `dist` they download differs from the digests
 `reusable-build.yml` outputs (issue #83, btclib-org/btclib#2449).
 
+### CONTRIBUTING.md lists the jobs that do not pass `--locked`
+
+CONTRIBUTING.md and `ASSURANCE_CASE.md` no longer say every job passes
+`--locked`: they list the exceptions, none of which installs the project's
+dependencies unpinned in the build job (btclib-org/btclib#2440, issue #83).
+
 ## v2026.9.30
 
 ### Vendored-vector pins follow upstream's tip

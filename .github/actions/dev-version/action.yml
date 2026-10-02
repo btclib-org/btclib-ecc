@@ -51,9 +51,8 @@ runs:
         grep -m1 '^version' pyproject.toml
         # uv.lock carries the project version, so patching pyproject.toml
         # leaves the two disagreeing, and every uv command that passes
-        # --locked -- which is all of them, by convention -- then fails
-        # with "the lockfile needs to be updated". The re-lock is also
-        # what makes the sdist coherent: it ships uv.lock, which
-        # otherwise declared the unsuffixed version inside a
+        # --locked then fails with "the lockfile needs to be updated". The
+        # re-lock is also what makes the sdist coherent: it ships uv.lock,
+        # which otherwise declared the unsuffixed version inside a
         # distribution named for the suffixed one
         uv lock

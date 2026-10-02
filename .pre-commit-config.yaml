@@ -629,7 +629,7 @@ repos:
   # test would be Any and every assertion about it would check out
   # vacuously. This is the very command the lint workflow runs, against
   # the project environment and the real pytest.
-  # --locked, as everywhere else, and not --frozen, which takes uv.lock as
+  # --locked, and not --frozen, which takes uv.lock as
   # it finds it: a dependency added to pyproject.toml without a re-lock
   # leaves mypy type checking a stale environment and saying nothing about
   # it.

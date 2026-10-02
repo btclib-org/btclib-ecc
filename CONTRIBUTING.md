@@ -633,6 +633,32 @@ unresolved cross-reference into a warning for `-W` to fail on, and
 `conf.py`'s `intersphinx_mapping` is what resolves a reference into the
 standard library.
 
+**Every job that installs from `uv.lock` passes `--locked`.** The jobs
+that do not are deliberate:
+
+- `deps-latest.yml` runs `uv lock --upgrade` to test the newest versions,
+  and `deps-oldest.yml` runs `uv lock --resolution lowest-direct` to test
+  the floors; neither commits the lock.
+- `pypi-install.yml` runs `pip install` to test the published release.
+- `fuzz.yml`'s ClusterFuzzLite build installs
+  `.clusterfuzzlite/requirements.txt`, the lock exported with its hashes by
+  the `uv-export` hook, with `pip3 install --require-hashes`.
+- `test.yml`'s `dist` job smoke-tests the wheel with `uv pip install`,
+  which resolves its dependencies from the index, as a user would get
+  them.
+- `uv build` and `uv run --no-project` install none of the project's
+  dependencies.
+- The `dev-version` action re-locks after writing a rehearsal's version
+  suffix; `uv lock` keeps the versions already locked.
+- `public-api`, in btclib-org/.github's `reusable-public-api.yml`, runs
+  `uvx griffe==2.2.0`: a pinned version, with its own dependencies
+  unlocked.
+
+On a release, `reusable-build.yml` builds the published files with `uv
+build` and `uv run --no-project`, and on a rehearsal the `dev-version`
+re-lock: none installs the project's dependencies. The `dist` job runs
+after it, on the files it uploaded, and publishes nothing.
+
 **Check exit codes, not filtered output.** `pre-commit run ... | grep -v
 Passed` hides a failure, and `grep` finding nothing exits 1, which is not
 the gate's answer to anything.
