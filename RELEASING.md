@@ -646,9 +646,11 @@ result.
    rehearsal dispatched from a branch from verifying as this release. A
    release made before this repository called `reusable-build.yml` was
    signed by `reusable-attest.yml`, and verifies with that workflow as
-   the signer and no `--source-ref`. For a signer that is a reusable workflow,
-   `gh attestation verify --help` requires `--signer-workflow` or
+   the signer and the same `--source-ref`. For a signer that is a reusable
+   workflow, `gh attestation verify --help` requires `--signer-workflow` or
    `--signer-repo`, and without one either form refuses the release.
+   v2026.9.26, built before the repository took its current name, takes
+   `--repo btclib-org/ellipticcurves`.
    Neither form is offline on its own — the
    Sigstore trusted root comes over the network unless
    `gh attestation trusted-root > trusted_root.jsonl` fetched it earlier
@@ -731,7 +733,9 @@ gh attestation verify "sbom/btclib_ecc-${version:?}.cdx.json" \
 ```
 
 A release made before this repository called `reusable-build.yml` names
-`reusable-attest.yml` as the signer instead, with no `--source-ref`.
+`reusable-attest.yml` as the signer instead, with the same
+`--source-ref`. v2026.9.26, built before the repository took its current
+name, takes `--repo btclib-org/ellipticcurves`.
 
 `python` is the interpreter the tag's own `.python-version` pins, its
 comment and blank lines dropped, and not the one `main` pins:

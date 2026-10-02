@@ -35,7 +35,8 @@ before upgrading, rather than a digit.
   `gh attestation verify` takes
   `--signer-workflow btclib-org/.github/.github/workflows/reusable-build.yml@refs/heads/main`
   and `--source-ref refs/tags/v<version>`; SECURITY.md has the command.
-  Earlier releases keep `reusable-attest.yml`.
+  Earlier releases keep `reusable-attest.yml` and take the same
+  `--source-ref`.
 
 ## v2026.9.30
 
