@@ -49,6 +49,11 @@ The `-text` lines for the vendored files sit below a `## This repository in
 particular` heading, so they are not compared with the organization's copy
 (issue btclib-org/.github#1543).
 
+### `REPOSITORY.md` reads back the web sign-off setting
+
+`REPOSITORY.md` reads `web_commit_signoff_required` back, the organization
+setting section 11 of the standard states (issue btclib-org/.github#1540).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge
