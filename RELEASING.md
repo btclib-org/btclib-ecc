@@ -387,7 +387,7 @@ result.
    "Squash and merge" is the only method either the repository setting
    or the ruleset accepts, and auto-merge presses it once the approval
    and the checks are in. Branch protection requires an approving review,
-   and the release pull request waits for one from an owner other than
+   and the release pull request waits for one from somebody other than
    its author, like every other. There is no second landing to choose
    between: a direct push to `main` is refused for everyone.
 

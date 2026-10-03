@@ -68,7 +68,7 @@ btclib-org/.github#452).
 
 ### The bypass is for emergencies
 
-Every pull request lands with an approving review from an owner other than
+Every pull request lands with an approving review from somebody other than
 its author, and the bypass is the emergency path, in `CONTRIBUTING.md`,
 `RELEASING.md` and `REPOSITORY.md` (issue btclib-org/.github#1362).
 
