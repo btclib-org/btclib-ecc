@@ -60,6 +60,12 @@ setting section 11 of the standard states (issue btclib-org/.github#1540).
 `Signed-off-by:` trailer cannot merge, and `REPOSITORY.md` lists
 `lint / Sign-off` among the required checks (issue btclib-org/.github#1550).
 
+### `CONTRIBUTING.md` says the ack of record is a bot's
+
+*The review* says the maintainer lands their own pull requests through the
+bypass, and that the ack of record is a bot's (issue
+btclib-org/.github#452).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge
