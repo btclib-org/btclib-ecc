@@ -47,6 +47,10 @@
 CHANGELOG.md merge=union
 RELEASE_NOTES.md merge=union
 
+## This repository in particular
+# Everything above is the same file in every repository of the organization;
+# everything below is this one's, and the comparison stops at this heading.
+
 # The vendored files `tests/_data/README.md` names are held to a git blob
 # SHA-1 over their committed bytes, which `check_vendored_vectors.py` and
 # its test read straight off the disk. `-text` is what keeps a checkout
