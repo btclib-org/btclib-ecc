@@ -101,6 +101,12 @@ because uv can answer from a cached index and miss a version just published
 required checks too, and `REVIEWING.md`'s "hold the merge" excepts it
 (issue btclib-org/.github#1597).
 
+### Release notes name a change to the release's assets
+
+RELEASING.md asks that RELEASE_NOTES.md name a change to the release's assets
+or to how they are verified. RELEASE_NOTES.md names the `.intoto.jsonl` bundle
+(issue btclib-org/.github#1596).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge

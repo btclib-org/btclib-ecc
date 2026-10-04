@@ -20,6 +20,10 @@ before upgrading, rather than a digit.
   Act on it if you verified `ssa` signatures on one of these curves with an
   earlier release: verify them again. One under a key outside the subgroup now
   fails.
+- **The attestation bundle is attached as `v<version>.intoto.jsonl`** from
+  v2026.10.2 on, where earlier releases attach `v<version>.attestation.jsonl`.
+  A script that downloads it by name, or passes it to
+  `gh attestation verify --bundle`, uses the new name.
 
 ## v2026.10.2
 
