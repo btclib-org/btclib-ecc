@@ -9,11 +9,6 @@ derives: prose can be reviewed, a number is right or wrong invisibly.
 Checking the number against the entries would make it a line every open
 branch has to edit, so neither file states one -- CHANGELOG.md's preamble
 says so -- and this module fails on a count in either.
-
-A test rather than a reading because `.gitattributes` marks both files
-`merge=union`: the driver never conflicts, so a branch carrying a count
-paragraph restores it on a rebase with nothing in the merge output to say
-so.
 """
 
 import re

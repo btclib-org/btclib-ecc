@@ -20,8 +20,7 @@ which say what a user has to act on; this file is the record behind them.
 [std]: https://github.com/btclib-org/.github
 
 Neither file states how many entries it holds: a stated number is a line
-every open branch has to edit, and the two files carry a union merge
-driver that would keep both sides' numbers.
+every open branch has to edit.
 
 ## v2026.11 (work in progress, not released yet)
 
@@ -83,6 +82,12 @@ btclib-org/.github#1569).
 The open section of the release notes names the advisory v2026.10.2 fixed, and
 says what a user of `ssa` on secp112r2 and secp128r2 does about it
 (closes #135).
+
+### The forms set a type, the history files have no merge driver
+
+Issue forms set `type:`; `.gitattributes` loses `merge=union` and the heading the
+entry above added; a release reviews the bestpractices.dev answers (issue
+btclib-org/.github#1582).
 
 ## v2026.10.2
 
