@@ -107,6 +107,11 @@ RELEASING.md asks that RELEASE_NOTES.md name a change to the release's assets
 or to how they are verified. RELEASE_NOTES.md names the `.intoto.jsonl` bundle
 (issue btclib-org/.github#1596).
 
+### `check-changelog` refuses an entry added to an older release
+
+A `###` heading under a release older than the newest, absent at the merge
+base with `origin/main`, is refused (issue btclib-org/.github#1614).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge
