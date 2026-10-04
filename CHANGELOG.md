@@ -78,6 +78,12 @@ Entries above that have the maintainer landing without another person's
 approval describe the rule before issue btclib-org/.github#1362 (issue
 btclib-org/.github#1569).
 
+### The release notes name GHSA-r5pw-9wrg-m3mj, fixed in v2026.10.2
+
+The open section of the release notes names the advisory v2026.10.2 fixed, and
+says what a user of `ssa` on secp112r2 and secp128r2 does about it
+(closes #135).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge
