@@ -89,6 +89,12 @@ Issue forms set `type:`; `.gitattributes` loses `merge=union` and the heading th
 entry above added; a release reviews the bestpractices.dev answers (issue
 btclib-org/.github#1582).
 
+### The post-release install refreshes the index
+
+RELEASING.md installs the release with `--refresh-package btclib-ecc`,
+because uv can answer from a cached index and miss a version just published
+(issue btclib-org/.github#1595).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge
