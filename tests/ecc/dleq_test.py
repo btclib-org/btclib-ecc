@@ -19,6 +19,7 @@ import pytest
 from btclib_ecc.curves import mult, point_from_pub_key, secp256k1
 from btclib_ecc.ecc import dleq
 from btclib_ecc.exceptions import BTClibEccValueError
+from btclib_ecc.hashes import tagged_hash
 from tests import load_csv, vector_id
 
 # what the generation file writes in the proof column of a case that must
@@ -67,7 +68,7 @@ def test_generate_proof_vectors(
 def test_verify_proof_vectors(
     G: str, A: str, B: str, C: str, proof: str, msg: str, success: str
 ) -> None:
-    """BIP374's verification vectors, the seven failure cases included."""
+    """BIP374's verification vectors, the failure cases included."""
     m = msg or None
     expected = success == "TRUE"
     assert dleq.verify_proof(A, B, C, proof, G, m) is expected
@@ -150,19 +151,12 @@ def test_a_proof_is_64_bytes() -> None:
 
 
 def test_an_s_of_n_or_more_is_refused() -> None:
-    """An s of n or more, of which the verification file reaches only n.
+    """An s of n or more is refused: the vectors cover n, this adds 2^256 - 1.
 
-    A proof carrying such an s cannot be generated -- s is computed mod n
-    -- so upstream's generator produces none, and its verification file
-    has the one case of s equal to n. Refused all the same, and not
-    because the arithmetic would go wrong: s and s + n multiply a point to
-    the same result, so an unchecked verifier would accept two encodings
-    of every proof it accepts one of. n itself and the largest 32-byte
-    value are the two ends of the range that names.
-
-    The check is what makes the encoding canonical rather than what makes
-    it safe, and the asymmetry with e says which: e is compared to a hash
-    and is left unreduced, so there is exactly one e that verifies.
+    A proof carrying such an s cannot be generated -- s is computed mod n.
+    It is refused all the same: s and s + n multiply a point to the same
+    result, so an unchecked verifier would accept two encodings of every
+    proof it accepts one of. The check makes the encoding canonical.
     """
     a = 0xC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B14E5C9
     B = mult(2)
@@ -174,6 +168,50 @@ def test_an_s_of_n_or_more_is_refused() -> None:
         with pytest.raises(BTClibEccValueError, match="s not in 0..n-1"):
             dleq.assert_proof_as_valid(A, B, C, forged)
         assert dleq.verify_proof(A, B, C, forged) is False
+
+
+def test_an_e_of_n_or_more_is_refused() -> None:
+    """BIP374 0.3.0 rejects e >= n, which no honest proof carries.
+
+    n, n + 1 and the largest 32-byte value are tried.
+    """
+    a = 0xC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B14E5C9
+    B = mult(2)
+    A, C = mult(a), mult(a, B)
+    proof = dleq.generate_proof(a, B)
+    for bad in (secp256k1.n, secp256k1.n + 1, 2**256 - 1):
+        forged = bad.to_bytes(32, "big") + proof[32:]
+        with pytest.raises(BTClibEccValueError, match="e not in 0..n-1"):
+            dleq.assert_proof_as_valid(A, B, C, forged)
+        assert dleq.verify_proof(A, B, C, forged) is False
+
+
+def test_the_challenge_is_reduced_modulo_n(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A challenge hash of n or more is reduced, as BIP374 0.3.0 says.
+
+    Such a hash turns up once in 2^128 proofs, so the hash is replaced by
+    one that does it, for the challenge tag only.
+    """
+    hash_value = secp256k1.n + 5
+    real = tagged_hash
+
+    def patched(tag: bytes, msg: bytes) -> bytes:
+        if tag == dleq._CHALLENGE_TAG:
+            return hash_value.to_bytes(32, "big")
+        return real(tag, msg)
+
+    monkeypatch.setattr(dleq, "tagged_hash", patched)
+
+    a = 0xC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B14E5C9
+    B = mult(2)
+    A, C = mult(a), mult(a, B)
+    proof = dleq.generate_proof(a, B)
+    assert int.from_bytes(proof[:32], "big") == 5
+    assert dleq.verify_proof(A, B, C, proof) is True
+
+    # the unreduced challenge, which BIP374 0.2.0 carried, is refused
+    old = hash_value.to_bytes(32, "big") + proof[32:]
+    assert dleq.verify_proof(A, B, C, old) is False
 
 
 def test_a_nonce_point_at_infinity_is_refused() -> None:
