@@ -587,12 +587,14 @@ covers both directions over one set of keys, and a permutation the
 challenge would have accepted is a defect the generation file alone could
 not show.
 
-Three BIP374 failure conditions have no vector in either file and are
-covered by `tests/ecc/dleq_test.py` instead: `s >= n`, and R1 or R2
-landing on infinity. None of the three is a proof anybody generates --
-s is computed mod n, and an infinite R needs s == e over A == G or
-B == C -- so upstream's generator produces none of them and the test
+BIP374's failure conditions R1 and R2 landing on infinity have no vector
+in either file and are covered by `tests/ecc/dleq_test.py` instead.
+Neither is a proof anybody generates -- an infinite R needs s == e over
+A == G or B == C -- so upstream's generator produces none and the test
 builds each.
+
+`s >= n` is reached by the verification file only at `s == n`; the test
+adds the largest value an s field holds.
 
 ## bitcoin-core/secp256k1
 
@@ -601,9 +603,9 @@ builds each.
 ```text
 repo    bitcoin-core/secp256k1
 path    src
-commit  b819a790f06122d5a53c0320e79c0dc486349fbd  2026-09-28
-ours    77be29e88b8d76602f416de9c47bcd2a13cf542d
-pulled  2026-09-10, refreshed 2026-09-14
+commit  186eec1c1b93d71d2131cd228ca16b4b97738f60  2026-10-02
+ours    633cb36fc1c9f08d0069a510277dccac1835492c
+pulled  2026-09-10, refreshed 2026-09-14 and 2026-10-06
 behind  0 revisions; that commit is the tip of the path
 ```
 
