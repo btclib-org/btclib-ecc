@@ -118,6 +118,12 @@ base with `origin/main`, is refused (issue btclib-org/.github#1614).
 `186eec1c1b93d71d2131cd228ca16b4b97738f60` and gains `secp256k1_ecmult_const_ge`
 and `secp256k1_ecmult_const_gej` (closes #146).
 
+### `rangeproof.sign` warns about its nonce, `_grind_low_r` cites BIP461
+
+`rangeproof.sign`'s docstring says `nonce` must be unique, never reused and
+kept secret. `_grind_low_r`'s docstring cites
+[BIP461](https://github.com/bitcoin/bips/blob/master/bip-0461.md) (closes #151).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge

@@ -1083,6 +1083,12 @@ def sign(
     bounds `secp256k1_rangeproof_sign_impl` reads before it asks for a
     header.
 
+    `nonce` must be unique to each call, never reused, and kept secret
+    except from parties allowed to `rewind` the proof: anyone who learns
+    it recovers `value` and `blind`, and reusing it across two proofs may
+    expose `blind` even to a party that never learns it. See
+    https://github.com/BlockstreamResearch/secp256k1-zkp/pull/370.
+
     `blind` is a scalar, read through `curves.scalar_from_prv_key`,
     which refuses at or past n as zkp does and refuses zero where zkp
     signs one: a zero blinding factor leaves the last ring's own
