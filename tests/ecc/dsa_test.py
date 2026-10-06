@@ -1867,6 +1867,41 @@ def test_verify_with_another_hash_function_on_both_arithmetics(
     checks()
 
 
+def test_verify_refuses_r_plus_n_overflowing_p(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """libsecp256k1's vector where r + n overflows p is refused.
+
+    bitcoin-core/secp256k1#1948, `run_ecdsa_edge_cases`: r = p - n + 1, so
+    (r + n) mod p = 1. With s = 1 and a zero digest, verification computes
+    R = r*Q. The key makes x(R) = 1, which a verifier that skips the
+    r + n < p check takes for a match.
+
+    Run on the bindings where they are installed, then on the Python arm.
+    """
+    ec = secp256k1
+    r = ec.p - ec.n + 1
+    assert r.to_bytes(32, "big").hex() == (
+        "000000000000000000000000000000014551231950b75fc4402da1722fc9baef"
+    )
+    key = bytes.fromhex(
+        "0257ad61c8683fcf069919118c0f99b9389f65059ba071babea63205341445dae8"
+    )
+    sig = dsa.Sig(r, 1)
+
+    # control: the vector does reach the overflow case
+    assert r + ec.n > ec.p
+    assert mult(r, point_from_octets(key))[0] == 1
+
+    def checks() -> None:
+        assert not dsa.verify_(bytes(32), key, sig)
+
+    checks()
+    with monkeypatch.context() as python:
+        python.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+        checks()
+
+
 def test_verify_answers_about_signatures_not_about_types() -> None:
     """A caller error is not an invalid signature.
 
