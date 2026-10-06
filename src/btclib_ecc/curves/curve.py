@@ -44,6 +44,7 @@ from btclib_ecc._libsecp256k1 import INSTALLED as _bindings_installed
 from btclib_ecc._libsecp256k1 import (
     PubkeyTweakChain as Libsecp256k1PubkeyTweakChain,
 )
+from btclib_ecc._libsecp256k1 import _check_once as _check_bindings_once
 from btclib_ecc._libsecp256k1 import (
     pubkey_from_prvkey as libsecp256k1_pubkey_from_prvkey,
 )
@@ -621,12 +622,18 @@ def set_libsecp256k1_serving(*, serving: bool) -> None:
     `BTCLIB_ECC_NO_LIBSECP256K1` set to a non-empty value makes the initial
     state False, which is what a test runner wants -- it settles before
     the first import, where this function cannot.
+
+    The first `serving=True` after that variable refused the bindings
+    checks them against known answers. If one is wrong it raises
+    `BTClibEccRuntimeError` and the state is as it was.
     """
     assert_type(serving, bool, "serving")
     if serving and not _bindings_installed:
         raise BTClibEccValueError(
             "btclib_secp256k1 is not installed: the bindings cannot serve"
         )
+    if serving:
+        _check_bindings_once(setter=True)
 
     global _libsecp256k1_available  # noqa: PLW0603
     _libsecp256k1_available = serving

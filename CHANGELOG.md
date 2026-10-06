@@ -124,6 +124,12 @@ and `secp256k1_ecmult_const_gej` (closes #146).
 kept secret. `_grind_low_r`'s docstring cites
 [BIP461](https://github.com/bitcoin/bips/blob/master/bip-0461.md) (closes #151).
 
+### The bindings are checked against known answers
+
+When the bindings are first selected, they derive one public key and verify one
+ECDSA signature, refuse it over another message and verify one BIP340
+signature. A wrong answer raises `BTClibEccRuntimeError` (closes #152).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge

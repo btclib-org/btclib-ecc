@@ -24,10 +24,10 @@ difference is this module's and the seam's, not a caller's:
 call goes to libsecp256k1 or to the Python arithmetic -- which is the
 only difference a caller can act on.
 
-A module that imports nothing else of this package, and is therefore
-below every module that reads it. What it does import is the whole of
-the surface this package uses, so this file is also the answer to "what
-does this package need these bindings for", which no reader has to
+A module that imports nothing of this package but `exceptions`, and is
+therefore below every module that reads it. What it imports from the bindings
+is the whole of the surface this package uses, so this file is also the answer
+to "what does this package need these bindings for", which no reader has to
 assemble from the delegating modules' own imports.
 
 The names are re-exported under the bindings' own spelling and the caller
@@ -72,7 +72,10 @@ from __future__ import annotations
 
 import os
 import re
+from hashlib import sha256
 from importlib import metadata
+
+from btclib_ecc.exceptions import BTClibEccRuntimeError
 
 # the environment variable that refuses the bindings without uninstalling
 # them, read once and here, when this module is first imported. `import
@@ -245,3 +248,82 @@ except (
 # asking whether the bindings serve has no use for the difference, and
 # `curves.curve` starts its seam from this
 ENABLED = INSTALLED and not os.environ.get(NO_LIBSECP256K1)
+
+
+def _wrong_bindings(what: str, *, setter: bool) -> BTClibEccRuntimeError:
+    """Return the error for a wrong answer of the bindings.
+
+    At import the variable is the way out; from the setter it is already
+    set, and not asking for the bindings is.
+    """
+    pure = "keep `serving=False`" if setter else f"set {NO_LIBSECP256K1}"
+    return BTClibEccRuntimeError(
+        f"the libsecp256k1 bindings {what}; btclib-ecc cannot use them. "
+        f"Reinstall them with `pip install --force-reinstall --no-cache-dir "
+        f"{_BINDINGS_DISTRIBUTION}`, or {pure} to use the pure Python arithmetic"
+    )
+
+
+def _check_bindings(*, setter: bool) -> None:
+    """Raise unless the bindings answer fixed vectors correctly.
+
+    A misbuilt or mismatched wheel could derive keys or verify signatures
+    wrongly with no error, so the bindings, when first selected, are asked a
+    public key, one ECDSA verification and its refusal over another message,
+    and one BIP340 verification. The answers are published, not taken from
+    the bindings. A `raise`, not an `assert`, so
+    that `python -O` keeps it.
+    """
+    # the public key of the private key 1 is the generator, SEC 2 section 2.4.1
+    g = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+    if pubkey_from_prvkey(1, True).hex() != g:
+        raise _wrong_bindings("derive a wrong public key", setter=setter)
+
+    # the first valid vector of the first group of Wycheproof 0.9rc5,
+    # tests/ecc/_data/ecdsa_secp256k1_sha256_bitcoin_test.json, with its key
+    # compressed and its signature as r || s, as
+    # `dsa.verify` passes it: `compact=True, normalize=True`
+    pub_key = bytes.fromhex(
+        "03b838ff44e5bc177bf21189d0766082fc9d843226887fc9760371100b7ee20a6f"
+    )
+    sig = bytes.fromhex(
+        "813ef79ccefa9a56f7ba805f0e478584fe5f0dd5f567bc09b5123ccbc9832365"
+        "6ff18a52dcc0336f7af62400a6dd9b810732baf1ff758000d6f613a556eb31ba"
+    )
+    msg_hash = sha256(bytes.fromhex("313233343030")).digest()
+    if not dsa.verify(msg_hash, pub_key, sig, normalize=True, compact=True):
+        raise _wrong_bindings("do not verify a known ECDSA signature", setter=setter)
+    if dsa.verify(
+        sha256(b"another message").digest(), pub_key, sig, normalize=True, compact=True
+    ):
+        raise _wrong_bindings(
+            "verify a known ECDSA signature over another message", setter=setter
+        )
+
+    # BIP340 test vector 0, tests/ecc/_data/bip340_test_vectors.csv
+    x_only = bytes.fromhex(
+        "F9308A019258C31049344F85F89D5229B531C845836F99B08601F113BCE036F9"
+    )
+    sig = bytes.fromhex(
+        "E907831F80848D1069A5371B402410364BDF1C5F8307B0084C55F1CE2DCA8215"
+        "25F66A4A85EA8B71E482A74F382D2CE5EBEEE8FDB2172F477DF4900D310536C0"
+    )
+    if not ssa.verify(bytes(32), x_only, sig):
+        raise _wrong_bindings("do not verify a known BIP340 signature", setter=setter)
+
+
+_checked = False
+
+
+def _check_once(*, setter: bool) -> None:
+    """Run `_check_bindings` unless it has already passed."""
+    global _checked  # noqa: PLW0603
+    if not _checked:
+        _check_bindings(setter=setter)
+        _checked = True
+
+
+# once, when the bindings are first selected: here, or in
+# `curves.curve.set_libsecp256k1_serving`
+if ENABLED:
+    _check_once(setter=False)
