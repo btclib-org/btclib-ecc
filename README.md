@@ -76,7 +76,7 @@ It is fully annotated and ships `py.typed`.
   on, for both signature schemes
 - [MuSig2](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)
   multi-signatures and
-  [FROST](https://github.com/bitcoin/bips/blob/master/bip-0445.mediawiki)
+  [FROST](https://github.com/bitcoin/bips/pull/2070) (draft BIP445)
   threshold signatures, one primitive per round of each protocol
 - Diffie-Hellman, and the
   [BIP324](https://github.com/bitcoin/bips/blob/master/bip-0324.mediawiki)

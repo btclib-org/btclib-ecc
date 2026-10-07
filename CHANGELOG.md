@@ -130,6 +130,11 @@ When the bindings are first selected, they derive one public key and verify one
 ECDSA signature, refuse it over another message and verify one BIP340
 signature. A wrong answer raises `BTClibEccRuntimeError` (closes #152).
 
+### The README links FROST where the draft is
+
+BIP445 is not on `bitcoin/bips` `master` but in its open pull request
+bitcoin/bips#2070, which the README links (closes #143).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge
