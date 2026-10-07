@@ -81,13 +81,7 @@ _PROOF_SIZE = 64
 def _challenge(
     A: Point, B: Point, C: Point, R1: Point, R2: Point, G: Point, msg: bytes
 ) -> int:
-    """Return BIP374's challenge, which is *not* reduced modulo n.
-
-    The full 256-bit hash is what the proof carries and what verification
-    compares, so reducing it here would answer a different question than
-    the one the vectors ask: an `e` above n is a legitimate challenge, and
-    the reduction happens where it belongs, inside the multiplication.
-    """
+    """Return BIP374's challenge, the tagged hash reduced modulo n."""
     t = b"".join(
         [
             bytes_from_point(A, secp256k1),
@@ -99,7 +93,7 @@ def _challenge(
             msg,
         ]
     )
-    return int.from_bytes(tagged_hash(_CHALLENGE_TAG, t), "big")
+    return int.from_bytes(tagged_hash(_CHALLENGE_TAG, t), "big") % secp256k1.n
 
 
 def _msg_bytes(msg: Octets | None) -> bytes:
@@ -208,10 +202,10 @@ def assert_proof_as_valid(
 
     e = int.from_bytes(proof_bytes[:_SCALAR_SIZE], "big")
     s = int.from_bytes(proof_bytes[_SCALAR_SIZE:], "big")
-    # e is not range-checked, and that asymmetry is BIP374's: the
-    # challenge is the unreduced hash, so an e above n is what an honest
-    # prover produces about one time in 2^128, while an s above n cannot
-    # be one -- s is computed mod n
+    # the challenge is a scalar, reduced mod n, and so is s: neither can
+    # be n or more in a proof a prover computed
+    if e >= secp256k1.n:
+        raise BTClibEccValueError("e not in 0..n-1")
     if s >= secp256k1.n:
         raise BTClibEccValueError("s not in 0..n-1")
 
@@ -231,16 +225,16 @@ def _assert_structurally_valid_(
 ) -> None:
     """Raise for a point, a proof or a message that cannot possibly be one.
 
-    Ahead of the try that turns everything else -- an s at or above the
-    group order, an R that lands on infinity, a challenge that does not
+    Ahead of the try that turns everything else -- an e or an s at or above
+    the group order, an R that lands on infinity, a challenge that does not
     match -- into False (issue btclib-org/btclib#2170).
 
     BIP374's reference draws the same line and draws it in the same
     places. `dleq_verify_proof` opens with `assert len(proof) == 64`, and
     the `dleq_challenge` it reaches at its last step opens with
     `if m is not None: assert len(m) == 32`; what it answers `False` for
-    is `s >= GE.ORDER`, `R1.infinity`, `R2.infinity` and a challenge
-    mismatch. So a proof of another length and a message of another
+    is `e >= GE.ORDER`, `s >= GE.ORDER`, `R1.infinity`, `R2.infinity` and a
+    challenge mismatch. So a proof of another length and a message of another
     length are both refusals there, and `bytes_from_octets(proof,
     _PROOF_SIZE)` and `_msg_bytes` are the two here.
 

@@ -135,6 +135,12 @@ signature. A wrong answer raises `BTClibEccRuntimeError` (closes #152).
 BIP445 is not on `bitcoin/bips` `master` but in its open pull request
 bitcoin/bips#2070, which the README links (closes #143).
 
+### DLEQ proofs follow BIP374 0.3.0
+
+The challenge is reduced modulo n, and a proof with `e` of n or more is
+refused, as BIP374 0.3.0 says. Only a challenge hash of n or more, once in
+2^128, changes a proof this library makes (closes #149).
+
 ## v2026.10.2
 
 ### The OpenSSF Baseline badge
