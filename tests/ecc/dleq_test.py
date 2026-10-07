@@ -150,15 +150,15 @@ def test_a_proof_is_64_bytes() -> None:
 
 
 def test_an_s_of_n_or_more_is_refused() -> None:
-    """The one BIP374 failure condition neither vector file reaches.
+    """An s of n or more, of which the verification file reaches only n.
 
     A proof carrying such an s cannot be generated -- s is computed mod n
-    -- so upstream's generator produces none and the pair of files has no
-    case for it. Refused all the same, and not because the arithmetic
-    would go wrong: s and s + n multiply a point to the same result, so
-    an unchecked verifier would accept two encodings of every proof it
-    accepts one of. n itself and the largest 32-byte value are the two
-    ends of the range that names.
+    -- so upstream's generator produces none, and its verification file
+    has the one case of s equal to n. Refused all the same, and not
+    because the arithmetic would go wrong: s and s + n multiply a point to
+    the same result, so an unchecked verifier would accept two encodings
+    of every proof it accepts one of. n itself and the largest 32-byte
+    value are the two ends of the range that names.
 
     The check is what makes the encoding canonical rather than what makes
     it safe, and the asymmetry with e says which: e is compared to a hash
@@ -177,7 +177,7 @@ def test_an_s_of_n_or_more_is_refused() -> None:
 
 
 def test_a_nonce_point_at_infinity_is_refused() -> None:
-    """R1 and R2 at infinity, the two conditions no vector reaches either.
+    """R1 and R2 at infinity, the two conditions no vector reaches.
 
     s*G - e*A is infinity exactly when s == e mod n and A == G, and
     s*B - e*C likewise for B == C: two proofs nobody generates, and two

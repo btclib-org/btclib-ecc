@@ -156,8 +156,6 @@ _EXEMPT: dict[str, str] = {
     "secp256k1's, three over secp256k1's own, and three failure cases -- a zero": _UPSTREAM_FACT,
     "All 17 vectors: the eight successes are the eight proofs of the file": _UPSTREAM_FACT,
     "above, read back, and the nine failures are five permutations of A, B and": _UPSTREAM_FACT,
-    "Three BIP374 failure conditions have no vector in either file and are": _UPSTREAM_FACT,
-    "landing on infinity. None of the three is a proof anybody generates --": _UPSTREAM_FACT,
     "Verdict: **reformatted**. 349 vectors, JSON-equal to the upstream blob;": _UPSTREAM_FACT,
     "ours is pretty-printed at four spaces. Re-checked on 2026-07-30: still": _UPSTREAM_FACT,
     "Verdict: **reformatted**. 199 vectors, JSON-equal.": _UPSTREAM_FACT,
