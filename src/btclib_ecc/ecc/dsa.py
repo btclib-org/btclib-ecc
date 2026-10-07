@@ -669,6 +669,9 @@ def _grind_low_r(attempt: Callable[[int], Sig], grind: bool, ec: Curve) -> Sig:
     `extra_entropy[32]` for every counter it reaches, electrum-ecc's
     `counter.to_bytes(32, "little")` and embit's the same.
 
+    BIP461 (https://github.com/bitcoin/bips/blob/master/bip-0461.md)
+    specifies the same sequence.
+
     The implementation that matters to this file, though, is the
     bindings' own `dsa._grind`: `sign_`'s delegated arm asks for it and
     the signature it answers with *is* its output, so this loop is what
@@ -684,7 +687,8 @@ def _grind_low_r(attempt: Callable[[int], Sig], grind: bool, ec: Curve) -> Sig:
     No attempt cap. Core has none, and one would answer an event of
     probability 2**-k with an error a caller can do nothing about; embit
     breaks its loop at 200, which is a 2**-200 signature that is not low-R
-    rather than a refusal.
+    rather than a refusal. BIP461 fails at counter 2**32, after 2**32
+    high draws in a row.
     """
     sig = attempt(0)
     if not grind:
