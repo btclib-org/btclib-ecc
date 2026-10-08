@@ -23,7 +23,7 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
-## v2026.11 (work in progress, not released yet)
+## v2026.10.8
 
 ### The catalogue no longer tests its primes at import
 
@@ -141,6 +141,22 @@ bitcoin/bips#2070, which the README links (closes #143).
 The challenge is reduced modulo n, and a proof with `e` of n or more is
 refused, as BIP374 0.3.0 says. Only a challenge hash of n or more, once in
 2^128, changes a proof this library makes (closes #149).
+
+### The shared halves and the release's own pull request
+
+A release's section is written in its own pull request (issue
+btclib-org/.github#1623). `CONTRIBUTING.md` and `REVIEWING.md` carry .github's
+shared text (issue btclib-org/.github#1620, issue btclib-org/.github#1634).
+
+### RELEASING.md tells the release to delete the work-in-progress paragraph
+
+The release that folds the `v2026.11` sections deletes the paragraph that
+describes them, in its own pull request (closes #158).
+
+### `Rewound` and `NonceChain` mask their fields in their repr
+
+Their repr names their fields without the values. Unpacking and field access
+are unchanged (GHSA-2wgq-4cfh-5gqh).
 
 ## v2026.10.2
 
