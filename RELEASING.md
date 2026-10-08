@@ -320,11 +320,6 @@ result.
    adds an entry (section 9). The notes are lifted from the section whose
    heading is the tag's own.
 
-   The `## v2026.11 (work in progress, not released yet)` sections in
-   both files predate that rule. This pull request folds what they hold
-   into the release's section and deletes them. The same pull request
-   deletes this paragraph.
-
 1. Set the version in `pyproject.toml`, which is the one place it is
    declared, to the date the release is cut, `YYYY.M.D`, and re-lock so
    `uv.lock` agrees:
