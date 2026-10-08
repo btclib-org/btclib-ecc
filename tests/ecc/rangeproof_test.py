@@ -1543,6 +1543,23 @@ def test_a_public_value_proof_rewinds_to_its_blinding_factor_alone() -> None:
     assert rewound == (int(_BLIND, 16), 100000, b"")
 
 
+def test_the_results_repr_holds_none_of_their_values() -> None:
+    """`Rewound` and `NonceChain` print no values; unpacking is unchanged."""
+    proof = sign(_BLIND, 100000, _NONCE, _GEN, message=b"secret message")
+    commitment = commit(_BLIND, 100000, _GEN)
+    rewound = rangeproof.rewind(commitment, proof, _NONCE, _GEN)
+    blind, value, message = rewound
+    assert (blind, value) == (int(_BLIND, 16), 100000)
+    assert rewound.message == message
+    assert repr(rewound) == "Rewound(blind=..., value=..., message=...)"
+
+    chain = rangeproof.NonceChain((123456789,), ((987654321, 2, 3, 4),))
+    factors, draws = chain
+    assert factors == (123456789,)
+    assert draws == ((987654321, 2, 3, 4),)
+    assert repr(chain) == "NonceChain(blinding_factors=..., draws=...)"
+
+
 @pytest.mark.parametrize(
     "value, min_bits",
     [(3, 4), (100000, 8), (100000, 20), (2**32, 33)],
