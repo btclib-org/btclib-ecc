@@ -127,6 +127,8 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import NamedTuple
 
+from typing_extensions import override
+
 from btclib_ecc._utils import (
     assert_no_trailing,
     bytes_from_octets,
@@ -508,6 +510,11 @@ class NonceChain(NamedTuple):
 
     blinding_factors: tuple[int, ...]
     draws: tuple[tuple[int, ...], ...]
+
+    @override
+    def __repr__(self) -> str:
+        """Name the fields without their values, which are secret."""
+        return f"{type(self).__name__}(blinding_factors=..., draws=...)"
 
 
 def _blocks(seed: bytes) -> Iterator[bytes]:
@@ -1513,6 +1520,11 @@ class Rewound(NamedTuple):
     blind: int
     value: int
     message: bytes
+
+    @override
+    def __repr__(self) -> str:
+        """Name the fields without their values, which are secret."""
+        return f"{type(self).__name__}(blind=..., value=..., message=...)"
 
 
 def rewind(
