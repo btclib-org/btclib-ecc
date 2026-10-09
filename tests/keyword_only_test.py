@@ -75,6 +75,7 @@ KEYWORD_ONLY: dict[str, list[str]] = {
     "btclib_ecc.ecc.dsa:sign_": ["grind", "verify", "pub_key", "commit_hash"],
     "btclib_ecc.ecc.dsa:verify": ["commit", "receipt"],
     "btclib_ecc.ecc.dsa:verify_": ["commit_hash", "receipt"],
+    "btclib_ecc.ecc.ecdsa_adaptor:encrypt": ["nonce"],
     "btclib_ecc.ecc.ecies:Envelope.__init__": ["check_validity"],
     "btclib_ecc.ecc.ecies:Envelope.b64decode": ["magic", "check_validity"],
     "btclib_ecc.ecc.ecies:Envelope.b64encode": ["check_validity"],

@@ -203,9 +203,9 @@ package is used to teach and to prototype as much as to build:
     `double_mult_var`, so those multiplications are delegated whatever
     else the signature asks for. The rest of that signature is not --
     the inversion of the nonce and the arithmetic on the key around it
-    are Python integers. That inversion is blinded, and is the one place
-    in the package where a secret is inverted at all: `mod_inv` draws a
-    random factor, so that the extended Euclid's iteration count follows
+    are Python integers. That inversion is blinded, as every inversion
+    of a secret in the package is: `mod_inv` draws a random factor, so
+    that the extended Euclid's iteration count follows
     the factor rather than the nonce. Unblinded it followed the nonce's
     bit-length -- roughly twice the cost for a 256-bit scalar as for a
     128-bit one on secp256k1's order -- which is the correlation the

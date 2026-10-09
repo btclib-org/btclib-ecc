@@ -81,6 +81,8 @@ It is fully annotated and ships `py.typed`.
 - Diffie-Hellman, and the
   [BIP324](https://github.com/bitcoin/bips/blob/master/bip-0324.mediawiki)
   ElligatorSwift encoding of a public key
+- [ECDSA adaptor signatures](https://github.com/discreetlogcontracts/dlcspecs/blob/master/ECDSA-adaptor.md)
+  of the DLC specification
 - [BIP374](https://github.com/bitcoin/bips/blob/master/bip-0374.mediawiki)
   discrete logarithm equality proofs
 - ECIES in the BIE1 layout, the block cipher supplied by the caller

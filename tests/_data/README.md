@@ -83,10 +83,11 @@ the file, never inside the file, so refreshing a pin is a fetch and never
 a merge.
 
 `pulled` is the date of the commit that put the current content in a
-tree, from `git log --follow --diff-filter=A`. Every file here came over
-from btclib-org/btclib, whose history this repository does not carry, so
-each `pulled` is a date in that repository's log, and the command that
-re-derives it is run there, against the file's path under `tests/`.
+tree, from `git log --follow --diff-filter=A`. A file this repository's
+first commit carried came over from btclib-org/btclib, whose history this
+repository does not carry: its `pulled` is a date in that repository's
+log, and the command is run there, against the file's path under
+`tests/`.
 
 `behind` counts upstream revisions of that path since the pin. It is a
 staleness figure, not a defect: a vector file is a fixed set of cases and
@@ -977,6 +978,21 @@ own terms and this repository's own `LICENSE` being at the root. The upstream
 name is in the entry above instead, where the pin already is. It is the
 name bitcoin-core/secp256k1 gives its copy for the same reason.
 
+### `tests/ecc/_data/ecdsa_adaptor.json`
+
+```text
+repo    discreetlogcontracts/dlcspecs
+path    test/ecdsa_adaptor.json
+commit  fcc9619f3505afbb5a3d2f7ba3896fc4910ae08e  2021-05-07
+blob    a6c9ca1f03a40e9591a416cc5d09d3ff7e530693
+pulled  2026-10-09
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical**. The specification's own file, whose cases
+libsecp256k1-zkp carries in `src/modules/ecdsa_adaptor/tests_impl.h` as
+`test_ecdsa_adaptor_spec_vectors`.
+
 ### `tests/ecc/_data/rfc6979.json`
 
 Verdict: **transcribed**. Appendix A.2 of RFC 6979 gives 50 vectors, ten each
@@ -1266,8 +1282,8 @@ git ls-files 'tests/_data/*' 'tests/*/_data/*' | grep -cv 'README.md'
 
 Against a pinned upstream blob:
 
-- identical byte for byte: the BIP327 vector files, and the Wycheproof
-  vector files.
+- identical byte for byte: the BIP327 vector files, the Wycheproof
+  vector files and `ecdsa_adaptor.json`.
 - identical but for a trailing newline: `WYCHEPROOF_COPYING`, and the
   BIP445 vector files.
 - identical but for CRLF against LF: `bip340_test_vectors.csv`, the
