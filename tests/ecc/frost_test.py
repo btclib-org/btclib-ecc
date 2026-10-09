@@ -5,7 +5,7 @@
 """Tests for the `btclib_ecc.ecc.frost` module.
 
 The vectors are BIP445's own, all six signing-algorithm files of
-`bitcoin/bips#2070`'s `bip-0445/python/vectors/`, vendored under
+`siv2r/bip-frost-signing`'s `python/vectors/`, vendored under
 `tests/ecc/_data/bip445/`; `tests/_data/README.md` pins the revision.
 Every case of every file is exercised, the error cases included, and an
 error case is checked against the exception the file names -- which
@@ -98,6 +98,7 @@ def test_nonce_gen_vectors(case: dict[str, Any]) -> None:
     sec_nonce, pub_nonce = frost.nonce_gen_(
         bytes.fromhex(case["rand"]),
         value("secshare"),
+        case["signer_id"],
         value("pubshare"),
         value("thresh_pk_xonly"),
         value("msg"),
@@ -106,6 +107,30 @@ def test_nonce_gen_vectors(case: dict[str, Any]) -> None:
     expected_sec_nonce, expected_pub_nonce = case["expected"]
     assert bytes(sec_nonce) == bytes.fromhex(expected_sec_nonce)
     assert pub_nonce == bytes.fromhex(expected_pub_nonce)
+
+
+@pytest.mark.parametrize("signer_id", [-1, 2**32])
+def test_nonce_gen_refuses_a_signer_id_outside_four_bytes(signer_id: int) -> None:
+    """`signer_id` is 0 to 2^32-1: one below and one above are refused."""
+    with pytest.raises(BTClibEccValueError, match="a 4-byte integer"):
+        frost.nonce_gen(signer_id=signer_id)
+
+
+def test_nonce_gen_binds_the_signer_id() -> None:
+    """0 and 2^32-1 are ids, and each id, or none, gives its own nonce."""
+    rand = bytes(32)
+    nonces = {
+        signer_id: frost.nonce_gen_(rand, None, signer_id, None)[1]
+        for signer_id in (None, 0, 1, 2**32 - 1)
+    }
+    assert len(set(nonces.values())) == len(nonces)
+
+
+@pytest.mark.parametrize("signer_id", [True, 1.0, 1.9, "1", b"\x01"])
+def test_nonce_gen_coerces_no_signer_id(signer_id: Any) -> None:
+    """1.9 and "1" are refused, not read as 1."""
+    with pytest.raises(BTClibEccTypeError, match="invalid signer_id type"):
+        frost.nonce_gen(signer_id=signer_id)
 
 
 def test_nonce_gen_draws_fresh_randomness() -> None:
@@ -180,6 +205,15 @@ def _group_params(group: dict[str, Any], cases_key: str) -> list[Any]:
     ]
 
 
+def _pub_shares_case(
+    pub_shares: list[bytes], case: dict[str, Any]
+) -> list[bytes] | None:
+    """Return the pubshares a case selects, `None` where its list is absent."""
+    if case["pubshare_indices"] is None:
+        return None
+    return [pub_shares[i] for i in case["pubshare_indices"]]
+
+
 def _all_group_params(data: dict[str, Any], cases_key: str) -> list[Any]:
     params = []
     for group in data["test_groups"]:
@@ -218,8 +252,8 @@ def test_sign_verify_valid_vectors(group: dict[str, Any], case: dict[str, Any]) 
     agg_nonce = bytes.fromhex(case["aggnonce"])
     assert frost.nonce_agg(pub_nonces_case) == agg_nonce
     msg = bytes.fromhex(case["msg"])
-    my_id = case["my_id"]
-    signer_index = ids.index(my_id)
+    signer_id = case["signer_id"]
+    signer_index = ids.index(signer_id)
     sec_share = sec_shares[case["secshare_index"]]
     expected = bytes.fromhex(case["expected"])
 
@@ -228,7 +262,7 @@ def test_sign_verify_valid_vectors(group: dict[str, Any], case: dict[str, Any]) 
     )
     # a copy: signing consumes the secnonce, and the vectors reuse it
     sec_nonce = bytearray(sec_nonces[case["secnonce_index"]])
-    assert frost.sign(sec_nonce, sec_share, my_id, session_ctx) == expected
+    assert frost.sign(sec_nonce, sec_share, signer_id, session_ctx) == expected
     if valid_pub_shares is not None:
         assert frost.partial_sig_verify(
             expected,
@@ -280,10 +314,10 @@ def test_sign_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> None
     sec_nonces = _hex_all(group["secnonces"])
 
     ids = case["ids"]
-    pub_shares_case = [pub_shares[i] for i in case["pubshare_indices"]]
+    pub_shares_case = _pub_shares_case(pub_shares, case)
     agg_nonce = bytes.fromhex(case["aggnonce"])
     msg = bytes.fromhex(case["msg"])
-    my_id = case["my_id"]
+    signer_id = case["signer_id"]
     sec_nonce = bytearray(sec_nonces[case["secnonce_index"]])
     sec_share = sec_shares[case["secshare_index"]]
 
@@ -291,7 +325,7 @@ def test_sign_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> None
         session_ctx = frost.SessionContext(
             n, t, ids, pub_shares_case, thresh_pk, agg_nonce, [], [], msg
         )
-        frost.sign(sec_nonce, sec_share, my_id, session_ctx)
+        frost.sign(sec_nonce, sec_share, signer_id, session_ctx)
     assert_error(case["error"], excinfo.value)
 
 
@@ -385,8 +419,8 @@ def test_tweak_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> Non
     msg = bytes.fromhex(case["msg"])
     tweaks_case = [tweaks[i] for i in case["tweak_indices"]]
     is_xonly = case["is_xonly"]
-    my_id = case["my_id"]
-    signer_index = ids.index(my_id)
+    signer_id = case["signer_id"]
+    signer_index = ids.index(signer_id)
     sec_share = sec_shares[case["secshare_index"]]
     sec_nonce = bytearray(sec_nonces[case["secnonce_index"]])
     expected = bytes.fromhex(case["expected"])
@@ -394,7 +428,7 @@ def test_tweak_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> Non
     session_ctx = frost.SessionContext(
         n, t, ids, pub_shares_case, thresh_pk, agg_nonce, tweaks_case, is_xonly, msg
     )
-    assert frost.sign(sec_nonce, sec_share, my_id, session_ctx) == expected
+    assert frost.sign(sec_nonce, sec_share, signer_id, session_ctx) == expected
     assert frost.partial_sig_verify(
         expected,
         pub_nonces_case,
@@ -426,7 +460,7 @@ def test_tweak_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> Non
     msg = bytes.fromhex(case["msg"])
     tweaks_case = [tweaks[i] for i in case["tweak_indices"]]
     is_xonly = case["is_xonly"]
-    my_id = case["my_id"]
+    signer_id = case["signer_id"]
     sec_share = sec_shares[case["secshare_index"]]
     sec_nonce = bytearray(sec_nonces[case["secnonce_index"]])
 
@@ -434,7 +468,7 @@ def test_tweak_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> Non
         session_ctx = frost.SessionContext(
             n, t, ids, pub_shares_case, thresh_pk, agg_nonce, tweaks_case, is_xonly, msg
         )
-        frost.sign(sec_nonce, sec_share, my_id, session_ctx)
+        frost.sign(sec_nonce, sec_share, signer_id, session_ctx)
     assert_error(case["error"], excinfo.value)
 
 
@@ -468,14 +502,14 @@ def test_det_sign_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> 
     tweaks = _hex_all(case["tweaks"])
     is_xonly = case["is_xonly"]
     msg = bytes.fromhex(case["msg"])
-    my_id = case["my_id"]
-    signer_index = ids.index(my_id)
+    signer_id = case["signer_id"]
+    signer_index = ids.index(signer_id)
     aux_rand = bytes.fromhex(case["aux_rand"]) if case["aux_rand"] is not None else None
     expected = _hex_all(case["expected"])
 
     pub_nonce, psig = frost.deterministic_sign(
         sec_share,
-        my_id,
+        signer_id,
         agg_other_nonce,
         n,
         t,
@@ -501,11 +535,13 @@ def test_det_sign_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> 
     # a signer always knows its own public share, even in a session whose
     # public share list is absent, so the self-check runs either way
     own_pub_share = (
-        pub_shares[my_id]
+        pub_shares[signer_id]
         if valid_pub_shares is None
         else valid_pub_shares[signer_index]
     )
-    assert frost.partial_sig_verify_(psig, my_id, pub_nonce, own_pub_share, session_ctx)
+    assert frost.partial_sig_verify_(
+        psig, signer_id, pub_nonce, own_pub_share, session_ctx
+    )
 
 
 @pytest.mark.parametrize("group, case", _all_group_params(_DET_SIGN, "error_tests"))
@@ -517,7 +553,7 @@ def test_det_sign_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> 
     sec_shares = _hex_all(group["secshares"])
 
     ids = case["ids"]
-    pub_shares_case = [pub_shares[i] for i in case["pubshare_indices"]]
+    pub_shares_case = _pub_shares_case(pub_shares, case)
     sec_share = sec_shares[case["secshare_index"]]
     agg_other_nonce = (
         bytes.fromhex(case["aggothernonce"])
@@ -527,13 +563,13 @@ def test_det_sign_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> 
     tweaks = _hex_all(case["tweaks"])
     is_xonly = case["is_xonly"]
     msg = bytes.fromhex(case["msg"])
-    my_id = case["my_id"]
+    signer_id = case["signer_id"]
     aux_rand = bytes.fromhex(case["aux_rand"]) if case["aux_rand"] is not None else None
 
     with pytest.raises(_ERRORS) as excinfo:
         frost.deterministic_sign(
             sec_share,
-            my_id,
+            signer_id,
             agg_other_nonce,
             n,
             t,
@@ -546,6 +582,79 @@ def test_det_sign_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> 
             aux_rand,
         )
     assert_error(case["error"], excinfo.value)
+
+
+def _two_of_three_det_sign_group() -> dict[str, Any]:
+    return next(g for g in _DET_SIGN["test_groups"] if (g["t"], g["n"]) == (2, 3))
+
+
+def test_det_sign_nonce_differs_for_a_key_and_its_negation() -> None:
+    """A threshold key and its negation do not share a nonce.
+
+    They have one x-only key and two partial signatures that differ in
+    the sign of the key's share. Over one nonce, a coordinator that
+    replays a session under both keys, with no public shares for
+    `deterministic_sign` to compare them with, recovers the secret share
+    from the difference of the two partial signatures.
+    """
+    group = _two_of_three_det_sign_group()
+    n, t, ids, signer_id, msg = group["n"], group["t"], [0, 1], 0, bytes(32)
+    thresh_pk = bytes.fromhex(group["thresh_pk"])
+    negated_pk = bytes([thresh_pk[0] ^ 1]) + thresh_pk[1:]
+    sec_share = bytes.fromhex(group["secshares"][signer_id])
+    _, other_nonce = frost.nonce_gen()
+
+    outputs = [
+        frost.deterministic_sign(
+            sec_share, signer_id, other_nonce, n, t, ids, None, pk, [], [], msg
+        )
+        for pk in (thresh_pk, negated_pk)
+    ]
+    (pub_nonce, psig), (negated_pub_nonce, negated_psig) = outputs
+    assert pub_nonce != negated_pub_nonce
+
+    # what the difference of the two partial signatures would give were the
+    # nonce shared
+    session_ctx = frost.SessionContext(
+        n,
+        t,
+        ids,
+        None,
+        thresh_pk,
+        frost.nonce_agg([pub_nonce, other_nonce]),
+        [],
+        [],
+        msg,
+    )
+    values = frost.session_values(session_ctx)
+    g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
+    factor = 2 * values.e * frost._derive_interpolating_value(ids, signer_id) * g
+    recovered = (
+        (int.from_bytes(psig, "big") - int.from_bytes(negated_psig, "big"))
+        * pow(factor, -1, secp256k1.n)
+        % secp256k1.n
+    )
+    assert recovered != int.from_bytes(sec_share, "big")
+
+
+@pytest.mark.parametrize("length", [65, 67])
+def test_det_sign_refuses_an_aggothernonce_of_the_wrong_length(length: int) -> None:
+    """With several signers, `aggothernonce` is 66 bytes and no other size."""
+    group = _two_of_three_det_sign_group()
+    with pytest.raises(BTClibEccValueError, match="a 66-byte array when u > 1"):
+        frost.deterministic_sign(
+            bytes.fromhex(group["secshares"][0]),
+            0,
+            bytes(length),
+            group["n"],
+            group["t"],
+            [0, 1],
+            None,
+            bytes.fromhex(group["thresh_pk"]),
+            [],
+            [],
+            bytes(32),
+        )
 
 
 # --------------------------------------------------------------------
@@ -685,7 +794,7 @@ def test_validate_threshold_info_refuses_an_invalid_threshold_public_key() -> No
     n, t = group["n"], group["t"]
     pub_shares = _hex_all(group["pubshares"])[:n]
     not_a_point = bytes.fromhex("02" + "ff" * 32)
-    with pytest.raises(BTClibEccValueError, match="Invalid threshold public key"):
+    with pytest.raises(BTClibEccValueError, match="The thresh_pk is not a valid point"):
         frost.validate_threshold_info(frost.ThresholdInfo(t, not_a_point, pub_shares))
 
 
@@ -696,7 +805,9 @@ def test_validate_threshold_info_refuses_an_invalid_pubshare() -> None:
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_shares: list[bytes | None] = list(_hex_all(group["pubshares"])[:n])
     pub_shares[0] = bytes.fromhex("02" + "ff" * 32)
-    with pytest.raises(BTClibEccValueError, match=r"Invalid pubshare at index 0\."):
+    with pytest.raises(
+        BTClibEccValueError, match=r"The pubshare at index 0 is not a valid point\."
+    ):
         frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
 
 
@@ -851,9 +962,9 @@ def test_partial_sig_verify_internal_accepts_the_signer_of_the_session() -> None
     assert frost.partial_sig_verify_(psig, 0, pub_nonce, pub_shares[0], session_ctx)
 
 
-@pytest.mark.parametrize("my_id", [2, 3, -1, secp256k1.n])
+@pytest.mark.parametrize("signer_id", [2, 3, -1, secp256k1.n])
 def test_partial_sig_verify_internal_refuses_an_id_outside_the_session(
-    my_id: int,
+    signer_id: int,
 ) -> None:
     """Ids the session lacks: 2, `n`, -1 and the group order are refused.
 
@@ -861,7 +972,21 @@ def test_partial_sig_verify_internal_refuses_an_id_outside_the_session(
     """
     session_ctx, psig, pub_nonce, pub_shares, _ = _two_of_three_session()
     with pytest.raises(BTClibEccValueError, match="missing from the ids"):
-        frost.partial_sig_verify_(psig, my_id, pub_nonce, pub_shares[2], session_ctx)
+        frost.partial_sig_verify_(
+            psig, signer_id, pub_nonce, pub_shares[2], session_ctx
+        )
+
+
+@pytest.mark.parametrize("length", [31, 33])
+def test_partial_sig_verify_internal_refuses_a_psig_of_the_wrong_length(
+    length: int,
+) -> None:
+    """A partial signature is 32 bytes: another size is an error."""
+    session_ctx, psig, pub_nonce, pub_shares, _ = _two_of_three_session()
+    assert len(psig) == 32
+    wrong = psig[:length] if length < 32 else psig + b"\x00"
+    with pytest.raises(BTClibEccValueError):
+        frost.partial_sig_verify_(wrong, 0, pub_nonce, pub_shares[0], session_ctx)
 
 
 def test_partial_sig_verify_internal_refuses_a_pub_share_the_session_lacks() -> None:
@@ -928,13 +1053,13 @@ def test_threshold_info_coerces_no_threshold(value: Any) -> None:
 
 @pytest.mark.parametrize("value", _NOT_INTEGERS)
 def test_the_signing_functions_coerce_no_signer_id(value: Any) -> None:
-    """`my_id` of every entry point that takes one, and the signer index."""
+    """`signer_id` of every entry point that takes one, and the signer index."""
     session_ctx, psig, pub_nonce, pub_shares, _ = _two_of_three_session()
-    with pytest.raises(BTClibEccTypeError, match="invalid my_id type"):
+    with pytest.raises(BTClibEccTypeError, match="invalid signer_id type"):
         frost.partial_sig_verify_(psig, value, pub_nonce, pub_shares[0], session_ctx)
-    with pytest.raises(BTClibEccTypeError, match="invalid my_id type"):
+    with pytest.raises(BTClibEccTypeError, match="invalid signer_id type"):
         frost.sign(bytearray(64), bytes(32), value, session_ctx)
-    with pytest.raises(BTClibEccTypeError, match="invalid my_id type"):
+    with pytest.raises(BTClibEccTypeError, match="invalid signer_id type"):
         frost.deterministic_sign(
             bytes(32),
             value,
@@ -1018,7 +1143,7 @@ def test_sec_nonce_signs_once() -> None:
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_shares = _hex_all(group["pubshares"])[:n]
     sec_share = bytes.fromhex(group["secshares"][0])
-    sec_nonce, pub_nonce = frost.nonce_gen(sec_share, pub_shares[0])
+    sec_nonce, pub_nonce = frost.nonce_gen(sec_share, pub_share=pub_shares[0])
     session_ctx = frost.SessionContext(
         n, t, [0], pub_shares[:1], thresh_pk, frost.nonce_agg([pub_nonce]), [], [], b"m"
     )
@@ -1027,7 +1152,7 @@ def test_sec_nonce_signs_once() -> None:
     # every byte, and no byte added or taken out of it
     assert sec_nonce == bytearray(64)
     with pytest.raises(
-        BTClibEccValueError, match="first secnonce value is out of range"
+        BTClibEccValueError, match="The first half of secnonce is out of range"
     ):
         frost.sign(sec_nonce, sec_share, 0, session_ctx)
 
@@ -1110,7 +1235,7 @@ def _one_signer_session(
     what a threshold of one is: the polynomial is a constant.
     """
     pub_share = bytes_from_point(mult(int.from_bytes(sec_share, "big")))
-    sec_nonce, pub_nonce = frost.nonce_gen(sec_share, pub_share)
+    sec_nonce, pub_nonce = frost.nonce_gen(sec_share, pub_share=pub_share)
     session_ctx = frost.SessionContext(
         1, 1, [0], [pub_share], pub_share, frost.nonce_agg([pub_nonce]), [], [], msg
     )
@@ -1133,12 +1258,12 @@ def test_sign_zeroes_the_two_scalars_and_nothing_beyond() -> None:
 @pytest.mark.parametrize(
     "k_1, k_2, err_msg",
     [
-        (0, 1, "first secnonce value is out of range"),
-        (secp256k1.n, 1, "first secnonce value is out of range"),
-        (secp256k1.n + 1, 1, "first secnonce value is out of range"),
-        (1, 0, "second secnonce value is out of range"),
-        (1, secp256k1.n, "second secnonce value is out of range"),
-        (1, secp256k1.n + 1, "second secnonce value is out of range"),
+        (0, 1, "The first half of secnonce is out of range"),
+        (secp256k1.n, 1, "The first half of secnonce is out of range"),
+        (secp256k1.n + 1, 1, "The first half of secnonce is out of range"),
+        (1, 0, "The second half of secnonce is out of range"),
+        (1, secp256k1.n, "The second half of secnonce is out of range"),
+        (1, secp256k1.n + 1, "The second half of secnonce is out of range"),
     ],
 )
 def test_sign_refuses_a_secnonce_scalar_outside_the_group_order(
@@ -1175,9 +1300,7 @@ def test_sign_accepts_the_secret_share_one() -> None:
 
     for refused in (bytes(32), secp256k1.n.to_bytes(32, "big")):
         session_ctx, sec_nonce, _ = _one_signer_session(sec_share)
-        with pytest.raises(
-            BTClibEccValueError, match="secret share value is out of range"
-        ):
+        with pytest.raises(BTClibEccValueError, match="The secshare is out of range"):
             frost.sign(sec_nonce, refused, 0, session_ctx)
 
 
@@ -1188,7 +1311,7 @@ def test_session_values_refuses_an_id_outside_0_to_n_minus_1(signer_id: int) -> 
     session_ctx = frost.SessionContext(
         1, 1, [signer_id], None, thresh_pk, bytes(66), [], [], b"msg"
     )
-    with pytest.raises(BTClibEccValueError, match=r"Invalid id at index 0"):
+    with pytest.raises(BTClibEccValueError, match=r"The id at index 0 must satisfy"):
         frost.session_values(session_ctx)
 
 
