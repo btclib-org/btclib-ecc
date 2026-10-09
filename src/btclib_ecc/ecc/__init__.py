@@ -11,7 +11,8 @@ a group sharing one key signs for all of it, pedersen commitments, the
 Confidential Transactions rangeproof built over one and the rewind that
 reads a value, a blinding factor and a message back out of it, the
 Diffie-Hellman key agreement, the BIE1 ECIES built on top of it, the
-ElligatorSwift encoding of a public key, the
+ElligatorSwift encoding of a public key, the ECDSA adaptor signatures of
+the DLC specification, the
 BIP374 proof that two points share one discrete logarithm, and the
 RFC6979, BIP340 and sign-to-contract nonces. The curve arithmetic underneath is
 btclib_ecc.curves, and the rule between the two is that direction: ecc
@@ -66,6 +67,7 @@ from btclib_ecc.ecc import (
     dh,
     dleq,
     dsa,
+    ecdsa_adaptor,
     ecies,
     ellswift,
     frost,
@@ -86,6 +88,7 @@ __all__ = [
     "diffie_hellman",
     "dleq",
     "dsa",
+    "ecdsa_adaptor",
     "ecies",
     "ellswift",
     "frost",

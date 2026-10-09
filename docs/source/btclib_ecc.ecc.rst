@@ -46,6 +46,13 @@ btclib_ecc.ecc.dsa module
    :members:
    :show-inheritance:
 
+btclib_ecc.ecc.ecdsa\_adaptor module
+------------------------------------
+
+.. automodule:: btclib_ecc.ecc.ecdsa_adaptor
+   :members:
+   :show-inheritance:
+
 btclib_ecc.ecc.ecies module
 ---------------------------
 
