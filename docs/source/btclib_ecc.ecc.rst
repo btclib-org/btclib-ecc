@@ -32,6 +32,13 @@ btclib_ecc.ecc.dh module
    :members:
    :show-inheritance:
 
+btclib_ecc.ecc.dlc\_oracle module
+---------------------------------
+
+.. automodule:: btclib_ecc.ecc.dlc_oracle
+   :members:
+   :show-inheritance:
+
 btclib_ecc.ecc.dleq module
 --------------------------
 
