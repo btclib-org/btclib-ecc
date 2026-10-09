@@ -99,7 +99,7 @@ staleness figure, not a defect: a vector file is a fixed set of cases and
 refreshing it is a decision, not a chore.
 
 `ref` names the branch a pin's path lives on, where that is not the
-repository's own default branch; no entry carries one.
+repository's own default branch.
 `.github/scripts/check_vendored_vectors.py` reads it as the `sha`
 parameter of GitHub's "commits touching a path" API, which otherwise
 walks the default branch alone and finds no commit touching a path that
@@ -1120,6 +1120,37 @@ the transcription's source is the code the bindings run.
 `generator_from_seed`, at no blinding factor and at a zero one, which is
 the pair of calls upstream's own loop makes of each entry.
 
+### `tests/ecc/_data/zkp_schnorr_adaptor_vectors.json`
+
+```text
+repo    siv2r/secp256k1-zkp
+path    src/modules/schnorr_adaptor/tests_impl.h
+ref     schnorr-adaptor-module
+commit  060dad2ef89f79542d6e3349af04ca0cbeb164c0  2024-10-25
+blob    3f9017b5268ee9df69a8166b4488fbaefea37c66
+ours    22c32688e4626f19402f3c151c322102a771cf91
+pulled  2026-10-10
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **transcribed**, mechanically. One json object per block of
+`test_schnorr_adaptor_spec_vectors`, the vectors of the `schnorr_adaptor`
+module BlockstreamResearch/secp256k1-zkp#299 proposes. `id` is the
+block's comment, each hex field is the `0x` array of that name, and
+`checks` names the helpers the block calls, with the flags it passes
+them. A block that only asks whether a key or an adaptor point parses
+carries the parse function's name, set to false. The pass that produced
+the file is not committed, and what re-derives it is reading those arrays
+again; the command in the entry of `tests/ecc/dsa_anti_exfil_test.py`
+finds each value in the pinned blob.
+
+The pin is the branch of the fork the pull request is opened from, which
+`ref` names. `commit` is the last commit on it touching the path, and the
+pull request's head, c2f270985d, holds the same blob. The module is on
+no branch of secp256k1-zkp itself, so the file is a reference and not an
+authority: a revision of the pull request is what the weekly check
+reports. `tests/ecc/ssa_adaptor_test.py` runs every block.
+
 ### `tests/ecc/dsa_anti_exfil_test.py`
 
 ```text
@@ -1318,6 +1349,7 @@ Not checked byte for byte against one:
 - transcribed, every value matched either in the pinned text or, for a
   source file, by the check the entry itself states: `rfc6979.json`,
   `zkp_rangeproof_fixed_vectors.json`, `zkp_generator_vectors.json`,
+  `zkp_schnorr_adaptor_vectors.json`,
   `dsa_anti_exfil_test.py`, `secp256k1_symbols.txt`.
 - not vendored: `zkp_rangeproof_vectors.json` and
   `der_length_vectors.json` (this suite's own).

@@ -110,6 +110,7 @@ KEYWORD_ONLY: dict[str, list[str]] = {
     "btclib_ecc.ecc.ssa:sign_": ["verify", "commit_hash"],
     "btclib_ecc.ecc.ssa:verify": ["commit", "receipt"],
     "btclib_ecc.ecc.ssa:verify_": ["commit_hash", "receipt"],
+    "btclib_ecc.ecc.ssa_adaptor:presign": ["nonce"],
 }
 
 
