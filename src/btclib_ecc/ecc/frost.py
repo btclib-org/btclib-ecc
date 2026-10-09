@@ -4,10 +4,10 @@
 
 """FROST threshold Schnorr signing, according to BIP445.
 
-https://github.com/bitcoin/bips/pull/2070, `bip-0445.md` at v0.10.0,
-head `8e25d579` on `siv2r:bip-frost-signing`. The BIP is a draft and not
-in `bitcoin/bips` `master`; `tests/_data/README.md` records why v0.10.0
-is where this module pins.
+https://github.com/siv2r/bip-frost-signing, `README.md` at v0.12.0,
+head `825633bad2`. The BIP is a draft, not in `bitcoin/bips` `master`;
+`tests/_data/README.md` records why this module pins that repository
+rather than its pull request, https://github.com/bitcoin/bips/pull/2070.
 
 FROST turns *t* of *n* participants into one signer: a threshold secret
 key is Shamir-shared among *n* participants at key generation, and any
@@ -176,8 +176,8 @@ _THRESHOLD_RANGE_ERR = "The threshold must be 1 <= t <= n."
 _MAX_PARTICIPANTS_ERR = f"The number of participants must be n <= {MAX_PARTICIPANTS}."
 _TWEAK_SIZE_ERR = "The tweak must be a 32-byte array."
 _TWEAK_RANGE_ERR = "The tweak value is out of range."
-_TWEAK_INF_ERR = "The result of tweaking cannot be infinity."
-_TWEAKS_LEN_ERR = "The tweaks and is_xonly arrays must have the same length."
+_TWEAK_INF_ERR = "The tweaked threshold public key must not be the point at infinity."
+_TWEAKS_LEN_ERR = "The tweaks and is_xonly lists must have the same length."
 _KEY_MATERIAL_POLY_ERR = (
     "The provided key material is incorrect: the public shares do not lie"
     " on a single polynomial."
@@ -187,6 +187,12 @@ _KEY_MATERIAL_MATCH_ERR = (
     " the threshold public key."
 )
 _THRESH_PK_INF_ERR = "The threshold public key must not be the point at infinity."
+_NONCE_SIGNER_ID_ERR = "The optional signer_id must be a 4-byte integer."
+_SEC_SHARE_RANGE_ERR = "The secshare is out of range."
+_AGG_OTHER_NONCE_ABSENT_ERR = "The aggothernonce must be omitted when u = 1."
+_AGG_OTHER_NONCE_PRESENT_ERR = (
+    "The aggothernonce must be present and a 66-byte array when u > 1."
+)
 
 
 def _cbytes(P: Point) -> bytes:
@@ -282,22 +288,22 @@ def _serialize_ids(ids: Sequence[int]) -> bytes:
     return b"".join(i.to_bytes(ID_SIZE, "big") for i in sorted(ids))
 
 
-def _derive_interpolating_value(ids: Sequence[int], my_id: int) -> int:
-    """Return the Lagrange coefficient of `my_id` for the secret at x = -1.
+def _derive_interpolating_value(ids: Sequence[int], signer_id: int) -> int:
+    """Return the Lagrange coefficient of `signer_id` for the secret at x = -1.
 
     Assumes `ids` holds no duplicate, which `_validate_session_params`
-    has checked before either caller reaches this. `my_id in ids` is
+    has checked before either caller reaches this. `signer_id in ids` is
     checked by its callers, `sign` and `partial_sig_verify_`: an id the
-    session does not hold has no `curr_id == my_id` to match, and the
+    session does not hold has no `curr_id == signer_id` to match, and the
     coefficient returned interpolates nothing.
     """
     num = 1
     deno = 1
     for curr_id in ids:
-        if curr_id == my_id:
+        if curr_id == signer_id:
             continue
         num = num * (curr_id + 1) % secp256k1.n
-        deno = deno * (curr_id - my_id) % secp256k1.n
+        deno = deno * (curr_id - signer_id) % secp256k1.n
     return num * pow(deno, -1, secp256k1.n) % secp256k1.n
 
 
@@ -314,14 +320,14 @@ def _derive_pubshare_at(
     caller -- `_derive_thresh_pubkey` -- says it must not be.
     """
     coefficients = []
-    for my_id in ids:
+    for signer_id in ids:
         num = 1
         deno = 1
         for curr_id in ids:
-            if curr_id == my_id:
+            if curr_id == signer_id:
                 continue
             num = num * (x - curr_id) % secp256k1.n
-            deno = deno * (my_id - curr_id) % secp256k1.n
+            deno = deno * (signer_id - curr_id) % secp256k1.n
         coefficients.append(num * pow(deno, -1, secp256k1.n) % secp256k1.n)
     if len(pub_shares) == 1:
         return mult(coefficients[0], pub_shares[0], secp256k1)
@@ -389,7 +395,9 @@ def _parse_present_pub_shares(
         try:
             point = _cpoint(pub_share)
         except BTClibEccValueError as e:
-            raise BTClibEccValueError(f"Invalid pubshare at index {i}.") from e
+            raise BTClibEccValueError(
+                f"The pubshare at index {i} is not a valid point."
+            ) from e
         parsed_ids.append(i)
         parsed_points.append(point)
     return parsed_ids, parsed_points
@@ -418,7 +426,7 @@ def validate_threshold_info(info: ThresholdInfo) -> None:
     try:
         _cpoint(thresh_pk)
     except BTClibEccValueError as e:
-        raise BTClibEccValueError("Invalid threshold public key.") from e
+        raise BTClibEccValueError("The thresh_pk is not a valid point.") from e
 
     parsed_ids, parsed_points = _parse_present_pub_shares(pub_shares)
     if len(parsed_ids) < t:
@@ -504,6 +512,7 @@ def thresh_pubkey_and_tweak(
 
 def _nonce_hash(
     rand: bytes,
+    signer_id: bytes,
     pub_share: bytes,
     thresh_pk_xonly: bytes,
     i: int,
@@ -513,6 +522,8 @@ def _nonce_hash(
     buf = b"".join(
         [
             rand,
+            len(signer_id).to_bytes(1, "big"),
+            signer_id,
             len(pub_share).to_bytes(1, "big"),
             pub_share,
             len(thresh_pk_xonly).to_bytes(1, "big"),
@@ -529,6 +540,7 @@ def _nonce_hash(
 def nonce_gen_(
     rand_: Octets,
     sec_share: Octets | None,
+    signer_id: int | None,
     pub_share: Octets | None,
     thresh_pk_xonly: Octets | None = None,
     msg: Octets | None = None,
@@ -549,10 +561,18 @@ def nonce_gen_(
     one whose absence differs from an empty value: absent hashes as a
     single mode byte, present as the other mode byte followed by the
     length and the bytes. An absent `extra_in` and an empty one are the
-    same input, and `sec_share`, `pub_share` and `thresh_pk_xonly` have
-    no empty value at all, each being of a fixed size.
+    same input, and `sec_share`, `signer_id`, `pub_share` and
+    `thresh_pk_xonly` have no empty value at all, each being of a fixed
+    size.
     """
     rand_ = bytes_from_octets(rand_, _SCALAR_SIZE)
+    if signer_id is None:
+        signer_id_bytes = b""
+    else:
+        signer_id = _integer(signer_id, "signer_id")
+        if not 0 <= signer_id < 2 ** (8 * ID_SIZE):
+            raise BTClibEccValueError(_NONCE_SIGNER_ID_ERR)
+        signer_id_bytes = signer_id.to_bytes(ID_SIZE, "big")
     if sec_share is None:
         rand = rand_
     else:
@@ -576,13 +596,25 @@ def nonce_gen_(
 
     k_1 = (
         _nonce_hash(
-            rand, pub_share_bytes, thresh_pk_xonly_bytes, 0, msg_prefixed, extra
+            rand,
+            signer_id_bytes,
+            pub_share_bytes,
+            thresh_pk_xonly_bytes,
+            0,
+            msg_prefixed,
+            extra,
         )
         % secp256k1.n
     )
     k_2 = (
         _nonce_hash(
-            rand, pub_share_bytes, thresh_pk_xonly_bytes, 1, msg_prefixed, extra
+            rand,
+            signer_id_bytes,
+            pub_share_bytes,
+            thresh_pk_xonly_bytes,
+            1,
+            msg_prefixed,
+            extra,
         )
         % secp256k1.n
     )
@@ -595,6 +627,7 @@ def nonce_gen_(
 
 def nonce_gen(
     sec_share: Octets | None = None,
+    signer_id: int | None = None,
     pub_share: Octets | None = None,
     thresh_pk_xonly: Octets | None = None,
     msg: Octets | None = None,
@@ -608,6 +641,7 @@ def nonce_gen(
     return nonce_gen_(
         secrets.token_bytes(_SCALAR_SIZE),
         sec_share,
+        signer_id,
         pub_share,
         thresh_pk_xonly,
         msg,
@@ -649,12 +683,16 @@ def _parse_session_pub_shares(
     pub_share_points: list[Point] = []
     for idx, signer_id in enumerate(ids):
         if not 0 <= signer_id <= n - 1:
-            raise BTClibEccValueError(f"Invalid id at index {idx}")
+            raise BTClibEccValueError(
+                f"The id at index {idx} must satisfy 0 <= id <= n - 1."
+            )
         if pub_shares is not None:
             try:
                 pub_share_points.append(_cpoint(pub_shares[idx]))
             except BTClibEccValueError as e:
-                raise BTClibEccValueError(f"Invalid pubshare at index {idx}.") from e
+                raise BTClibEccValueError(
+                    f"The pubshare at index {idx} is not a valid point."
+                ) from e
     return pub_share_points
 
 
@@ -670,7 +708,7 @@ def _validate_session_params(
     if n > MAX_PARTICIPANTS:
         raise BTClibEccValueError(_MAX_PARTICIPANTS_ERR)
     if not t <= len(ids) <= n:
-        raise BTClibEccValueError("The number of signers must be between t and n.")
+        raise BTClibEccValueError("The number of signers must satisfy t <= u <= n.")
     if pub_shares is not None and len(pub_shares) != len(ids):
         raise BTClibEccValueError(
             "The pubshares and ids lists must have the same length."
@@ -820,7 +858,10 @@ def session_values(session_ctx: SessionContext) -> SessionValues:
 
 
 def sign(
-    sec_nonce: bytearray, sec_share: Octets, my_id: int, session_ctx: SessionContext
+    sec_nonce: bytearray,
+    sec_share: Octets,
+    signer_id: int,
+    session_ctx: SessionContext,
 ) -> bytes:
     """Return the 32-byte partial signature of one signer.
 
@@ -839,33 +880,33 @@ def sign(
     btclib-org/btclib-ecc#11).
     """
     assert_type(sec_nonce, bytearray, "sec_nonce")
-    _integer(my_id, "my_id")
+    _integer(signer_id, "signer_id")
     values = session_values(session_ctx)
     k_1_ = int.from_bytes(sec_nonce[:_SCALAR_SIZE], "big")
     k_2_ = int.from_bytes(sec_nonce[_SCALAR_SIZE : 2 * _SCALAR_SIZE], "big")
     sec_nonce[: 2 * _SCALAR_SIZE] = bytearray(2 * _SCALAR_SIZE)
     if not 0 < k_1_ < secp256k1.n:
-        raise BTClibEccValueError("first secnonce value is out of range.")
+        raise BTClibEccValueError("The first half of secnonce is out of range.")
     if not 0 < k_2_ < secp256k1.n:
-        raise BTClibEccValueError("second secnonce value is out of range.")
+        raise BTClibEccValueError("The second half of secnonce is out of range.")
     if values.R[1] % 2:
         k_1_, k_2_ = secp256k1.n - k_1_, secp256k1.n - k_2_
 
     d_bytes = bytes_from_octets(sec_share, _SCALAR_SIZE)
     d_ = int.from_bytes(d_bytes, "big")
     if not 0 < d_ < secp256k1.n:
-        raise BTClibEccValueError("The signer's secret share value is out of range.")
+        raise BTClibEccValueError(_SEC_SHARE_RANGE_ERR)
     pub_share = _cbytes(mult(d_, ec=secp256k1))
-    if my_id not in session_ctx.ids:
+    if signer_id not in session_ctx.ids:
         raise BTClibEccValueError("The signer's id is missing from the ids list.")
     if session_ctx.pub_shares is not None:
-        j = session_ctx.ids.index(my_id)
+        j = session_ctx.ids.index(signer_id)
         if session_ctx.pub_shares[j] != pub_share:
             raise BTClibEccValueError(
-                "The signer's pubshare is missing from the pubshares list."
+                "The signer's pubshare does not match its entry in the pubshares list."
             )
 
-    a = _derive_interpolating_value(session_ctx.ids, my_id)
+    a = _derive_interpolating_value(session_ctx.ids, signer_id)
     g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
     d = g * values.gacc * d_ % secp256k1.n
     s = (k_1_ + values.b * k_2_ + values.e * a * d) % secp256k1.n
@@ -873,8 +914,8 @@ def sign(
 
 
 def _det_nonce_hash(
-    sec_share_: bytes,
-    my_id: int,
+    masked_sec_share: bytes,
+    signer_id: int,
     ids: Sequence[int],
     agg_other_nonce: bytes,
     tweaked_thresh_pk_xonly: bytes,
@@ -883,10 +924,11 @@ def _det_nonce_hash(
 ) -> int:
     buf = b"".join(
         [
-            sec_share_,
-            my_id.to_bytes(ID_SIZE, "big"),
+            masked_sec_share,
+            signer_id.to_bytes(ID_SIZE, "big"),
             len(ids).to_bytes(ID_SIZE, "big"),
             _serialize_ids(ids),
+            len(agg_other_nonce).to_bytes(1, "big"),
             agg_other_nonce,
             tweaked_thresh_pk_xonly,
             len(msg).to_bytes(8, "big"),
@@ -899,7 +941,7 @@ def _det_nonce_hash(
 
 def deterministic_sign(
     sec_share: Octets,
-    my_id: int,
+    signer_id: int,
     agg_other_nonce: Octets | None,
     n: int,
     t: int,
@@ -922,41 +964,55 @@ def deterministic_sign(
     happen to MuSig2's `DeterministicSign` because its signer set is
     fixed by the protocol.
 
-    `agg_other_nonce` is omitted (`None`) by a sole signer, who has no
-    other signers' nonces to aggregate; passed, it should be the
-    aggregate of every other signer's pubnonce, and may come from an
-    untrusted coordinator -- `sign`, reached at the end of this, is what
-    catches a session it does not assemble into.
+    The nonce is derived from the secret share as `sign` uses it, negated
+    where the tweaked threshold public key has an odd y and multiplied by
+    `gacc`. Were it derived from the share as given, a coordinator
+    replaying the session under the key and under its negation, with no
+    public shares, would get two partial signatures over one nonce, and
+    their difference is the share.
+
+    `agg_other_nonce` is `None` for a sole signer, who has no other
+    signers' nonces to aggregate, and for nobody else; passed, it should
+    be the aggregate of every other signer's pubnonce, and may come from
+    an untrusted coordinator -- `sign`, reached at the end of this, is
+    what catches a session it does not assemble into.
     """
     n = _integer(n, "n")
     t = _integer(t, "t")
     ids_ = _ids(ids)
-    my_id = _integer(my_id, "my_id")
+    signer_id = _integer(signer_id, "signer_id")
     _pub_shares_ = None if pub_shares is None else _pub_shares(pub_shares)
     thresh_pk_bytes = bytes_from_octets(thresh_pk, PK_SIZE)
     _validate_session_params(n, t, ids_, _pub_shares_, thresh_pk_bytes)
 
-    sec_share_bytes = bytes_from_octets(sec_share, _SCALAR_SIZE)
-    if aux_rand is not None:
-        sec_share_ = _bytes_xor(
-            sec_share_bytes, tagged_hash(_AUX_TAG, bytes_from_octets(aux_rand))
-        )
-    else:
-        sec_share_ = sec_share_bytes
-    agg_other_nonce_bytes = (
-        b""
-        if agg_other_nonce is None
-        else bytes_from_octets(agg_other_nonce, _NONCE_SIZE)
-    )
+    agg_other = None if agg_other_nonce is None else bytes_from_octets(agg_other_nonce)
+    if len(ids_) == 1:
+        if agg_other is not None:
+            raise BTClibEccValueError(_AGG_OTHER_NONCE_ABSENT_ERR)
+    elif agg_other is None or len(agg_other) != _NONCE_SIZE:
+        raise BTClibEccValueError(_AGG_OTHER_NONCE_PRESENT_ERR)
+    agg_other_nonce_bytes = b"" if agg_other is None else agg_other
 
     tweak_ctx = thresh_pubkey_and_tweak(thresh_pk_bytes, tweaks, is_xonly)
     tweaked_thresh_pk_xonly = tweak_ctx.x_only_pub_key
 
+    d_ = int.from_bytes(bytes_from_octets(sec_share, _SCALAR_SIZE), "big")
+    if not 0 < d_ < secp256k1.n:
+        raise BTClibEccValueError(_SEC_SHARE_RANGE_ERR)
+    g = 1 if tweak_ctx.Q[1] % 2 == 0 else secp256k1.n - 1
+    d = (g * tweak_ctx.gacc * d_ % secp256k1.n).to_bytes(_SCALAR_SIZE, "big")
+    if aux_rand is None:
+        masked_sec_share = d
+    else:
+        masked_sec_share = _bytes_xor(
+            d, tagged_hash(_AUX_TAG, bytes_from_octets(aux_rand))
+        )
+
     msg_bytes = bytes_from_octets(msg)
     k_1 = (
         _det_nonce_hash(
-            sec_share_,
-            my_id,
+            masked_sec_share,
+            signer_id,
             ids_,
             agg_other_nonce_bytes,
             tweaked_thresh_pk_xonly,
@@ -967,8 +1023,8 @@ def deterministic_sign(
     )
     k_2 = (
         _det_nonce_hash(
-            sec_share_,
-            my_id,
+            masked_sec_share,
+            signer_id,
             ids_,
             agg_other_nonce_bytes,
             tweaked_thresh_pk_xonly,
@@ -994,12 +1050,12 @@ def deterministic_sign(
     session_ctx = SessionContext(
         n, t, ids, pub_shares, thresh_pk, agg_nonce, tweaks, is_xonly, msg
     )
-    return pub_nonce, sign(sec_nonce, sec_share, my_id, session_ctx)
+    return pub_nonce, sign(sec_nonce, sec_share, signer_id, session_ctx)
 
 
 def partial_sig_verify_(
     psig: Octets,
-    my_id: int,
+    signer_id: int,
     pub_nonce: Octets,
     pub_share: Octets,
     session_ctx: SessionContext,
@@ -1011,9 +1067,9 @@ def partial_sig_verify_(
     no C implementation this library wraps, so every case here is the
     Python arithmetic and stays that way.
     """
-    _integer(my_id, "my_id")
+    _integer(signer_id, "signer_id")
     values = session_values(session_ctx)
-    if my_id not in session_ctx.ids:
+    if signer_id not in session_ctx.ids:
         raise BTClibEccValueError("The signer's id is missing from the ids list.")
     psig_bytes = bytes_from_octets(psig, _SCALAR_SIZE)
     s = int.from_bytes(psig_bytes, "big")
@@ -1034,10 +1090,10 @@ def partial_sig_verify_(
         return False
     if (
         session_ctx.pub_shares is not None
-        and _cbytes(P) != session_ctx.pub_shares[session_ctx.ids.index(my_id)]
+        and _cbytes(P) != session_ctx.pub_shares[session_ctx.ids.index(signer_id)]
     ):
         return False
-    a = _derive_interpolating_value(session_ctx.ids, my_id)
+    a = _derive_interpolating_value(session_ctx.ids, signer_id)
     g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
     g = g * values.gacc % secp256k1.n
     lhs = mult(s, secp256k1.G, secp256k1)

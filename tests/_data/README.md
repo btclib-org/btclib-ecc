@@ -93,13 +93,13 @@ staleness figure, not a defect: a vector file is a fixed set of cases and
 refreshing it is a decision, not a chore.
 
 `ref` names the branch a pin's path lives on, where that is not the
-repository's own default branch -- a fork's pull-request branch, so
-far the only case. `.github/scripts/check_vendored_vectors.py` reads it
-as the `sha` parameter of GitHub's "commits touching a path" API, which
-otherwise walks the default branch alone and finds no commit touching a
-path that only exists elsewhere, reported as a path the default branch
-never held regardless of whether the pin is current. Absent, the call
-walks the default branch.
+repository's own default branch; no entry carries one.
+`.github/scripts/check_vendored_vectors.py` reads it as the `sha`
+parameter of GitHub's "commits touching a path" API, which otherwise
+walks the default branch alone and finds no commit touching a path that
+only exists elsewhere, reported as a path the default branch never held
+regardless of whether the pin is current. Absent, the call walks the
+default branch.
 
 A vector this package fails is vendored anyway and marked `xfail`, never
 left out: an absent vector hides the defect it would have shown, and
@@ -312,162 +312,6 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**.
 
-### BIP445 (FROST signing): files under `tests/ecc/_data/bip445/`
-
-The signing-algorithm vectors of `bip-0445/python/vectors/`, vendored
-whole and under upstream's own names, in a subdirectory rather than
-flat under `tests/ecc/_data/`: BIP327 above already publishes files of
-these same names there, and a vendored file keeps the name upstream
-gave it rather than losing it to that collision. `ValidateThresholdInfo`
-ships no vector file, `bip-0445/python/vectors/test_vectors_summary.md`
-giving the reason RFC 9591 gives for shipping none over `vss_verify`: it
-checks key material a key generation protocol produced, and this BIP
-specifies no key generation.
-
-The BIP is a draft: `bitcoin/bips#2070`, not on that repository's
-`master`, at version 0.10.0. The version and the pull request go in the
-citation because a path that has never landed on the default branch has
-no commit there for a reader to find otherwise. The files below live on
-the pull request's own branch, `siv2r:bip-frost-signing`, so `repo`
-below names that fork rather than `bitcoin/bips`. Most are pinned at
-the pull request's own head,
-`8e25d57911c33f1daadcadb0161a60a56ef7145a` (2026-08-26);
-`nonce_gen_vectors.json` and `nonce_agg_vectors.json` were last touched
-earlier on that branch and are pinned instead to the commit that
-touched each -- `f0cc3aec157f9a0a1a290e8b835b242312a9ee53` (2026-07-27)
-and `4343f72cbccc3a6b032279c5ac1dc4a46672c87c` (2026-06-10) respectively
--- the same distinction the BIP327 entry above draws for
-`sign_verify_vectors.json` and `sig_agg_vectors.json`.
-
-266 cases between them, and `tests/ecc/frost_test.py` runs every one: 5
-nonce derivations, 2 + 3 nonce aggregations valid and failing, 29 + 52 +
-12 + 8 signatures (valid, refused at signing, false on verification,
-refused on verification), 28 + 16 tweaked, 37 + 48 deterministic, 18 + 8
-aggregated. An error case carries what should be raised -- which party
-contributed what, or the text of a plain value error -- and is checked
-against it, the same discipline the BIP327 entry above states.
-
-Each entry below carries a `ref` line, `bip-frost-signing`: GitHub's
-"commits touching a path" API answers against a repository's *default*
-branch alone unless told otherwise, and `bip-0445/` exists on that
-branch and not on `siv2r/bips`' own default, `master`. Asked with no
-ref the weekly job's call would find no commit touching any of these
-paths regardless of whether the pin below is current, and would report
-every one of them as a path the default branch never held -- which is what
-it did before `ref` was a field `check_vendored_vectors.py` knew to
-send (btclib-org/btclib#2160, closed by the same change that added it). With the
-branch named, the pins below are checked exactly as a default-branch
-pin is.
-
-`src/btclib_ecc/ecc/frost.py` follows `bip-0445/python/frost_ref/signing.py`
-function for function, checked against it rather than assumed from the
-BIP327 ancestry the reference's own header claims: several shapes that
-read alike are not the same function, the tweak-range error message
-among them. That file is not vendored -- it is an implementation, not
-data, and this package's is the one under test.
-
-### `tests/ecc/_data/bip445/nonce_gen_vectors.json`
-
-```text
-repo    siv2r/bips
-path    bip-0445/python/vectors/nonce_gen_vectors.json
-ref     bip-frost-signing
-commit  f0cc3aec157f9a0a1a290e8b835b242312a9ee53  2026-07-27
-blob    2ba04502ebd28a839d12bb787f5ea093a9125005
-ours    a5ebaa6573cf409f89b957d4be176b7ec4e5cb4e
-pulled  2026-09-17
-behind  0 revisions; that commit is the tip of the path
-```
-
-Verdict: **identical but for a trailing newline** -- our 4,613 bytes
-are that blob's 4,612 plus the `\n` the `end-of-file-fixer` hook added,
-so our blob is `a5ebaa65`.
-
-### `tests/ecc/_data/bip445/nonce_agg_vectors.json`
-
-```text
-repo    siv2r/bips
-path    bip-0445/python/vectors/nonce_agg_vectors.json
-ref     bip-frost-signing
-commit  4343f72cbccc3a6b032279c5ac1dc4a46672c87c  2026-06-10
-blob    92a223927318b18681ec269a5735b07692094147
-ours    3b5e5f57d8048009e967476ce1284707ea7ad398
-pulled  2026-09-17
-behind  0 revisions; that commit is the tip of the path
-```
-
-Verdict: **identical but for a trailing newline** -- our 2,768 bytes
-are that blob's 2,767 plus the `\n` the `end-of-file-fixer` hook added,
-so our blob is `3b5e5f57`.
-
-### `tests/ecc/_data/bip445/sign_verify_vectors.json`
-
-```text
-repo    siv2r/bips
-path    bip-0445/python/vectors/sign_verify_vectors.json
-ref     bip-frost-signing
-commit  8e25d57911c33f1daadcadb0161a60a56ef7145a  2026-08-26
-blob    622d859bcd742e9caf37e1541bf2409aa7c6c333
-ours    ead53ab18f87c5d46ec82962204fa31a0bcdc132
-pulled  2026-09-17
-behind  0 revisions; that commit is the tip of the path
-```
-
-Verdict: **identical but for a trailing newline** -- our 88,802 bytes
-are that blob's 88,801 plus the `\n` the `end-of-file-fixer` hook
-added, so our blob is `ead53ab1`.
-
-### `tests/ecc/_data/bip445/tweak_vectors.json`
-
-```text
-repo    siv2r/bips
-path    bip-0445/python/vectors/tweak_vectors.json
-ref     bip-frost-signing
-commit  8e25d57911c33f1daadcadb0161a60a56ef7145a  2026-08-26
-blob    ed876b4eeca7ee18e9918cd18f59141870670f12
-ours    6451ef707698f5bdb277002c9fd5601416ae37e1
-pulled  2026-09-17
-behind  0 revisions; that commit is the tip of the path
-```
-
-Verdict: **identical but for a trailing newline** -- our 48,941 bytes
-are that blob's 48,940 plus the `\n` the `end-of-file-fixer` hook
-added, so our blob is `6451ef70`.
-
-### `tests/ecc/_data/bip445/det_sign_vectors.json`
-
-```text
-repo    siv2r/bips
-path    bip-0445/python/vectors/det_sign_vectors.json
-ref     bip-frost-signing
-commit  8e25d57911c33f1daadcadb0161a60a56ef7145a  2026-08-26
-blob    57ce53754a413b4087486bbbe16c641b5edfc245
-ours    a6def920dac3d46a7d4032728b97cdb94b3f4940
-pulled  2026-09-17
-behind  0 revisions; that commit is the tip of the path
-```
-
-Verdict: **identical but for a trailing newline** -- our 88,987 bytes
-are that blob's 88,986 plus the `\n` the `end-of-file-fixer` hook
-added, so our blob is `a6def920`.
-
-### `tests/ecc/_data/bip445/sig_agg_vectors.json`
-
-```text
-repo    siv2r/bips
-path    bip-0445/python/vectors/sig_agg_vectors.json
-ref     bip-frost-signing
-commit  8e25d57911c33f1daadcadb0161a60a56ef7145a  2026-08-26
-blob    4f20b42562a79b4443736269184ebec7870a7e0c
-ours    a9b9140d2ade6e7337f322023aa8555440e1d08a
-pulled  2026-09-17
-behind  0 revisions; that commit is the tip of the path
-```
-
-Verdict: **identical but for a trailing newline** -- our 30,915 bytes
-are that blob's 30,914 plus the `\n` the `end-of-file-fixer` hook
-added, so our blob is `a9b9140d`.
-
 ### BIP324 (ElligatorSwift): files under `tests/ecc/_data/`
 
 `ellswift_decode_test_vectors.csv` and `xswiftec_inv_test_vectors.csv`,
@@ -595,6 +439,135 @@ builds each.
 
 `s >= n` is reached by the verification file only at `s == n`; the test
 adds the largest value an s field holds.
+
+## siv2r/bip-frost-signing
+
+### BIP445 (FROST signing): files under `tests/ecc/_data/bip445/`
+
+The signing-algorithm vectors of `python/vectors/`, vendored whole and
+under upstream's own names, in a subdirectory rather than flat under
+`tests/ecc/_data/`: BIP327 above already publishes files of these same
+names there, and a vendored file keeps the name upstream gave it rather
+than losing it to that collision. `ValidateThresholdInfo`
+ships no vector file, `python/vectors/test_vectors_summary.md`
+giving the reason RFC 9591 gives for shipping none over `vss_verify`: it
+checks key material a key generation protocol produced, and this BIP
+specifies no key generation.
+
+The BIP is a draft, at version 0.12.0 in `siv2r/bip-frost-signing`. Its
+pull request to `bitcoin/bips`, `bitcoin/bips#2070`, is at version 0.10.0,
+and version 0.11.0 fixes a secret share leak in `DeterministicSign`
+(`siv2r/bip-frost-signing#59`). The pins below follow
+`siv2r/bip-frost-signing` for that reason, and move back to
+`bitcoin/bips#2070` once it carries 0.12.0 or later. Each file is pinned
+to the commit on that repository's default branch, `master`, that last
+touched it: `825633bad2f9500d1b4e981f3a11cadd17bbf21d` (2026-10-07) for
+all but `nonce_agg_vectors.json`, which
+`a715d1a324b993183e940e5d8f4b7d3b50b3105b` (2026-10-06) touched last --
+the same distinction the BIP327 entry above draws for
+`sign_verify_vectors.json` and `sig_agg_vectors.json`.
+
+`tests/ecc/frost_test.py` runs every case of every file. An error case
+carries what should be raised -- which party contributed what, or the
+text of a plain value error -- and is checked against it, the same
+discipline the BIP327 entry above states.
+
+`src/btclib_ecc/ecc/frost.py` follows `python/frost_ref/signing.py`
+function for function, checked against it rather than assumed from the
+BIP327 ancestry the reference's own header claims: several shapes that
+read alike are not the same function, the tweak-range error message
+among them. That file is not vendored -- it is an implementation, not
+data, and this package's is the one under test.
+
+### `tests/ecc/_data/bip445/nonce_gen_vectors.json`
+
+```text
+repo    siv2r/bip-frost-signing
+path    python/vectors/nonce_gen_vectors.json
+commit  825633bad2f9500d1b4e981f3a11cadd17bbf21d  2026-10-07
+blob    83318472f1bbea1e916bbbae8fa20fd80aa3150c
+ours    b4dba51b452f8cdb75101a3bc116365e436911a9
+pulled  2026-09-17, refreshed 2026-10-09
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for a trailing newline**, which the
+`end-of-file-fixer` hook added.
+
+### `tests/ecc/_data/bip445/nonce_agg_vectors.json`
+
+```text
+repo    siv2r/bip-frost-signing
+path    python/vectors/nonce_agg_vectors.json
+commit  a715d1a324b993183e940e5d8f4b7d3b50b3105b  2026-10-06
+blob    5bd396bbe00807bde940a183f38b773e927ca34a
+ours    e03e38578ecc20b643212e6f28a746cf70475e06
+pulled  2026-09-17, refreshed 2026-10-09
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for a trailing newline**, which the
+`end-of-file-fixer` hook added.
+
+### `tests/ecc/_data/bip445/sign_verify_vectors.json`
+
+```text
+repo    siv2r/bip-frost-signing
+path    python/vectors/sign_verify_vectors.json
+commit  825633bad2f9500d1b4e981f3a11cadd17bbf21d  2026-10-07
+blob    923d97f1496035a222cfae05026b2c88b2693dec
+ours    2421971686d86ada026adf0a2c2b5c19f70b8e59
+pulled  2026-09-17, refreshed 2026-10-09
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for a trailing newline**, which the
+`end-of-file-fixer` hook added.
+
+### `tests/ecc/_data/bip445/tweak_vectors.json`
+
+```text
+repo    siv2r/bip-frost-signing
+path    python/vectors/tweak_vectors.json
+commit  825633bad2f9500d1b4e981f3a11cadd17bbf21d  2026-10-07
+blob    4b6af3a11ed3168814c28a4f8fd12bb693534677
+ours    75eac2237e1ee10a7339768e79d0efc949529abc
+pulled  2026-09-17, refreshed 2026-10-09
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for a trailing newline**, which the
+`end-of-file-fixer` hook added.
+
+### `tests/ecc/_data/bip445/det_sign_vectors.json`
+
+```text
+repo    siv2r/bip-frost-signing
+path    python/vectors/det_sign_vectors.json
+commit  825633bad2f9500d1b4e981f3a11cadd17bbf21d  2026-10-07
+blob    a4190418065c05a6fedbd86b27016902df03bd04
+ours    d77a43620afa151d04638c5c96679b21fc7c39fe
+pulled  2026-09-17, refreshed 2026-10-09
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for a trailing newline**, which the
+`end-of-file-fixer` hook added.
+
+### `tests/ecc/_data/bip445/sig_agg_vectors.json`
+
+```text
+repo    siv2r/bip-frost-signing
+path    python/vectors/sig_agg_vectors.json
+commit  825633bad2f9500d1b4e981f3a11cadd17bbf21d  2026-10-07
+blob    cc0c327648d425a63968163afaf524069e07909a
+ours    a76732fe385d88dc3400efea485dbcda2934663e
+pulled  2026-09-17, refreshed 2026-10-09
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for a trailing newline**, which the
+`end-of-file-fixer` hook added.
 
 ## bitcoin-core/secp256k1
 

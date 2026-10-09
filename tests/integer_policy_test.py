@@ -50,7 +50,7 @@ _SSA_SIG = ssa_sign(b"msg", 1)
 # the key is 1 as well, and key_id 1 is the candidate that recovers it
 _DSA_MSG_HASH = hashlib.sha256(b"msg").digest()
 _DSA_SIG = dsa_sign(b"msg", 1)
-# a 1-of-1 FROST session over the key 1, for `partial_sig_verify_`'s my_id
+# a 1-of-1 FROST session over the key 1, for `partial_sig_verify_`'s signer_id
 _FROST_PUB_SHARE = bytes_from_point(secp256k1.G)
 _FROST_PUB_NONCE = bytes_from_point(secp256k1.G) * 2
 _FROST_SESSION = frost.SessionContext(
