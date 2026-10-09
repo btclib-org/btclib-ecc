@@ -985,7 +985,7 @@ repo    discreetlogcontracts/dlcspecs
 path    test/ecdsa_adaptor.json
 commit  fcc9619f3505afbb5a3d2f7ba3896fc4910ae08e  2021-05-07
 blob    a6c9ca1f03a40e9591a416cc5d09d3ff7e530693
-pulled  2026-10-09
+pulled  2026-10-10
 behind  0 revisions; that commit is the tip of the path
 ```
 
