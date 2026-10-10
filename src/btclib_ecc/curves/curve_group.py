@@ -1679,10 +1679,12 @@ def _multi_mult_w_NAF_var(
 
     # one extended Euclid for every table the call builds, where a table
     # at a time is one apiece: the batch of `aff_from_jac_batch_var` over the
-    # concatenation rather than over one point's share of it, which is
-    # libsecp256k1's `secp256k1_ge_set_all_gej_var` over the whole of its
-    # `pre_a`. An empty concatenation is not a case to test for: every
-    # point being memoized leaves nothing to convert and nothing to do
+    # concatenation rather than over one point's share of it. That is
+    # libsecp256k1's `secp256k1_ge_set_all_gej_var` over the whole batch;
+    # its own multiplication does not call it, its tables sharing one Z by
+    # `secp256k1_ge_table_set_globalz` instead. An empty concatenation is
+    # not a case to test for: every point being memoized leaves nothing to
+    # convert and nothing to do
     aff = ec.aff_from_jac_batch_var([P for _, jac in pending for P in jac])
     at = 0
     for i, jac in pending:

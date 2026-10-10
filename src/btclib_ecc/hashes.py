@@ -102,7 +102,8 @@ def tagged_hash(tag: bytes, m: bytes, hf: HashF = hashlib.sha256) -> bytes:
     h2 = hf()
     h2.update(tag_hash + tag_hash)
 
-    # it could be sped up by storing the above midstate
+    # a midstate cached per tag gains under 0.1% of a MuSig2 run, so it is
+    # not cached (issue btclib-org/btclib-ecc#196)
 
     h2.update(m)
     return h2.digest()
