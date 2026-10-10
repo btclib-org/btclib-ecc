@@ -354,6 +354,13 @@ the line, and it is there because a measurement put it there rather than
 because the rule reaches it: its own wycheproof vectors ask that question
 over profiles built for it, and answer False.
 
+`ssa.batch_verify` and `batch_verify_` raise for an empty batch, the one
+thing on the raising side of the line that the rule does not put there:
+`Sequence[Sig]` declares no size. BIP340 reads an empty batch as valid,
+but a caller who built one by mistake learns nothing from True, and
+False would report a failed verification where there is no signature to
+fail (btclib-org/btclib-ecc#222).
+
 The line is the annotation, and deliberately not which built-in a helper
 happens to derive from: those two coincide only by accident
 (btclib-org/btclib#745). The `assert_*` twin beside each of these is the

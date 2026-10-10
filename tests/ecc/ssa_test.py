@@ -591,6 +591,38 @@ def test_verify_with_a_message_that_is_not_32_bytes_on_both_arithmetics(
     checks()
 
 
+def test_an_empty_batch_raises_in_all_four_spellings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """BIP340 reads an empty batch as valid; this refuses it, in every spelling.
+
+    The verifying spellings raise rather than answer False, as they would for a
+    failed verification, and with or without the bindings.
+    """
+
+    def checks() -> None:
+        for call in (
+            ssa.assert_batch_as_valid,
+            ssa.assert_batch_as_valid_,
+            ssa.batch_verify,
+            ssa.batch_verify_,
+        ):
+            with pytest.raises(BTClibEccValueError, match="empty batch"):
+                call([], [], [])
+
+    def lone_empty_is_a_mismatch() -> None:
+        # a signature was provided: not an empty batch
+        sig = ssa.sign(b"\x00" * 32, 1, b"\x00" * 32)
+        assert not ssa.batch_verify([b"msg"], [], [sig])
+        assert not ssa.batch_verify_([b"\x00" * 32], [], [sig])
+
+    checks()
+    lone_empty_is_a_mismatch()
+    no_bindings(monkeypatch)
+    checks()
+    lone_empty_is_a_mismatch()
+
+
 def test_batch_validation() -> None:
     """Verify batch verification and the mismatches it must refuse."""
     ms: list[String] = []
@@ -599,7 +631,6 @@ def test_batch_validation() -> None:
     err_msg = "no signatures provided"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_batch_as_valid(ms, Qs, sigs)
-    assert not ssa.batch_verify(ms, Qs, sigs)
 
     aux = b"\x00" * 32
     # not the size of the msg_hash, just an arbitrary size for the msg

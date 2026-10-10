@@ -1438,6 +1438,19 @@ def _assert_batch_sequences(
         assert_type(value, Sequence, what)
 
 
+def _assert_batch_not_empty(
+    msgs: Sequence[Octets], Qs: Sequence[BIP340PubKey], sigs: Sequence[Sig]
+) -> None:
+    """Refuse an empty batch, which BIP340 reads as valid.
+
+    CONTRIBUTING.md's "The public surface" has the reason. The
+    batch spellings ask this ahead of their `try`, so that the refusal
+    escapes where a failed verification answers False.
+    """
+    if len(msgs) == len(Qs) == len(sigs) == 0:
+        raise BTClibEccValueError("empty batch: no signatures provided")
+
+
 def assert_batch_as_valid_(
     msgs: Sequence[Octets],
     Qs: Sequence[BIP340PubKey],
@@ -1449,7 +1462,8 @@ def assert_batch_as_valid_(
     BIP340's batch verification: one multi-scalar equation over
     random coefficients -- and which signature failed is not in the
     answer, only that one did. Messages enter as they are; every
-    signature must share one curve.
+    signature must share one curve. An empty batch raises, where BIP340
+    reads it as valid.
 
     **It is not the fast way to verify n signatures of secp256k1.**
     Measured against n delegated `verify_` calls, the batch costs about
@@ -1498,9 +1512,8 @@ def assert_batch_as_valid_(
     # and the three sequences, for that reason again
     _assert_batch_sequences(msgs, Qs, sigs)
 
+    _assert_batch_not_empty(msgs, Qs, sigs)
     batch_size = len(Qs)
-    if batch_size == 0:
-        raise BTClibEccValueError("no signatures provided")
 
     if len(msgs) != batch_size:
         raise BTClibEccValueError(_err_msg(batch_size, "messages", msgs))
@@ -1599,9 +1612,9 @@ def _assert_batch_pub_keys_structurally_valid_(
     A batch signature is already a `Sig` object -- the batch API takes
     no raw octets, `sigs` being `Sequence[Sig]` and not
     `Sequence[Sig | Octets]` -- so there is no encoding of one left to
-    be wrong. What an empty batch, a mismatched length or a curve the
+    be wrong. What a mismatched length or a curve the
     signatures do not share answers is `assert_batch_as_valid_`'s own
-    question and not a shape this duplicates: none of the three is
+    question and not a shape this duplicates: neither is
     about a signature's or a key's own bytes, which is the line this
     issue draws.
     """
@@ -1619,12 +1632,14 @@ def batch_verify_(
 
     Messages enter prepared, as in ``assert_batch_as_valid_``.
 
-    Raises where a public key is structurally invalid -- spelled in a
-    way BIP340 has no reading for -- and answers False otherwise: a
+    Raises for an empty batch, as ``assert_batch_as_valid_`` does, and
+    where a public key is structurally invalid -- spelled in a way BIP340
+    has no reading for. It answers False otherwise: a
     failed verification and a well-formed key or scalar that is merely
     not authentic are both False, see `_assert_structurally_valid_`.
     """
     _assert_batch_sequences(msgs, Qs, sigs)
+    _assert_batch_not_empty(msgs, Qs, sigs)
     _assert_batch_pub_keys_structurally_valid_(Qs, sigs)
     # ValueError and BTClibEccRuntimeError: a well-formed batch that is not
     # authentic is False; a caller's own mistake is refused above rather
@@ -1648,6 +1663,7 @@ def batch_verify(
     Raises and answers False for the same reasons `batch_verify_` does.
     """
     _assert_batch_sequences(ms, Qs, sigs)
+    _assert_batch_not_empty(ms, Qs, sigs)
     _assert_batch_pub_keys_structurally_valid_(Qs, sigs)
     # `assert_batch_as_valid` and not a delegation to the prepared spelling: the
     # reduction has to be inside the try, or a message that is no octets is
