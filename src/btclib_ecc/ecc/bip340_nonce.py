@@ -161,14 +161,14 @@ def _nonce_with_pub_key_(
     q = scalar_from_prv_key(prv_key, ec)
 
     x_Q, y_Q = mult(q, ec=ec) if pub_key is None else pub_key
-    if y_Q % 2:
-        q = ec.n - q
+    # selected by index, not under an `if`: the parity of y_Q is not published
+    q = (q, ec.n - q)[y_Q & 1]
 
     aux = secrets.token_bytes(hf_len) if aux is None else bytes_from_octets(aux, hf_len)
 
     k = _bip340_nonce_(msg, q, x_Q, aux, ec, hf)
     x_K, y_K = mult(k, ec=ec)
-    if y_K % 2:
-        k = ec.n - k
+    # selected by index, not under an `if`: the parity of y_K is not published
+    k = (k, ec.n - k)[y_K & 1]
 
     return k, x_K, q, x_Q

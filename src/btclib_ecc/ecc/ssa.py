@@ -386,8 +386,8 @@ def gen_keys(prv_key: Integer | None = None, ec: Curve = secp256k1) -> tuple[int
         q = scalar_from_prv_key(prv_key, ec)
 
     x_Q, y_Q = mult(q, ec=ec)
-    if y_Q % 2:
-        q = ec.n - q
+    # selected by index, not under an `if`: the parity of y_Q is not published
+    q = (q, ec.n - q)[y_Q & 1]
 
     return q, x_Q
 
@@ -547,8 +547,8 @@ def _sign_commit_(
     # The receipt keeps the even-y point the tweak hashed
     k, receipt = commit_nonce_(commit_hash, k, _S2C_POINT_TAG, ec, hf)
     x_K, y_K = mult(k, ec=ec)
-    if y_K % 2:
-        k = ec.n - k
+    # selected by index, not under an `if`: the parity of y_K is not published
+    k = (k, ec.n - k)[y_K & 1]
 
     c = challenge_(msg, x_Q, x_K, ec, hf)
 

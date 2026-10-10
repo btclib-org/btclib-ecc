@@ -127,8 +127,8 @@ def presign(
 
     # BIP340 signs for the even-y key
     x_P, y_P = mult(d)
-    if y_P % 2:
-        d = secp256k1.n - d
+    # selected by index, not under an `if`: the parity of y_P is not published
+    d = (d, secp256k1.n - d)[y_P & 1]
 
     if nonce is None:
         k = _nonce(d, T, x_P, m, aux_bytes)
