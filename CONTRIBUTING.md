@@ -512,7 +512,8 @@ random operands of 256 bits down to 64, the ratio between the two ends:
 - the value of a full-size residue: `ellswift._is_x_fraction_var`
     reduces its product mod `p` before the symbol, so its operands'
     size moves it by 1.08x, and the symbol's loop over that residue
-    spreads it by 1.3x within one size, as Tonelli-Shanks's does
+    spreads it by 1.3x within one size, as Tonelli-Shanks's does; the
+    scripts are in issue btclib-org/btclib-ecc#195
 - one modular inverse, in the layer above: `aff_from_jac_var` at 2.96x,
     `x_aff_from_jac_var` at 1.93x, `aff_from_jac_batch_var` at 1.67x and
     `y_aff_from_jac_var` at 1.42x follow the `Z` they are handed;
