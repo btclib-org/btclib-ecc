@@ -982,7 +982,7 @@ def test_adapt_and_extract_adaptor_round_trip() -> None:
         ssa.assert_as_valid_(_MSG, agg_pk, sig)
 
         extracted = musig2.extract_adaptor(sig, pre_sig, session_ctx)
-        assert extracted == t.to_bytes(32, "big")
+        assert extracted == t
 
     assert parities_seen == {0, 1}
 
@@ -1158,7 +1158,7 @@ def test_musig2_adaptor_matches_zkp() -> None:
         # pre-signature recovers t, in either implementation
         extracted = musig2.extract_adaptor(sig, pre_sig, session_ctx)
         zkp_extracted = zkp_musig.extract_adaptor(zkp_sig, pre_sig_bytes, parity)
-        assert extracted == zkp_extracted == t.to_bytes(32, "big")
+        assert extracted == int.from_bytes(zkp_extracted, "big") == t
         assert zkp_musig.extract_adaptor(
             zkp_sig, pre_sig_bytes, 1 - parity
         ) != t.to_bytes(32, "big")
