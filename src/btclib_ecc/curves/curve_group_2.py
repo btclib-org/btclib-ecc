@@ -481,7 +481,8 @@ def _regular_window_loop(
 
     It is `_double_mult_regular_window`'s loop, which
     `_mult_endomorphism_secp256k1` calls with a table formed by
-    `_lambda_image`. The caller checks u, v and w.
+    `_lambda_image`. Neither coefficient may be negative, which the callers
+    see to, and `signed_odd_digits` refuses a w that is not positive.
     """
     # as in _mult_regular_window: the count is the curve's, or the caller's,
     # and a coefficient above it is multiplied in the digits it needs
