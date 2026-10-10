@@ -356,18 +356,13 @@ def _skip_what_needs_zkp(items: list[pytest.Item]) -> None:
     params=[pytest.param("bindings", marks=needs_bindings), "python"],
 )
 def arm(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> str:
-    """Run the test once per arm: the bindings, then the Python arithmetic.
+    """Run the test once on the bindings, then on the Python arithmetic.
 
-    A test asks for it with `both_arms`, so that a run with the bindings
-    installed meets the Python arm too, not only the `no-bindings` job of
-    `test.yml`. Where the bindings are absent the first arm is skipped, as
-    every test marked `bindings` is.
-
-    The Python arm is `no_bindings_anywhere` of `curves/curve_test.py`, which
-    switches the dispatch off and replaces every binding already loaded, so
-    an arm it misses fails rather than measuring the bindings against
-    themselves. The
-    bindings arm leaves the dispatch as the run found it.
+    `both_arms` asks for it, so that a run with the bindings installed meets
+    the Python arm too. The bindings arm leaves the dispatch as the run found
+    it, and is skipped where the bindings are absent, as every test marked
+    `bindings` is. The Python arm is `no_bindings_anywhere` of
+    `curves/curve_test.py`.
     """
     if request.param == "python":
         no_bindings_anywhere(monkeypatch)

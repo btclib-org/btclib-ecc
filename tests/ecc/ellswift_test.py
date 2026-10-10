@@ -84,11 +84,10 @@ def test_ellswift_decode_vectors(row: list[str], arm: str) -> None:
 def test_the_python_decode_is_the_bindings_one(
     row: list[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Every decode vector again, with the dispatch patched off.
+    """Every decode vector again, the Python decode against the bindings'.
 
-    `decode` hands secp256k1 to libsecp256k1, so without this the Python
-    map would be exercised by `_xswiftec_var` alone and never through the
-    function a caller reaches.
+    The vectors fix only the x-coordinate, so this is what checks the y the
+    Python map picks.
     """
     ell = bytes.fromhex(row[0])
     expected = ellswift.decode_var(ell)
