@@ -15,9 +15,9 @@ BlockstreamResearch/secp256k1-zkp#299 proposes
 unmerged, so it is a reference and not an authority: its encoding and
 its nonce can still change.
 
-The module has no pre-signature verification of its own, and neither
-does the reference: its `extract` returns the adaptor point instead.
-`verify` is that `extract` compared with the expected T.
+The reference has no pre-signature verification: its `extract` returns
+the adaptor point instead. `verify` here is that `extract` compared with
+the expected T.
 
 **The wire format** is 65 octets, `R' || s`. R' = k*G + T is a 33-octet
 compressed point, and s = k + e*d where R' has an even y, -k + e*d
