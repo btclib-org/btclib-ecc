@@ -35,7 +35,7 @@ from btclib_ecc.exceptions import (
     BTClibEccValueError,
     InvalidContributionError,
 )
-from tests import load, vector_id
+from tests import both_arms, load, vector_id
 
 _ERRORS = (BTClibEccValueError, InvalidContributionError)
 
@@ -89,6 +89,7 @@ def nonce_gen_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", nonce_gen_vectors())
+@both_arms
 def test_nonce_gen_vectors(case: dict[str, Any]) -> None:
     """Reproduce BIP445's nonce_gen_vectors.json."""
 
@@ -165,6 +166,7 @@ def nonce_agg_valid_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("pub_nonces, expected", nonce_agg_valid_vectors())
+@both_arms
 def test_nonce_agg_vectors(pub_nonces: list[bytes], expected: bytes) -> None:
     """Reproduce the valid cases of BIP445's nonce_agg_vectors.json."""
     assert frost.nonce_agg(pub_nonces) == expected
@@ -184,6 +186,7 @@ def nonce_agg_error_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("pub_nonces, error", nonce_agg_error_vectors())
+@both_arms
 def test_nonce_agg_error_vectors(pub_nonces: list[bytes], error: Any) -> None:
     """Reproduce the error cases of BIP445's nonce_agg_vectors.json."""
     with pytest.raises(_ERRORS) as excinfo:
@@ -221,6 +224,7 @@ def _all_group_params(data: dict[str, Any], cases_key: str) -> list[Any]:
     return params
 
 
+@both_arms
 def test_sign_verify_vectors_consistency() -> None:
     """Each group's own cross-reference: pubshares match secshares."""
     for group in _SIGN_VERIFY["test_groups"]:
@@ -233,6 +237,7 @@ def test_sign_verify_vectors_consistency() -> None:
 
 
 @pytest.mark.parametrize("group, case", _all_group_params(_SIGN_VERIFY, "valid_tests"))
+@both_arms
 def test_sign_verify_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
     """Reproduce the valid cases of BIP445's sign_verify_vectors.json."""
     n, t = group["n"], group["t"]
@@ -305,6 +310,7 @@ def test_sign_refuses_a_secnonce_that_is_no_bytearray(sec_nonce: Any) -> None:
 @pytest.mark.parametrize(
     "group, case", _all_group_params(_SIGN_VERIFY, "sign_error_tests")
 )
+@both_arms
 def test_sign_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
     """Reproduce the sign error cases of BIP445's sign_verify_vectors.json."""
     n, t = group["n"], group["t"]
@@ -332,6 +338,7 @@ def test_sign_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> None
 @pytest.mark.parametrize(
     "group, case", _all_group_params(_SIGN_VERIFY, "verify_fail_tests")
 )
+@both_arms
 def test_verify_fail_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
     """Reproduce the verify fail cases of BIP445's sign_verify_vectors.json."""
     n, t = group["n"], group["t"]
@@ -363,6 +370,7 @@ def test_verify_fail_vectors(group: dict[str, Any], case: dict[str, Any]) -> Non
 @pytest.mark.parametrize(
     "group, case", _all_group_params(_SIGN_VERIFY, "verify_error_tests")
 )
+@both_arms
 def test_verify_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
     """Reproduce the verify error cases of BIP445's sign_verify_vectors.json."""
     n, t = group["n"], group["t"]
@@ -401,6 +409,7 @@ _TWEAK = load("ecc", "_data", "bip445", "tweak_vectors.json")
 
 
 @pytest.mark.parametrize("group, case", _all_group_params(_TWEAK, "valid_tests"))
+@both_arms
 def test_tweak_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
     """Reproduce the valid cases of BIP445's tweak_vectors.json."""
     n, t = group["n"], group["t"]
@@ -445,6 +454,7 @@ def test_tweak_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> Non
 
 
 @pytest.mark.parametrize("group, case", _all_group_params(_TWEAK, "error_tests"))
+@both_arms
 def test_tweak_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
     """Reproduce the error cases of BIP445's tweak_vectors.json."""
     n, t = group["n"], group["t"]
@@ -480,6 +490,7 @@ _DET_SIGN = load("ecc", "_data", "bip445", "det_sign_vectors.json")
 
 
 @pytest.mark.parametrize("group, case", _all_group_params(_DET_SIGN, "valid_tests"))
+@both_arms
 def test_det_sign_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
     """Reproduce the valid cases of BIP445's det_sign_vectors.json."""
     n, t = group["n"], group["t"]
@@ -545,6 +556,7 @@ def test_det_sign_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> 
 
 
 @pytest.mark.parametrize("group, case", _all_group_params(_DET_SIGN, "error_tests"))
+@both_arms
 def test_det_sign_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
     """Reproduce the error cases of BIP445's det_sign_vectors.json."""
     n, t = group["n"], group["t"]
@@ -665,6 +677,7 @@ _SIG_AGG = load("ecc", "_data", "bip445", "sig_agg_vectors.json")
 
 
 @pytest.mark.parametrize("group, case", _all_group_params(_SIG_AGG, "valid_tests"))
+@both_arms
 def test_sig_agg_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
     """Reproduce the valid cases of BIP445's sig_agg_vectors.json."""
     n, t = group["n"], group["t"]
@@ -699,6 +712,7 @@ def test_sig_agg_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> N
 
 
 @pytest.mark.parametrize("group, case", _all_group_params(_SIG_AGG, "error_tests"))
+@both_arms
 def test_sig_agg_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> None:
     """Reproduce the error cases of BIP445's sig_agg_vectors.json."""
     n, t = group["n"], group["t"]

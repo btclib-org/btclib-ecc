@@ -320,6 +320,9 @@ def b58decode(text: str) -> bytes:
 # loaders these same modules import.
 needs_bindings = pytest.mark.bindings
 
+# Runs a test once per arm: the `arm` fixture of `conftest.py`.
+both_arms = pytest.mark.usefixtures("arm")
+
 # What a test asking the flagged `btclib_secp256k1.zkp` extension for the right
 # answer is marked with. Issue btclib-org/btclib#1679 is the sentinel that
 # installs btclib-secp256k1 from the sdist with `BTCLIB_LIBSECP256K1_ZKP=true`,

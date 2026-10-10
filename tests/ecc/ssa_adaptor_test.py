@@ -20,7 +20,7 @@ from btclib_ecc.curves import CURVES, bytes_from_point, mult, point_from_pub_key
 from btclib_ecc.curves import secp256k1 as ec
 from btclib_ecc.ecc import ssa, ssa_adaptor
 from btclib_ecc.exceptions import BTClibEccValueError
-from tests import load, vector_id
+from tests import both_arms, load, vector_id
 
 _VECTORS: list[dict[str, Any]] = load(
     "ecc", "_data", "zkp_schnorr_adaptor_vectors.json"
@@ -43,6 +43,7 @@ def _ids(check: str) -> dict[str, Any]:
 
 
 @pytest.mark.parametrize("vector", **_ids("check_presigning"))
+@both_arms
 def test_presign_vectors(vector: dict[str, Any]) -> None:
     """The pre-signature is upstream's, octet for octet, as is the key."""
     pre_sig = ssa_adaptor.presign(
@@ -53,6 +54,7 @@ def test_presign_vectors(vector: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("vector", **_ids("check_extract"))
+@both_arms
 def test_extract_vectors(vector: dict[str, Any]) -> None:
     """Extract succeeds or not, and finds the adaptor point or not."""
     flags = vector["checks"]["check_extract"]
@@ -67,6 +69,7 @@ def test_extract_vectors(vector: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("vector", **_ids("check_adapt"))
+@both_arms
 def test_adapt_vectors(vector: dict[str, Any]) -> None:
     """Adapt gives upstream's octets, which verify or not as upstream says."""
     sig = ssa_adaptor.adapt(vector["pre_sig"], vector["sec_adaptor"])
@@ -76,6 +79,7 @@ def test_adapt_vectors(vector: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("vector", **_ids("check_extract_sec"))
+@both_arms
 def test_extract_adaptor_vectors(vector: dict[str, Any]) -> None:
     """The secret is upstream's, or not, as upstream says."""
     t = ssa_adaptor.extract_adaptor(vector["sig"], vector["pre_sig"])
@@ -84,6 +88,7 @@ def test_extract_adaptor_vectors(vector: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("vector", **_ids("xonly_pubkey_parse"))
+@both_arms
 def test_unparsable_key_vectors(vector: dict[str, Any]) -> None:
     """A key upstream does not parse is refused here too."""
     with pytest.raises(BTClibEccValueError):
@@ -91,6 +96,7 @@ def test_unparsable_key_vectors(vector: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("vector", **_ids("ec_pubkey_parse"))
+@both_arms
 def test_unparsable_adaptor_vectors(vector: dict[str, Any]) -> None:
     """An adaptor point upstream does not parse is refused here too."""
     with pytest.raises(BTClibEccValueError):

@@ -38,6 +38,7 @@ from tests import (
     Sha256FirstByte,
     b58decode,
     b58encode,
+    both_arms,
     load_csv,
     needs_bindings,
     vector_id,
@@ -163,8 +164,8 @@ def bip340_vectors() -> list[Any]:
 
     Four of the nineteen are the arbitrary-size messages BIP340 gained in
     2023-04, of 0, 1, 17 and 100 bytes. No 32-byte gate stands in front of the
-    bindings (issue btclib-org/btclib#169), so all nineteen are signed and
-    verified by libsecp256k1.
+    bindings (issue btclib-org/btclib#169), so on the bindings arm
+    libsecp256k1 signs and verifies those four too.
     """
     return [
         pytest.param(row, id=vector_id(int(row[0]), row[7]))
@@ -176,6 +177,7 @@ BIP340_VECTORS = bip340_vectors()
 
 
 @pytest.mark.parametrize("row", BIP340_VECTORS)
+@both_arms
 def test_bip340_vectors(row: list[str]) -> None:
     """BIP340 (Schnorr) test vectors.
 

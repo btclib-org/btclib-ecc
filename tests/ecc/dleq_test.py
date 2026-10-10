@@ -20,7 +20,7 @@ from btclib_ecc.curves import mult, point_from_pub_key, secp256k1
 from btclib_ecc.ecc import dleq
 from btclib_ecc.exceptions import BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
-from tests import load_csv, vector_id
+from tests import both_arms, load_csv, vector_id
 
 # what the generation file writes in the proof column of a case that must
 # fail; the point at infinity, in its B column, is spelled INFINITY and
@@ -37,6 +37,7 @@ _VERIFY_VECTORS = load_csv("ecc", "_data", "test_vectors_verify_proof.csv")
     [row[1:-1] for row in _GENERATE_VECTORS],
     ids=[vector_id(int(row[0]), row[-1]) for row in _GENERATE_VECTORS],
 )
+@both_arms
 def test_generate_proof_vectors(
     G: str, a: str, B: str, aux: str, msg: str, proof: str
 ) -> None:
@@ -65,6 +66,7 @@ def test_generate_proof_vectors(
     [row[1:-1] for row in _VERIFY_VECTORS],
     ids=[vector_id(int(row[0]), row[-1]) for row in _VERIFY_VECTORS],
 )
+@both_arms
 def test_verify_proof_vectors(
     G: str, A: str, B: str, C: str, proof: str, msg: str, success: str
 ) -> None:

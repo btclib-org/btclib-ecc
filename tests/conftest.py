@@ -25,7 +25,8 @@ import pytest
 from hypothesis import settings
 
 from btclib_ecc._libsecp256k1 import INSTALLED
-from tests import ZKP_AVAILABLE
+from tests import ZKP_AVAILABLE, needs_bindings
+from tests.curves.curve_test import no_bindings_anywhere
 
 # The deadline is a per-example time limit, measured on a run whose cost
 # the interpreter and the runner decide: pypy meets these tests with a
@@ -349,6 +350,28 @@ def _skip_what_needs_zkp(items: list[pytest.Item]) -> None:
         # see `iter_markers` and not `item.keywords` above, same reason
         if any(mark.name == "zkp" for mark in item.iter_markers()):
             item.add_marker(skip)
+
+
+@pytest.fixture(
+    params=[pytest.param("bindings", marks=needs_bindings), "python"],
+)
+def arm(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> str:
+    """Run the test once per arm: the bindings, then the Python arithmetic.
+
+    A test asks for it with `both_arms`, so that a run with the bindings
+    installed meets the Python arm too, not only the `no-bindings` job of
+    `test.yml`. Where the bindings are absent the first arm is skipped, as
+    every test marked `bindings` is.
+
+    The Python arm is `no_bindings_anywhere` of `curves/curve_test.py`, which
+    switches the dispatch off and replaces every binding already loaded, so
+    an arm it misses fails rather than measuring the bindings against
+    themselves. The
+    bindings arm leaves the dispatch as the run found it.
+    """
+    if request.param == "python":
+        no_bindings_anywhere(monkeypatch)
+    return str(request.param)
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
