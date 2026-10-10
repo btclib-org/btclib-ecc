@@ -235,9 +235,9 @@ def _spec_xswiftec(u: int, t: int, ec: Any) -> int:
 def test_the_fraction_map_is_the_reference_map(curve_name: str) -> None:
     """The fraction form returns what the three-inverse form returns.
 
-    Random pairs take the three candidates in turn; the pairs with
-    u^3 + b + t^2 == 0 and the zero ones are built, being out of reach
-    of chance.
+    Random pairs return through whichever candidate they reach; the pairs
+    with u^3 + b + t^2 == 0 and the zero ones are built, being out of
+    reach of chance.
     """
     ec = CURVES[curve_name]
     p = ec.p
@@ -289,8 +289,7 @@ def test_the_inverse_is_the_reference_inverse(curve_name: str) -> None:
     """Every case answers what the roots-first form answers, None included.
 
     The answers are counted: a test of squareness that refused every case
-    would still agree on the cases the reference refuses. A point has two
-    on average.
+    would still agree on the cases the reference refuses.
     """
     ec = CURVES[curve_name]
     answers = 0
