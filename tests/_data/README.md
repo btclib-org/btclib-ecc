@@ -998,6 +998,21 @@ Verdict: **identical**. The specification's own file, whose cases
 libsecp256k1-zkp carries in `src/modules/ecdsa_adaptor/tests_impl.h` as
 `test_ecdsa_adaptor_spec_vectors`.
 
+### `tests/ecc/_data/dlc_schnorr_test.json`
+
+```text
+repo    discreetlogcontracts/dlcspecs
+path    test/dlc_schnorr_test.json
+commit  0b69c3ed784d6a95df12b159ff699b05d150ffc3  2020-10-29
+blob    558ea21184490d86d91430d3e9622d6d9f6a0192
+ours    eb88600b5360018ef03582b2225d3db58c794d11
+pulled  2026-10-10
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for a trailing newline**, which the
+`end-of-file-fixer` hook added.
+
 ### `tests/ecc/_data/rfc6979.json`
 
 Verdict: **transcribed**. Appendix A.2 of RFC 6979 gives 50 vectors, ten each
@@ -1290,8 +1305,8 @@ Against a pinned upstream blob:
 
 - identical byte for byte: the BIP327 vector files, the Wycheproof
   vector files and `ecdsa_adaptor.json`.
-- identical but for a trailing newline: `WYCHEPROOF_COPYING`, and the
-  BIP445 vector files.
+- identical but for a trailing newline: `WYCHEPROOF_COPYING`,
+  `dlc_schnorr_test.json` and the BIP445 vector files.
 - identical but for CRLF against LF: `bip340_test_vectors.csv`, the
   BIP324 vector files and the BIP374 vector files -- every csv
   vendored from bitcoin/bips, so far.
