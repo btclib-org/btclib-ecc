@@ -1509,11 +1509,8 @@ def _multi_mult_pairs(
 
     A point at infinity contributes nothing either, and libsecp256k1's
     `secp256k1_ecmult_strauss_wnaf` skips it too. In the interleaved wNAF
-    a point kept costs a table of odd multiples like any other: 1290 us
-    for three points, one at infinity, against 1052 us for the two finite
-    ones alone. Testing PJ[2] costs 0.03 us over eight points (issue
-    btclib-org/btclib-ecc#198: best of five, secp256k1, Python 3.14,
-    macOS arm64, bindings off).
+    a point kept costs a table of odd multiples like any other (issue
+    btclib-org/btclib-ecc#198 has the script that measures it).
     """
     if len(scalars) != len(jac_points):
         err_msg = "mismatch between number of scalars and points: "
