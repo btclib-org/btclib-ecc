@@ -154,8 +154,6 @@ Measured faster and not taken, each with its issue:
 
     - the square root by an addition chain, `secp256k1_fe_sqrt`: 1.14x of
       `pow(a, (p + 1) // 4, p)`, issue btclib-org/btclib-ecc#191
-    - a wNAF recoded a run of zero bits at a time: 1.02x of a double
-      multiplication, issue btclib-org/btclib-ecc#192
     - the lambda image of a table by x * beta,
       `secp256k1_ecmult_table_get_ge_lambda`: 1.10x of
       `_mult_endomorphism_secp256k1` and 1.03x of a verification, issue

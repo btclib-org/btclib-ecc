@@ -1105,3 +1105,40 @@ def test_the_interleaved_loop_makes_the_operations_its_wnafs_name(
     # and the point is still the right one, the sequence being asserted
     # about a call that answered
     assert ec.is_jac_equal(got, _sum_of_mults(scalars, points, ec))
+
+
+def _wNAF_one_bit_at_a_time(m: int, w: int) -> list[int]:
+    """Recode m into its wNAF one bit at a time."""
+    w2 = 1 << w
+    M: list[int] = []
+    i = 0
+    while m > 0:
+        if m % 2 == 1:
+            if w == 1:
+                M.append(2 - (m % 4))
+            else:
+                r = m % w2
+                M.append(r - w2 if w2 // 2 <= r else r)
+            m -= M[i]
+        else:
+            M.append(0)
+        m //= 2
+        i += 1
+    return M
+
+
+def test_wNAF_of_m_var_skips_zero_runs() -> None:
+    """The digits are those of the bit-at-a-time recoding."""
+    n = secp256k1.n
+    rng = random.Random(192)
+    scalars = [0, 1, 2, 3, n - 1, n - 2]
+    scalars += [1 << k for k in range(256)]
+    scalars += [(1 << k) - 1 for k in range(1, 257)]
+    scalars += [rng.getrandbits(256) for _ in range(100)]
+    scalars += [rng.getrandbits(rng.randrange(1, 257)) << 100 for _ in range(50)]
+    # the widths the callers use go from 1 to the fixed-point one
+    for w in range(1, 11):
+        for m in scalars:
+            naf = _wNAF_of_m_var(m, w)
+            assert naf == _wNAF_one_bit_at_a_time(m, w), (m, w)
+            assert sum(d << i for i, d in enumerate(naf)) == m
