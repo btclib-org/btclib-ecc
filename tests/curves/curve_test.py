@@ -12,7 +12,7 @@ import types
 from collections.abc import Callable
 from functools import partial
 from hashlib import sha256, sha512
-from math import ceil, isqrt, sqrt
+from math import isqrt, sqrt
 from typing import Any
 
 import pytest
@@ -2005,9 +2005,8 @@ def test_prepared_point_answers_what_mult_answers() -> None:
     and `PreparedPoint(Q).mult(m)` is how long it took, and a test that
     measured that would be measuring the machine. So the two are held
     equal, over every curve the suite has and a spread of scalars that
-    reaches both ends of each -- 0 and n-1 included, the parity
-    correction of `_mult_fixed_base` being where a fixed-base ladder
-    differs from every other one.
+    reaches both ends of each -- 0 and n-1 included, the scalars where
+    the parity correction of `_mult_fixed_base` acts.
 
     The generator among the points on purpose: preparing G is asking for
     what `mult` does for it anyway, and it must not become a second
@@ -2030,7 +2029,7 @@ def test_prepared_point_answers_the_python_arithmetic_too(
     """The same equality with the dispatch off, which is the point of it.
 
     `PreparedPoint` exists for the Python path -- on secp256k1 with the
-    bindings in reach the ladder is not even the faster arm -- so the
+    bindings in reach the comb is not even the faster arm -- so the
     delegated agreement above is the arm that matters least here. This is
     the other one, and it is the one where the fixed-base tables are
     actually built and indexed.
@@ -2047,11 +2046,10 @@ def test_prepared_point_refuses_a_point_with_no_tables() -> None:
     """Infinity and a point of no curve, the two the constructor is for.
 
     Infinity is on the curve and would pass `require_on_curve`, so it is
-    refused by name: it has no affine odd multiples to tabulate, and
-    m*INF is INF without any of this. A point off the curve is the
-    ordinary refusal, and it happens here rather than at the first
-    multiplication, which is what preparing is -- validating once so that
-    nothing after it has to.
+    refused by name: m*INF is INF without any table. A point off the
+    curve is the ordinary refusal, and it happens here rather than at the
+    first multiplication, which is what preparing is -- validating once so
+    that nothing after it has to.
     """
     with pytest.raises(
         BTClibEccValueError, match="cannot prepare the point at infinity"
@@ -2071,39 +2069,69 @@ def test_a_prepared_point_builds_its_tables_once(
 ) -> None:
     """The memoization is the feature, so it is what is asserted.
 
-    Counted at `_signed_odd_multiples_aff`, which is what
-    `_cached_fixed_base_multiples` calls once per digit position: the
-    first multiplication of a prepared point builds every position, and
-    no later one builds anything. Where the unprepared `mult` goes
-    instead -- the GLV endomorphism -- it builds a table on every call
-    and keeps none, which is the asymmetry this whole object is about.
+    Counted as the misses of `_cached_fixed_base_multiples`, which builds
+    a point's comb table: the first multiplication of a prepared point
+    builds it, and no later one builds anything. Where the unprepared
+    `mult` goes instead -- the GLV endomorphism -- it builds a table on
+    every call and keeps none, which is the asymmetry this whole object
+    is about.
 
     A fresh point per case, since the caches are module-wide and a point
     the suite has already prepared would find its tables built.
     """
     no_bindings(monkeypatch)
     ec = secp256k1
-    builds = []
-    built = curve_group._signed_odd_multiples_aff
-
-    def counting(Q: JacPoint, group: CurveGroup, w: int) -> list[Point]:
-        builds.append(Q)
-        return built(Q, group, w)
-
-    monkeypatch.setattr(curve_group, "_signed_odd_multiples_aff", counting)
+    cache_info = curve_group._cached_fixed_base_multiples.cache_info
 
     prepared = PreparedPoint(mult(0x5EED0001, ec.G, ec), ec)
     # deriving the point above is a multiplication of the generator, and
-    # on a worker that has not made one yet that is G's own tables being
+    # on a worker that has not made one yet that is G's own table being
     # built: the count starts after it
-    builds.clear()
+    misses = cache_info().misses
     prepared.mult(3)
-    first = len(builds)
-    # every digit position of the scalar, and the measurement in
-    # `_cached_fixed_base_multiples` says how many that is
-    assert first == ceil(ec.scalar_len / curve._FIXED_BASE_W)
+    assert cache_info().misses == misses + 1
 
-    builds.clear()
     for m in (5, 7, 11):
         prepared.mult(m)
-    assert not builds
+    assert cache_info().misses == misses + 1
+
+
+def test_a_prepared_point_outside_the_subgroup_answers_what_mult_answers() -> None:
+    """Every point of the cofactor curves, and a point of order 4.
+
+    A point outside <G> can have a multiple of order 2, whose affine form
+    (x, 0) the comb's tables cannot tell from infinity. `PreparedPoint`
+    sends such a point to the arm `mult` takes, so the two answer alike
+    for every point and every scalar. The two-torsion points themselves
+    are refused by the constructor, as infinity is.
+    """
+    for name, ec in cofactor_curves.items():
+        subgroup = {
+            ec.aff_from_jac_var(_mult_jac_var(i, ec.GJ, ec)) for i in range(1, ec.n)
+        }
+        points = [
+            (x, y)
+            for x in range(ec.p)
+            for y in range(1, ec.p)
+            if ec._y2(x) == y * y % ec.p
+        ]
+        for Q in points:
+            prepared = PreparedPoint(Q, ec)
+            assert prepared._in_subgroup == (Q in subgroup), (name, Q)
+            for m in range(ec.n):
+                assert prepared.mult(m) == mult(m, Q, ec), (name, Q, m)
+
+    # secp112r2 has cofactor 4, and Q here has order 4: 2*Q is the
+    # curve's two-torsion point
+    ec = CURVES["secp112r2"]
+    Q = (
+        3610075134545239076002374364665932,
+        964432197919735907550954472026594,
+    )
+    QJ = _jac_from_aff(Q)
+    assert _mult_jac_var(2, QJ, ec)[2] != 0
+    assert _mult_jac_var(4, QJ, ec)[2] == 0
+    prepared = PreparedPoint(Q, ec)
+    assert not prepared._in_subgroup
+    for m in (*range(9), ec.n - 1):
+        assert prepared.mult(m) == mult(m, Q, ec), m

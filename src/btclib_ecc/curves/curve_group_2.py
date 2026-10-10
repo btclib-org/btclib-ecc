@@ -86,8 +86,9 @@ Taken, in the function named:
     - signed odd digits, `secp256k1_ecmult_const` after Hamburg (eprint
       2012/309, section 3.3): `signed_odd_digits`, Joye-Tunstall's, which
       gives the same digits; see the measurement below
-    - a table for the generator, `secp256k1_ecmult_gen_prec_table`:
-      `_cached_fixed_base_multiples`, `_mult_fixed_base`
+    - the signed-digit comb for the generator, `secp256k1_ecmult_gen_gej`
+      over `secp256k1_ecmult_gen_prec_table`: `_cached_fixed_base_multiples`,
+      `_mult_fixed_base`
     - the keypair holding the public key, `secp256k1_keypair_create`:
       `ssa.Signer`, on both arms, and `bip340_nonce._nonce_with_pub_key_`
 
@@ -160,9 +161,6 @@ Measured faster and not taken, each with its issue:
       `secp256k1_ecmult_table_get_ge_lambda`: 1.10x of
       `_mult_endomorphism_secp256k1` and 1.03x of a verification, issue
       btclib-org/btclib-ecc#193
-    - the signed-digit comb of `secp256k1_ecmult_gen_gej`: 1.2x to 1.3x of
-      `_mult_fixed_base`, from one multiplication to a hundred, issue
-      btclib-org/btclib-ecc#194
     - ElligatorSwift decoded as a fraction,
       `secp256k1_ellswift_xswiftec_frac_var`: 1.6x of `_xswiftec_var`; and
       encoded with the squareness tested before the inversion,

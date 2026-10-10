@@ -1111,103 +1111,140 @@ def _signed_odd_multiples_aff(Q: JacPoint, ec: CurveGroup, w: int) -> list[Point
 
 @functools.lru_cache  # the generator is the Q of most calls, so it pays
 def _cached_fixed_base_multiples(
-    Q: JacPoint, ec: CurveGroup, w: int
+    Q: JacPoint, ec: CurveGroup, teeth: int, spacing: int
 ) -> list[list[Point]]:
-    """Return one signed odd affine table per digit position of a scalar.
+    """Return the comb's tables: per block, 2^teeth affine points.
 
-    Entry i is `_signed_odd_multiples_aff(2^(w*i) * Q, ec, w)`, so a
-    scalar's i-th width-w digit indexes the multiple it names outright and
-    a multiplication built on this makes no doubling at all. The positions
-    are `ceil(ec.scalar_len / w)`, which is every digit a scalar of the
-    group has; a larger scalar has no table and `signed_odd_digits`
-    refuses it.
+    Tooth i of block j is the bit (j*teeth + i)*spacing of a scalar. Entry
+    e of block j is the sum over its teeth of +-2^((j*teeth + i)*spacing)
+    * Q, + where bit i of e is set and - where it is not. The blocks are
+    `ceil(ec.scalar_len / (teeth * spacing))`, enough teeth for every bit
+    of a scalar of the group.
 
-    Memoized on (Q, ec, w) because that is what makes it worth building:
-    the table is the point's and not the scalar's, so a caller
-    multiplying the generator pays for it once -- and so does a caller
-    multiplying its own point, once it has said with
-    `curve.PreparedPoint` that the point will come back. What it costs
-    to keep is
-    2^w points a position -- on secp256k1 at the w=6 `curve.py` passes,
-    43 positions of 64 points, some 366 KiB and a build to pay for, which
-    is the trade `_mult_fixed_base` measures.
+    Half of each table is the other half negated, which costs a modular
+    subtraction an entry. Keeping both halves is what lets the
+    multiplication index an entry without testing its sign, as
+    `_signed_odd_multiples_aff` does for the regular window.
+
+    Memoized on (Q, ec, teeth, spacing) because that is what makes it
+    worth building: the table is the point's and not the scalar's, so a
+    caller multiplying the generator pays for it once -- and so does a
+    caller multiplying its own point, once it has said with
+    `curve.PreparedPoint` that the point will come back.
     """
-    tables: list[list[Point]] = []
+    blocks = ceil(ec.scalar_len / (teeth * spacing))
+    # 2^p * Q for every tooth position p, and twice it, which is what
+    # turning that tooth from - to + adds: affine, one inversion for all,
+    # so that the entries below are built by the cheaper mixed addition
+    chain: list[JacPoint] = []
     K = Q
-    for _ in range(ceil(ec.scalar_len / w)):
-        tables.append(_signed_odd_multiples_aff(K, ec, w))
-        for _ in range(w):
+    for _ in range(blocks * teeth):
+        chain.append(K)
+        K = ec.double_jac(K)
+        chain.append(K)
+        for _ in range(spacing - 1):
             K = ec.double_jac(K)
+    aff = ec.aff_from_jac_batch_var(chain)
+    powers, twice = aff[0::2], aff[1::2]
+
+    jac: list[JacPoint] = []
+    for j in range(0, blocks * teeth, teeth):
+        # the first entry whose top tooth is +: every other tooth is -
+        entry = _jac_from_aff(powers[j + teeth - 1])
+        for P in powers[j : j + teeth - 1]:
+            entry = ec.add_jac_aff(entry, ec.negate(P))
+        block = [entry]
+        for i in range(j, j + teeth - 1):
+            block += [ec.add_jac_aff(P, twice[i]) for P in block]
+        jac += block
+
+    half = 1 << (teeth - 1)
+    aff = ec.aff_from_jac_batch_var(jac)
+    tables: list[list[Point]] = []
+    for at in range(0, len(aff), half):
+        upper = aff[at : at + half]
+        # entry e of the lower half is minus entry 2^teeth - 1 - e
+        tables.append([ec.negate(P) for P in reversed(upper)] + upper)
     return tables
 
 
-def _mult_fixed_base(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoint:
-    """Scalar multiplication with a table per digit position: no doublings.
+def _mult_fixed_base(
+    m: int, Q: JacPoint, ec: CurveGroup, teeth: int, spacing: int
+) -> JacPoint:
+    """Scalar multiplication by a signed-digit multi-comb.
 
-    `_mult_regular_window` with the doublings taken out of it as well as
-    the zero digits: that one holds one table and doubles w times between
-    digits, this one holds a table per position and only adds. So a
-    256-bit scalar costs `ceil(ec.scalar_len / w)` additions and nothing
-    else -- 43 of them at w=6, against the 71 additions and 253 doublings
-    `_mult_regular_window` makes at w=4 -- and the count is the same for every
-    scalar of the curve, which is what the regular window is for and what
-    this keeps.
+    Hamburg's comb, eprint 2012/309 section 3.3, which libsecp256k1's
+    `secp256k1_ecmult_gen_gej` runs for the generator. The teeth of a
+    block are `spacing` bits apart, and `_cached_fixed_base_multiples`
+    holds every sum they can name. Each comb offset adds one entry per
+    block, and a doubling separates one offset from the next. The first
+    entry starts the accumulator and the parity correction adds one
+    more, so a scalar costs blocks * spacing additions and spacing - 1
+    doublings, the same for every scalar of the curve. On secp256k1 at 8
+    teeth and spacing 8 that is 4 blocks, 32 additions and 7 doublings.
+    `_CountingGroup` in tests/curves/curve_group_test.py counts them.
 
-    w=6 by measurement, over 30 random 256-bit scalars on secp256k1, best
-    of seven alternating rounds. The window buys time and is paid in
-    memory, and the time does not turn: it falls at every step from w=4
-    to w=8, against tables of 136, 221, 366, 629 and 1088 KiB. Where to
-    stop is therefore where the memory stops being worth it, and past
-    w=6 a doubled table buys under 15% each time.
+    Every bit of the recoded scalar is a sign and none is a zero. An odd
+    k below 2^L, L being the bits the blocks cover, is sum((2*d_i - 1) *
+    2^i) over the bits d_i of d = (k + 2^L - 1) / 2. That is integer
+    arithmetic and needs no group order, which `CurveGroup` does not
+    carry. libsecp256k1 computes d modulo n instead, over a table of G/2
+    and with a blinding term. So an even m is multiplied as m + 1 and Q
+    is subtracted at the end, as in `_mult_regular_window`.
 
-    Against what `curve.mult` ran before, at w=6: 2.77x, 3.42x and 4.13x
-    at w=4, 5 and 6 over the GLV endomorphism on secp256k1, and 5.98x
-    over the regular window on secp256r1, which has no endomorphism to
-    be measured against and gains the more for it. The two curves hold
-    tables of the same size.
+    The tables are affine, and an affine point of order 2, (x, 0), reads
+    as infinity. So Q must have no multiple of order 2. Every point of a
+    subgroup of odd prime order meets that, and `curve.PreparedPoint`
+    sends any other point to another arm.
 
-    It is libsecp256k1's `secp256k1_ecmult_gen_gej` up to a difference
-    worth naming: that one is a signed-digit multi-comb, so it sums a
-    looked-up entry per block and still doubles between comb offsets,
-    where a table per digit position leaves it nothing to double. What
-    they share is the reason, and the reason is the point rather than the
-    algorithm: the generator is the same on every call, so its table is
-    built once and kept. `curves.mult` is what recognizes that case.
+    8 teeth and spacing 8, by measurement on secp256k1; issue
+    btclib-org/btclib-ecc#194 holds the script and the table.
 
-    The reason is the point repeating and not the point being the
-    generator, so `curve.PreparedPoint` reaches here as well, for a
-    caller who has said its own point will come back. Break-even is 23
-    multiplications of that point: a table of 366 KiB and a build to pay
-    for, against a warm call cheaper than what the GLV endomorphism
-    `curves.mult` otherwise runs costs, which builds nothing. Which is why
-    nothing infers it -- the same measurement, read the other way, is
-    that build and 366 KiB of pure loss for a point multiplied once.
+    The reason for keeping a table is the point repeating and not the
+    point being the generator, so `curve.PreparedPoint` reaches here as
+    well, for a caller who has said its own point will come back. That
+    object is where the trade is written.
 
     The accumulator is rescaled where `curves.mult` rescales the point on
     its other arm: the table here is memoized and canonical, so it is the
     running value that has to stop being a function of m alone.
     `_blinded_jac` says what that buys and what it does not.
 
-    The input point is assumed to be on the curve, and m to be below
-    2^(w * positions) -- which `ec.scalar_len` bounds and every entry
-    point of the library satisfies, each reducing mod n first.
+    The input point is assumed to be on the curve, and m to be below 2^L,
+    which `ec.scalar_len` bounds and every entry point of the library
+    satisfies, each reducing mod n first.
     """
     if m < 0:
         raise BTClibEccValueError("negative m")
+    if teeth <= 0:
+        raise BTClibEccValueError(f"non positive teeth: {teeth}")
+    if spacing <= 0:
+        raise BTClibEccValueError(f"non positive spacing: {spacing}")
 
-    # a number cannot be written in basis 1 (ie w=0)
-    if w <= 0:
-        raise BTClibEccValueError(f"non positive w: {w}")
+    T = _cached_fixed_base_multiples(Q, ec, teeth, spacing)
+    size = teeth * spacing * len(T)
+    if m >> size:
+        raise BTClibEccValueError(f"m does not fit {size} bits")
 
-    T = _cached_fixed_base_multiples(Q, ec, w)
-    digits = signed_odd_digits(m | 1, w, len(T))
-    offset = (1 << w) - 1
-
-    # a table entry, the top digit being positive, and never infinity
-    R = _blinded_jac(_jac_from_aff(T[-1][(digits[-1] + offset) // 2]), ec)
-    for i in range(len(T) - 2, -1, -1):
-        # only 'add': the position's own table holds the power of two
-        R = ec.add_jac_aff(R, T[i][(digits[i] + offset) // 2])
+    d = ((m | 1) + (1 << size) - 1) >> 1
+    bits = format(d, f"0{size}b")
+    mask = (1 << teeth) - 1
+    R = INFJ
+    for off in range(spacing):
+        # bit q of the column is bit q*spacing + spacing-1-off of d: the
+        # tooth q % teeth of block q // teeth, at this offset
+        column = int(bits[off::spacing], 2)
+        if off:
+            R = ec.double_jac(R)
+            for Tj in T:
+                R = ec.add_jac_aff(R, Tj[column & mask])
+                column >>= teeth
+        else:
+            # the accumulator starts at a table entry, rescaled
+            R = _blinded_jac(_jac_from_aff(T[0][column & mask]), ec)
+            for Tj in T[1:]:
+                column >>= teeth
+                R = ec.add_jac_aff(R, Tj[column & mask])
     # the parity correction of _mult_regular_window, made whatever the
     # parity for the same reason, and what answers m == 0
     return ec.add_jac(R, (INFJ, ec.negate_jac(Q))[not m & 1])

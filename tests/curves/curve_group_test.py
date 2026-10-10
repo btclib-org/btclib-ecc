@@ -443,10 +443,13 @@ class _CountingGroup(CurveGroup):
     multiplication is too noisy to resolve a spread of one addition in
     seventy, which is why the test counts the operations directly instead.
 
-    The docstrings that name this class -- `_mult_regular_window` in
-    `curve_group`, and `_double_mult_regular_window` and
-    `_mult_endomorphism_secp256k1_var` in `curve_group_2` -- state figures
-    taken here, at the scalar_len set below:
+    The docstrings that name this class -- `_mult_regular_window` and
+    `_mult_fixed_base` in `curve_group`, and `_double_mult_regular_window`
+    and `_mult_endomorphism_secp256k1_var` in `curve_group_2` -- state
+    figures taken here, at the scalar_len set below. `_mult_fixed_base`'s
+    are taken warm by
+    `test_fixed_base_operation_count_is_the_same_for_every_scalar`; the
+    others by:
 
         uv run python -c "
         from btclib_ecc.curves import secp256k1
@@ -539,38 +542,63 @@ def test_regular_window_addition_count_is_the_same_for_every_scalar() -> None:
 
 
 def test_mult_fixed_base() -> None:
-    """Check the fixed-base ladder against the multiplication it replaces.
+    """Check the fixed-base comb against the multiplication it replaces.
 
     Every scalar of the low-cardinality curves, whose scalar_len is a
-    handful of bits, so the per-position tables are short enough to build
-    at every width; and the boundaries on secp256k1, where a table is 43
-    positions. A scalar above ec.scalar_len bits has no table to index and
-    is refused by the recoding, which is what the last case asserts:
-    `curves.mult` reduces mod n before reaching here, as every entry point
-    of the library does.
+    handful of bits, so the tables are short enough to build for several
+    combs; and the boundaries on secp256k1 at the comb `curve.py` passes.
+    A scalar above the bits the blocks cover has no tooth to read it and
+    is refused, which is what the last case asserts: `curves.mult` reduces
+    mod n before reaching here, as every entry point of the library does.
     """
-    for w in range(1, MAX_W):
+    for teeth, spacing in ((1, 1), (1, 3), (2, 2), (3, 1), (4, 2), (5, 1)):
         for ec in low_card_curves.values():
             for m in range(ec.n + 1):
                 assert ec.is_jac_equal(
-                    _mult_fixed_base(m, ec.GJ, ec, w),
+                    _mult_fixed_base(m, ec.GJ, ec, teeth, spacing),
                     _mult_jac_var(m % ec.n, ec.GJ, ec),
-                ), (m, w, ec)
-            assert ec.is_jac_equal(_mult_fixed_base(1, INFJ, ec, w), INFJ)
+                ), (m, teeth, spacing, ec)
+            assert ec.is_jac_equal(_mult_fixed_base(1, INFJ, ec, teeth, spacing), INFJ)
 
             with pytest.raises(BTClibEccValueError, match="negative m$"):
-                _mult_fixed_base(-1, ec.GJ, ec, w)
-            with pytest.raises(BTClibEccValueError, match="non positive w: "):
-                _mult_fixed_base(1, ec.GJ, ec, -w)
+                _mult_fixed_base(-1, ec.GJ, ec, teeth, spacing)
+            with pytest.raises(BTClibEccValueError, match="non positive teeth: "):
+                _mult_fixed_base(1, ec.GJ, ec, -teeth, spacing)
+            with pytest.raises(BTClibEccValueError, match="non positive spacing: "):
+                _mult_fixed_base(1, ec.GJ, ec, teeth, -spacing)
 
     ec = secp256k1
     for m in (0, 1, 2, 3, ec.n - 1, ec.n, ec.n + 1):
         assert ec.is_jac_equal(
-            _mult_fixed_base(m, ec.GJ, ec, w=4), _mult_jac_var(m, ec.GJ, ec)
+            _mult_fixed_base(m, ec.GJ, ec, 8, 8), _mult_jac_var(m, ec.GJ, ec)
         ), m
 
     with pytest.raises(BTClibEccValueError, match="does not fit"):
-        _mult_fixed_base(1 << ec.scalar_len, ec.GJ, ec, w=4)
+        _mult_fixed_base(1 << ec.scalar_len, ec.GJ, ec, 8, 8)
+
+
+def test_fixed_base_operation_count_is_the_same_for_every_scalar() -> None:
+    """One count of additions and doublings for the comb, warm.
+
+    The table is built by the first call and counted there too, so the
+    count starts after it. What is left is blocks * spacing additions,
+    the parity correction's among them, and spacing - 1 doublings: at 8
+    teeth and spacing 8 on secp256k1, the 4 blocks, 32 additions and 7
+    doublings `_mult_fixed_base`'s docstring states.
+    """
+    ec = _CountingGroup()
+    _mult_fixed_base(1, secp256k1.GJ, ec, 8, 8)
+    rnd = random.Random(0xC0DE194)
+    scalars = [rnd.randrange(secp256k1.n) for _ in range(10)]
+    scalars += [0, 1, 2, 3, 1 << 100, secp256k1.n >> 17, secp256k1.n - 1]
+
+    counts = set()
+    for m in scalars:
+        ec.additions = ec.doublings = 0
+        _mult_fixed_base(m, secp256k1.GJ, ec, 8, 8)
+        counts.add((ec.additions, ec.doublings))
+
+    assert counts == {(4 * 8, 7)}, counts
 
 
 def test_mult_regular_window() -> None:
