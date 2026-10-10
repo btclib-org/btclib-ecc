@@ -1812,7 +1812,7 @@ def _multi_mult_var(
     The zeros and the points at infinity are counted out before the dispatch
     rather than left to len(), because both are dropped downstream: 56
     scalars of which 2 are nonzero is a batch of two, and sending it to
-    Bos-Coster on its length costs nearly twice what the wNAF does.
+    Bos-Coster on its length costs more than the wNAF does.
 
     The input points are assumed to be on curve, the scalar coefficients
     are assumed to have been reduced mod n if appropriate (e.g. cyclic
