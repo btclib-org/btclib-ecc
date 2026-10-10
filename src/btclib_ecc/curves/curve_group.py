@@ -1174,10 +1174,12 @@ def _mult_fixed_base(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoint:
     It is libsecp256k1's `secp256k1_ecmult_gen_gej` up to a difference
     worth naming: that one is a signed-digit multi-comb, so it sums a
     looked-up entry per block and still doubles between comb offsets,
-    where a table per digit position leaves it nothing to double. What
-    they share is the reason, and the reason is the point rather than the
-    algorithm: the generator is the same on every call, so its table is
-    built once and kept. `curves.mult` is what recognizes that case.
+    where a table per digit position leaves it nothing to double.
+    Measured, that comb is the faster of the two, issue
+    btclib-org/btclib-ecc#194. What they share is the reason, and the
+    reason is the point rather than the algorithm: the generator is the
+    same on every call, so its table is built once and kept. `curves.mult`
+    is what recognizes that case.
 
     The reason is the point repeating and not the point being the
     generator, so `curve.PreparedPoint` reaches here as well, for a
@@ -1679,10 +1681,12 @@ def _multi_mult_w_NAF_var(
 
     # one extended Euclid for every table the call builds, where a table
     # at a time is one apiece: the batch of `aff_from_jac_batch_var` over the
-    # concatenation rather than over one point's share of it, which is
-    # libsecp256k1's `secp256k1_ge_set_all_gej_var` over the whole of its
-    # `pre_a`. An empty concatenation is not a case to test for: every
-    # point being memoized leaves nothing to convert and nothing to do
+    # concatenation rather than over one point's share of it. That is
+    # libsecp256k1's `secp256k1_ge_set_all_gej_var` over the whole batch;
+    # its own multiplication does not call it, its tables sharing one Z by
+    # `secp256k1_ge_table_set_globalz` instead. An empty concatenation is
+    # not a case to test for: every point being memoized leaves nothing to
+    # convert and nothing to do
     aff = ec.aff_from_jac_batch_var([P for _, jac in pending for P in jac])
     at = 0
     for i, jac in pending:

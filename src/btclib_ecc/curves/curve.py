@@ -672,10 +672,10 @@ def _x_octets(x: int, ec: Curve) -> bytes | None:
     `xonly.to_pubkey` are the x-only calls this feeds, and neither wants
     a compressed public key (0x02 || x) built around x. That
     concatenation belongs to `_multi_mult_x_only_var` instead, which
-    needs a point for `pubkey_tweak_mul_sum`'s public-key API and has no
-    x-only multiplication to reach for -- libsecp256k1 converts a point
-    to an x-only key and offers nothing the other way, so the lift is
-    that caller's rule, not this one's.
+    needs a point for `pubkey_tweak_mul_sum`'s public-key API, which has
+    no x-only multiplication to reach for -- libsecp256k1's API converts
+    a point to an x-only key and offers nothing the other way, so the lift
+    is that caller's rule, not this one's.
     """
     if not _libsecp256k1_serves(ec, None) or not 0 <= x < ec.p:
         return None
@@ -850,9 +850,9 @@ def _multi_mult_x_only_var(
     is why this takes x-coordinates rather than points, and why the
     concatenation is written here rather than left to `xonly.to_pubkey`:
     what the octets are on their way to is `pubkey_tweak_mul_sum`, whose
-    terms are public keys, and libsecp256k1 has no x-only multiplication
-    to hand them to instead. It is the same rule `_x_octets` above serves,
-    reached through the one door that exists for it.
+    terms are public keys, and libsecp256k1's API has no x-only
+    multiplication to hand them to instead. It is the same rule
+    `_x_octets` above serves, reached through the one door there is.
 
     `_libsecp256k1_multi_mult_var_` and not the public `multi_mult_var`, that
     one taking points -- which is the form the lift would have to build

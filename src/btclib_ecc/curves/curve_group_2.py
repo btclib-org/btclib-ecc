@@ -54,57 +54,127 @@ follow-ups; what is here is the rest:
       total additions in exchange for digit pairs that do not index a
       per-point table of odd multiples
 
-Measured against libsecp256k1 and not taken. Each of these is an algorithm
-that library carries and this one does not, with the result that decided
-it, so that what the next reader has is the verdict and not the
-measurement to make again. Best of five on secp256k1's p, Python 3.14.6,
-macOS arm64:
+The speed techniques of libsecp256k1 v0.8.0 (btclib-org/btclib-secp256k1
+at 86b2ac08) and what the Python arm does with each. The files read are
+ecmult, ecmult_gen, ecmult_const, group, field, scalar, ecdsa and eckey
+with the files their limbs live in, and the schnorrsig, extrakeys and
+ellswift modules. Blinding, a smaller table and a protocol's steps are not
+speed techniques and are not listed.
 
-    - the field inverse by an addition chain, Peter Dettman's and Brian
-      Smith's, and libsecp256k1's own safegcd beside them:
-      `pow(a, -1, p)` is CPython's extended Euclid in C, where 255
-      modular squarings in bytecode -- fewer than any chain needs --
-      cost several times what it does. `pow(a, p - 2, p)` costs about
-      what those squarings do, which is why `mod_inv_var` does not
-      spell Fermat either:
+Taken, in the function named:
+
+    - wNAF recoding, `secp256k1_ecmult_wnaf`: `_wNAF_of_m_var`
+    - table of odd multiples, `secp256k1_ecmult_odd_multiples_table`:
+      `_odd_multiples`, `_odd_multiples_aff`
+    - sign of a digit on the point, `secp256k1_ecmult_table_get_ge`:
+      `_additions_by_position`
+    - one loop and its doublings for all points,
+      `secp256k1_ecmult_strauss_wnaf`: `_multi_mult_w_NAF_var`,
+      `_double_mult_w_NAF_var`
+    - a wide window for the generator, `WINDOW_G` beside `WINDOW_A`:
+      `_FIXED_POINT_W`
+    - a point with a zero scalar skipped: `_multi_mult_pairs`
+    - the lambda split and the lambda image of a point,
+      `secp256k1_scalar_split_lambda`, `secp256k1_ge_mul_lambda`:
+      `_multiplier_decomposer`, `_endomorphism_split_secp256k1`
+    - mixed addition, `secp256k1_gej_add_ge_var`: `add_jac_aff`
+    - doubling for a == 0, `secp256k1_gej_double`: `_double_jac_helper`
+    - one inversion for many points, `secp256k1_ge_set_all_gej_var`:
+      `aff_from_jac_batch_var`
+    - squareness by the Jacobi symbol, `secp256k1_fe_is_square_var`:
+      `legendre_symbol_var`, `curve._is_x_coordinate_var`
+    - signed odd digits, `secp256k1_ecmult_const` after Hamburg (eprint
+      2012/309, section 3.3): `signed_odd_digits`, Joye-Tunstall's, which
+      gives the same digits; see the measurement below
+    - a table for the generator, `secp256k1_ecmult_gen_prec_table`:
+      `_cached_fixed_base_multiples`, `_mult_fixed_base`
+
+Measured and not taken, with the verdict where it is kept. Best of five,
+secp256k1, Python 3.14.6, macOS arm64; a figure is the speed of
+libsecp256k1's technique over the code here. The scripts for the figures
+with no issue of their own are in issue btclib-org/btclib-ecc#185:
+
+    - Pippenger, `secp256k1_ecmult_pippenger_wnaf`: `_multi_mult_var`
+    - `secp256k1_gej_eq_x_var`: the verification in `dsa._assert_as_valid_`
+    - the field inverse by an addition chain or safegcd,
+      `secp256k1_fe_inv`: `pow(a, -1, p)` is CPython's extended Euclid in C,
+      where 255 modular squarings in bytecode -- fewer than any chain needs
+      -- cost several times what it does. `pow(a, p - 2, p)` costs about
+      what those squarings do, which is why `mod_inv_var` does not spell
+      Fermat either:
 
         - https://briansmith.org/ecc-inversion-addition-chains-01
-    - fast reduction for a pseudo-Mersenne p: the Solinas form for
-      `2^256 - 2^32 - 977`, two products by a 33-bit constant and a
-      conditional subtraction, costs more than `x % p` does. CPython's
-      division is C, and 512 bits by 256 is small
-    - limbs with delayed reduction, libsecp256k1's 5 by 52 bits and its
-      magnitude tracking: the Python analogue is letting intermediates
-      grow, which `add_jac`'s own comment measured at 2.0x to 3.0x the
-      wrong way -- an integer costs what its size costs
-    - a separate squaring routine: CPython's long_mul already takes the
-      squaring path when both operands are the same object, `a*a % p`
-      costing measurably less than `a*b % p`
-    - the masked table lookup of `secp256k1_ecmult_table_get_ge`, which
-      reads every entry of a table under a cmov: a list index is a list
-      index
-    - the lambda split's division by a multiply and a shift,
-      `secp256k1_scalar_mul_shift_var`: `_multiplier_decomposer` rounds
-      with `(_B2 * m + n // 2) // n`, 384 bits by 256, where libsecp256k1
-      multiplies by a precomputed reciprocal instead. The rounding is
-      the dearer of the two and is paid once per multiplication, which
-      is three orders of magnitude above either
-    - the table built with no inversion at all,
-      `secp256k1_ecmult_odd_multiples_table` with
-      `secp256k1_ge_table_set_globalz`: the odd multiples are formed on an
-      isomorphic curve where the doubled point is affine, the z-ratios are
-      kept as they go, and the entries reach one common Z by products
-      alone. What it would remove is the single inversion a call
-      spends, which is 1% of a `_mult` and 0.2% of what a 16-point
-      `_multi_mult_var` takes; the rest of that conversion is the three
-      products an entry costs, and the isomorphic construction pays
-      those in its own coin. An accumulator that has to live in that
-      frame and be rescaled out of it at the end, for those two ceilings
-    - the square root by an addition chain is the one of these that
-      measures positive and is still not here: `pow(a, (p + 1) // 4, p)`
-      is 1.16x libsecp256k1's chain, for some twenty lines holding for
-      secp256k1's p alone, on a function a point decompression away from
-      these loops
+    - Solinas reduction, `secp256k1_fe_mul_inner`: two products by a 33-bit
+      constant and a conditional subtraction cost more than `x % p`. For n,
+      `secp256k1_scalar_reduce_512` folds by a 129-bit constant and
+      measures 0.87x of `x % n`
+    - limbs with delayed reduction and magnitudes, `secp256k1_fe_normalize`:
+      letting intermediates grow is slower, as `add_jac`'s own comment
+      measures. `secp256k1_fe_normalizes_to_zero`,
+      `secp256k1_fe_mul_int`, `secp256k1_fe_add` and `secp256k1_scalar_add`
+      have no routine here: each is an integer operator and a `%`
+    - a separate squaring, `secp256k1_fe_sqr_inner`: CPython's long_mul
+      takes the squaring path when both operands are the same object
+    - the masked table lookup, `secp256k1_ecmult_const`'s cmov scan: a list
+      index is a list index
+    - the lambda split by multiply and shift, `secp256k1_scalar_mul_shift_var`:
+      `_multiplier_decomposer` rounds with `(_B2 * m + n // 2) // n`; the
+      split is paid once per multiplication, three orders of magnitude
+      under it. Splitting the generator at 2^128 instead,
+      `secp256k1_scalar_split_128`, saves 0.6 us of 575 us of a double
+      multiplication
+    - the table with no inversion, `secp256k1_ge_table_set_globalz`: it
+      would remove the single inversion a call spends; the rest of the
+      conversion is three products an entry, which forming the odd multiples
+      on an isomorphic curve also pays, and the accumulator would have to
+      live in that frame
+    - the unified addition, `secp256k1_gej_add_ge` after Brier and Joye:
+      its core, without the cases, is 0.97x of `add_jac_aff`
+    - the halving doubling, `secp256k1_fe_half` in `secp256k1_gej_double`:
+      0.76x of `_double_jac_helper`
+    - Hamburg's offset in place of a parity correction,
+      `secp256k1_scalar_half` with `secp256k1_ecmult_const_K`: 1.00x of
+      `_mult_regular_window` at w=4, and 1.00x with the endomorphism. It
+      needs n, which `CurveGroup` lacks
+    - the tagged hash from a stored midstate,
+      `secp256k1_schnorrsig_sha256_tagged`: `hashes.tagged_hash`
+    - the x-only multiplication without a square root,
+      `secp256k1_ecmult_const_xonly`: it gives the x of q*P from the x of
+      P. BIP340 verification, one signature or a batch, adds products and
+      needs their y, and `dh.diffie_hellman` is given P whole, so it has
+      no root to save. The root is 14% of a `mult`
+
+Not taken, for a reason kept beside the code and not measured:
+
+    - the tweak added in one call, `secp256k1_eckey_pubkey_tweak_add`:
+      `curve._tweak_add_var` declines the multiplication of P by one, and
+      adds the generator's product to P instead
+
+Measured faster and not taken, each with its issue:
+
+    - the square root by an addition chain, `secp256k1_fe_sqrt`: 1.14x of
+      `pow(a, (p + 1) // 4, p)`, issue btclib-org/btclib-ecc#191
+    - a wNAF recoded a run of zero bits at a time: 1.02x of a double
+      multiplication, issue btclib-org/btclib-ecc#192
+    - the lambda image of a table by x * beta,
+      `secp256k1_ecmult_table_get_ge_lambda`: 1.10x of
+      `_mult_endomorphism_secp256k1` and 1.03x of a verification, issue
+      btclib-org/btclib-ecc#193
+    - the signed-digit comb of `secp256k1_ecmult_gen_gej`: 1.2x to 1.3x of
+      `_mult_fixed_base`, from one multiplication to a hundred, issue
+      btclib-org/btclib-ecc#194
+    - ElligatorSwift decoded as a fraction,
+      `secp256k1_ellswift_xswiftec_frac_var`: 1.6x of `_xswiftec_var`; and
+      encoded with the squareness tested before the inversion,
+      `secp256k1_ellswift_xswiftec_inv_var`: 1.7x of `_xswiftec_inv_var`,
+      issue btclib-org/btclib-ecc#195
+    - the keypair holding the public key, `secp256k1_keypair_create`:
+      `ssa.Signer` holds one only where the bindings serve; on the Python
+      arm a signature without the self-check is 1.8x to 1.9x faster for
+      not multiplying the key again, issue btclib-org/btclib-ecc#197
+    - a point at infinity skipped, as a zero scalar is,
+      `secp256k1_ecmult_strauss_wnaf`: 1.2x of a call with such a point,
+      for 0.03 us a call otherwise, issue btclib-org/btclib-ecc#198
 
 """
 
