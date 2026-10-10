@@ -69,7 +69,12 @@ from btclib_ecc.exceptions import (
     BTClibEccRuntimeError,
     BTClibEccValueError,
 )
-from btclib_ecc.number_theory import legendre_symbol_var, mod_inv, mod_sqrt_var
+from btclib_ecc.number_theory import (
+    _sqrt_candidate_secp256k1,
+    legendre_symbol_var,
+    mod_inv,
+    mod_sqrt_var,
+)
 
 __all__ = [
     "assert_as_valid",
@@ -169,10 +174,6 @@ _SECOND_GENERATION = b"2nd generation: "
 # the same way, SwiftEC being written around it too.
 _SQRT_MINUS_3 = mod_sqrt_var(-3 % secp256k1.p, secp256k1.p)
 _HALF_SQRT_MINUS_3_LESS_1 = (_SQRT_MINUS_3 - 1) * pow(2, -1, secp256k1.p) % secp256k1.p
-# the exponent `secp256k1_fe_sqrt` raises to: a root of a wherever a has
-# one, on a p of 3 mod 4, and a square itself, (p + 1) // 4 being even on
-# secp256k1's p
-_ROOT_EXPONENT = (secp256k1.p + 1) // 4
 
 
 def _shallue_van_de_woestijne(t: int) -> Point:
@@ -233,7 +234,10 @@ def _shallue_van_de_woestijne(t: int) -> Point:
     candidates = []
     for x in (x_1, x_2, x_3):
         y_squared = secp256k1._y2(x)
-        y = pow(y_squared, _ROOT_EXPONENT, p)
+        # secp256k1_fe_sqrt's power: a root of y_squared where one exists,
+        # and a square itself, (p + 1) // 4 being even; squaring it back
+        # tells whether it is one
+        y = _sqrt_candidate_secp256k1(y_squared)
         candidates.append((x, y, y * y % p == y_squared))
 
     # the cascade `secp256k1_fe_cmov` writes: the second candidate where

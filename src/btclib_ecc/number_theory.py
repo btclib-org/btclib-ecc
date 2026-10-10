@@ -331,6 +331,42 @@ def legendre_symbol_var(a: int, p: int) -> int:
     return result if p == 1 else 0
 
 
+# secp256k1's field prime, spelled here because `curves` imports this module
+_SECP256K1_P = 2**256 - 2**32 - 977
+
+
+def _sqrt_candidate_secp256k1(a: int) -> int:
+    """Return a ** ((p + 1) // 4) mod secp256k1's p, for a in 0..p-1.
+
+    The addition chain of `secp256k1_fe_sqrt` in libsecp256k1 (v0.8.0,
+    `field_impl.h`): the three blocks of 1s in the exponent, of 2, 22 and
+    223 bits, are built as 2^n - 1 powers. It is 1.15x to 1.20x as fast as
+    `pow(a, (p + 1) // 4, p)` on CPython 3.14.6, macOS arm64;
+    btclib-org/btclib-ecc#191 holds the script.
+    """
+    p = _SECP256K1_P
+
+    def sq(x: int, n: int) -> int:
+        for _ in range(n):
+            x = x * x % p
+        return x
+
+    x2 = sq(a, 1) * a % p
+    x3 = sq(x2, 1) * a % p
+    x6 = sq(x3, 3) * x3 % p
+    x9 = sq(x6, 3) * x3 % p
+    x11 = sq(x9, 2) * x2 % p
+    x22 = sq(x11, 11) * x11 % p
+    x44 = sq(x22, 22) * x22 % p
+    x88 = sq(x44, 44) * x44 % p
+    x176 = sq(x88, 88) * x88 % p
+    x220 = sq(x176, 44) * x44 % p
+    x223 = sq(x220, 3) * x3 % p
+    t = sq(x223, 23) * x22 % p
+    t = sq(t, 6) * x2 % p
+    return sq(t, 2)
+
+
 def mod_sqrt_var(a: int, p: int) -> int:
     """Return a quadratic residue (mod p) of a; p must be a prime.
 
@@ -348,7 +384,9 @@ def mod_sqrt_var(a: int, p: int) -> int:
     _assert_valid_modulus(p)
     a %= p
 
-    if p % 4 == 3:  # secp256k1 case
+    if p == _SECP256K1_P:
+        r = _sqrt_candidate_secp256k1(a)
+    elif p % 4 == 3:
         # inverse candidate is pow(a, (p + 1) // 4, p)
         r = pow(a, (p >> 2) + 1, p)
     elif p % 8 == 5:
