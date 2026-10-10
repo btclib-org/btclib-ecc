@@ -1174,12 +1174,10 @@ def _mult_fixed_base(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoint:
     It is libsecp256k1's `secp256k1_ecmult_gen_gej` up to a difference
     worth naming: that one is a signed-digit multi-comb, so it sums a
     looked-up entry per block and still doubles between comb offsets,
-    where a table per digit position leaves it nothing to double.
-    Measured, that comb is the faster of the two, issue
-    btclib-org/btclib-ecc#194. What they share is the reason, and the
-    reason is the point rather than the algorithm: the generator is the
-    same on every call, so its table is built once and kept. `curves.mult`
-    is what recognizes that case.
+    where a table per digit position leaves it nothing to double. What
+    they share is the reason, and the reason is the point rather than the
+    algorithm: the generator is the same on every call, so its table is
+    built once and kept. `curves.mult` is what recognizes that case.
 
     The reason is the point repeating and not the point being the
     generator, so `curve.PreparedPoint` reaches here as well, for a
