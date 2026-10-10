@@ -23,6 +23,105 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.10.10
+
+### FROST's deterministic nonce tells a key from its negation
+
+`deterministic_sign` derives its nonce from the share as `sign` uses it, as
+BIP445 0.11.0 does, so a threshold key and its negation get different nonces
+(closes #168).
+
+### FROST follows BIP445 0.12.0's interface
+
+`my_id` is `signer_id`, and `nonce_gen` takes `signer_id` second. The nonces,
+the messages and the checks of `agg_other_nonce` are 0.12.0's, pinned at
+siv2r/bip-frost-signing (issue #168).
+
+### ECDSA adaptor signatures
+
+`ecc.ecdsa_adaptor` holds the DLC specification's ECDSA adaptor signatures.
+Its nonce is libsecp256k1-zkp's, and the specification's vectors pass
+(closes #170).
+
+### The ECDSA adaptor is tested against libsecp256k1-zkp
+
+`zkp-oracle.yml` runs tests that hold `ecdsa_adaptor` to
+`btclib_secp256k1.zkp.ecdsa_adaptor`, which the development lock's
+btclib-secp256k1 0.8.0.11 carries (closes #172).
+
+### BIP340 adaptor signatures
+
+`ecc.ssa_adaptor` holds single-signer BIP340 adaptor signatures, after
+BlockstreamResearch/secp256k1-zkp#299, an open pull request (closes #171).
+
+### `ssa_adaptor.extract_adaptor(sig, pre_sig)`
+
+It takes the name and the argument order of `musig2.extract_adaptor`, not
+BlockstreamResearch/secp256k1-zkp#299's `extract_sec(pre_sig, sig)`
+(closes #188).
+
+### DLC oracle signatures
+
+`ecc.dlc_oracle`'s `sign_` signs with a nonce the caller gives, and
+`sig_point_` computes the point s*G of a signature before it is made
+(closes #174).
+
+### `musig2.extract_adaptor` returns an int
+
+It returns the adaptor secret t as an int, the type `ecdsa_adaptor.recover`
+returns (closes #189).
+
+### A census of libsecp256k1's speed techniques
+
+`curves/curve_group_2.py`'s docstring maps libsecp256k1 v0.8.0's speed
+techniques to the Python arithmetic, taken or not, and why (closes #185).
+
+### Fixed-base multiplication and the square root
+
+Fixed-base multiplication is a signed-digit comb (closes #194). The square
+root of secp256k1's field is an addition chain (closes #191).
+
+### ElligatorSwift and the endomorphism
+
+ElligatorSwift tests a square before it inverts (closes #195). The
+endomorphism's table is formed by x * beta (closes #193).
+
+### Multi multiplication and the Python arm's `Signer`
+
+The wNAF recoding skips runs of zero bits (closes #192). A multi multiplication
+drops a point at infinity (closes #198). The Python arm's `Signer` computes its
+key's point once (closes #197).
+
+### The vendored vectors run on the Python arm too
+
+With the bindings installed, the vector tests run on both arms (closes #175).
+
+### `check_vendored_vectors.py` shows why a `gh` call failed
+
+It prints the call's stderr, and retries a server error (closes #183).
+
+### `tests/_data/README.md` defines `refreshed`
+
+`pulled` dates the commit that added a vendored file, `refreshed` each later
+commit that changed its bytes, and the entries follow (closes #180).
+
+### The uv export on a Dependabot pull request
+
+`CONTRIBUTING.md` has an owner commit the uv-export hook's output to a
+Dependabot uv pull request that needs it (closes #176).
+`.clusterfuzzlite/requirements.txt` matches the hook's output (closes #173).
+
+### RELEASING.md runs the dependents' suites and reads the tag back
+
+Before the merge, each dependent's suite runs with the release pull request's
+head. After the push, the tag's signature is read back from the API (issue
+btclib-org/.github#1647, issue btclib-org/.github#1660).
+
+### What the tag-integrity ruleset does not check
+
+`REPOSITORY.md` says it accepts an unsigned or lightweight `v*` tag on a
+commit already on `main` (issue btclib-org/.github#1635).
+
 ## v2026.10.8
 
 ### The catalogue no longer tests its primes at import
