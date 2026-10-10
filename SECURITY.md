@@ -290,7 +290,7 @@ package is used to teach and to prototype as much as to build:
     scalars are secrets, is a `mult` of each and their sum instead --
     `pedersen._commit` at
     `return _add(mult(r, ec.G, ec), mult(v, gen, ec), ec)`
-    (`src/btclib_ecc/ecc/pedersen.py:375`), under `pedersen.commit`,
+    (`src/btclib_ecc/ecc/pedersen.py:379`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
     (`src/btclib_ecc/curves/curve.py:1383`):

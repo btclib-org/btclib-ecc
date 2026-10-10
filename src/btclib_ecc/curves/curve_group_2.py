@@ -83,6 +83,9 @@ Taken, in the function named:
       `aff_from_jac_batch_var`
     - squareness by the Jacobi symbol, `secp256k1_fe_is_square_var`:
       `legendre_symbol_var`, `curve._is_x_coordinate_var`
+    - the square root by an addition chain, `secp256k1_fe_sqrt`:
+      `number_theory._sqrt_candidate_secp256k1`, which `mod_sqrt_var` calls
+      for secp256k1's p
     - signed odd digits, `secp256k1_ecmult_const` after Hamburg (eprint
       2012/309, section 3.3): `signed_odd_digits`, Joye-Tunstall's, which
       gives the same digits; see the measurement below
@@ -136,7 +139,7 @@ with no issue of their own are in issue btclib-org/btclib-ecc#185:
       `secp256k1_ecmult_const_xonly`: it gives the x of q*P from the x of
       P. BIP340 verification, one signature or a batch, adds products and
       needs their y, and `dh.diffie_hellman` is given P whole, so it has
-      no root to save. The root is 14% of a `mult`
+      no root to save. The root is 12% of a `mult`
 
 Not taken, for a reason, and not measured:
 
@@ -155,8 +158,6 @@ Not taken, for a reason, and not measured:
 
 Measured faster and not taken, each with its issue:
 
-    - the square root by an addition chain, `secp256k1_fe_sqrt`: 1.14x of
-      `pow(a, (p + 1) // 4, p)`, issue btclib-org/btclib-ecc#191
     - the lambda image of a table by x * beta,
       `secp256k1_ecmult_table_get_ge_lambda`: 1.10x of
       `_mult_endomorphism_secp256k1` and 1.03x of a verification, issue

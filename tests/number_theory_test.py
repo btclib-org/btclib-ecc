@@ -12,6 +12,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from btclib_ecc import number_theory
+from btclib_ecc.curves import secp256k1
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
 from btclib_ecc.number_theory import (
     legendre_symbol_var,
@@ -294,6 +295,33 @@ def test_mod_sqrt_squares_back(a: int, p: int) -> None:
     assert root * root % p == a % p
     # the other root, p - root, is a root too: a square has two
     assert (p - root) * (p - root) % p == a % p
+
+
+def test_mod_sqrt_secp256k1_chain_is_pow() -> None:
+    """The addition chain answers what `pow` answers, root for root.
+
+    A residue has the root `pow(a, (p + 1) // 4, p)`, a non-residue is
+    refused, and zero and p - 1 are the ends of the range: p - 1 is a
+    non-residue, p being 3 mod 4. The chain returns pow's value on a
+    non-residue too.
+    """
+    p = number_theory._SECP256K1_P
+    assert p == secp256k1.p
+    assert p % 4 == 3
+    exponent = (p + 1) // 4
+    residues = non_residues = 0
+    for a in [0, 1, 2, p - 1, p - 2] + [secrets.randbelow(p) for _ in range(200)]:
+        if legendre_symbol_var(a, p) == -1:
+            non_residues += 1
+            with pytest.raises(BTClibEccValueError, match="no root mod "):
+                mod_sqrt_var(a, p)
+            assert number_theory._sqrt_candidate_secp256k1(a) == pow(a, exponent, p)
+        else:
+            residues += 1
+            assert mod_sqrt_var(a, p) == pow(a, exponent, p)
+            assert mod_sqrt_var(a + p, p) == pow(a, exponent, p)
+    assert residues
+    assert non_residues
 
 
 def test_mod_inv_batch_is_mod_inv_over_a_sequence() -> None:
