@@ -946,7 +946,7 @@ _DOUBLE_MULT_W = 4
 # and the comb the fixed-base multiplication holds a table for, which
 # is a third question again: its table is memoized, so what the teeth
 # buy is paid in memory and a build once and not in additions per
-# call. The measurement is in _mult_fixed_base's docstring
+# call. The measurement is in issue btclib-org/btclib-ecc#194
 _FIXED_BASE_TEETH = 8
 _FIXED_BASE_SPACING = 8
 
