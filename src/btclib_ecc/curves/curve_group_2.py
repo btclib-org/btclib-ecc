@@ -73,7 +73,8 @@ Taken, in the function named:
       `_double_mult_w_NAF_var`
     - a wide window for the generator, `WINDOW_G` beside `WINDOW_A`:
       `_FIXED_POINT_W`
-    - a point with a zero scalar or at infinity skipped: `_multi_mult_pairs`
+    - a point with a zero scalar or at infinity skipped,
+      `secp256k1_ecmult_strauss_wnaf`: `_multi_mult_pairs`
     - the lambda split and the lambda image of a point,
       `secp256k1_scalar_split_lambda`, `secp256k1_ge_mul_lambda`:
       `_multiplier_decomposer`, `_endomorphism_split_secp256k1`
