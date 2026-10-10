@@ -76,9 +76,9 @@ def test_adapt_vectors(vector: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("vector", **_ids("check_extract_sec"))
-def test_extract_sec_vectors(vector: dict[str, Any]) -> None:
+def test_extract_adaptor_vectors(vector: dict[str, Any]) -> None:
     """The secret is upstream's, or not, as upstream says."""
-    t = ssa_adaptor.extract_sec(vector["pre_sig"], vector["sig"])
+    t = ssa_adaptor.extract_adaptor(vector["sig"], vector["pre_sig"])
     expected = vector["checks"]["check_extract_sec"]["expected"]
     assert (t.to_bytes(32, "big").hex() == vector["sec_adaptor"]) is expected
 
@@ -110,8 +110,8 @@ def test_round_trip(d: int, nonce: int) -> None:
     assert ssa_adaptor.extract(pre_sig, _MSG, _X_P) == _T
     sig = ssa_adaptor.adapt(pre_sig, _T_SEC)
     assert ssa.verify_(_MSG, _X_P, sig)
-    assert ssa_adaptor.extract_sec(pre_sig, sig) == _T_SEC
-    assert ssa_adaptor.extract_sec(pre_sig, sig.serialize()) == _T_SEC
+    assert ssa_adaptor.extract_adaptor(sig, pre_sig) == _T_SEC
+    assert ssa_adaptor.extract_adaptor(sig.serialize(), pre_sig) == _T_SEC
 
 
 def test_round_trip_reaches_both_parities() -> None:
@@ -204,19 +204,19 @@ def test_adapt_with_the_wrong_secret_does_not_verify() -> None:
         ssa_adaptor.adapt(pre_sig, 0)
 
 
-def test_extract_sec_refuses_what_is_not_an_adaptation() -> None:
+def test_extract_adaptor_refuses_what_is_not_an_adaptation() -> None:
     """Another r, an s out of range, another curve: refused."""
     pre_sig = ssa_adaptor.presign(_MSG, _D, _T, _AUX)
     sig = ssa_adaptor.adapt(pre_sig, _T_SEC)
 
     other = ssa.sign_(_MSG, _D, _AUX)
     with pytest.raises(BTClibEccValueError, match="r does not match"):
-        ssa_adaptor.extract_sec(pre_sig, other)
+        ssa_adaptor.extract_adaptor(other, pre_sig)
 
     out_of_range = ssa.Sig(sig.r, sig.s + ec.n, check_validity=False)
     with pytest.raises(BTClibEccValueError, match="s not in"):
-        ssa_adaptor.extract_sec(pre_sig, out_of_range)
+        ssa_adaptor.extract_adaptor(out_of_range, pre_sig)
 
     other_curve = ssa.Sig(sig.r, sig.s, CURVES["secp256r1"], check_validity=False)
     with pytest.raises(BTClibEccValueError, match="secp256k1"):
-        ssa_adaptor.extract_sec(pre_sig, other_curve)
+        ssa_adaptor.extract_adaptor(other_curve, pre_sig)

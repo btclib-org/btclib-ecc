@@ -6,7 +6,7 @@
 
 A pre-signature is made for an adaptor point T = t*G. Whoever knows t
 `adapt`s it into an ordinary BIP340 signature, and whoever holds both
-the pre-signature and that signature recovers t with `extract_sec`.
+the pre-signature and that signature recovers t with `extract_adaptor`.
 `extract` returns the T a pre-signature is for.
 
 The functions follow the `schnorr_adaptor` module that
@@ -14,6 +14,11 @@ BlockstreamResearch/secp256k1-zkp#299 proposes
 (`include/secp256k1_schnorr_adaptor.h`). That pull request is open and
 unmerged, so it is a reference and not an authority: its encoding and
 its nonce can still change.
+
+One name and its argument order depart from it: `extract_adaptor(sig,
+pre_sig)` is PR 299's `extract_sec(pre_sig, sig)`. The name and the
+order are those of `musig2.extract_adaptor`, as in secp256k1-zkp's MuSig2
+module.
 
 The reference has no pre-signature verification: its `extract` returns
 the adaptor point instead. `verify` here is that `extract` compared with
@@ -62,7 +67,7 @@ __all__ = [
     "adapt",
     "assert_as_valid",
     "extract",
-    "extract_sec",
+    "extract_adaptor",
     "presign",
     "verify",
 ]
@@ -233,7 +238,7 @@ def adapt(pre_sig: Octets, sec_adaptor: Integer) -> ssa.Sig:
     return ssa.Sig(R1[0], (s + t) % secp256k1.n)
 
 
-def extract_sec(pre_sig: Octets, sig: ssa.Sig | Octets) -> int:
+def extract_adaptor(sig: ssa.Sig | Octets, pre_sig: Octets) -> int:
     """Return the adaptor secret, from a pre-signature and its adaptation.
 
     `sig` is an `ssa.Sig` or its 64 octets. A BTClibEccValueError where
