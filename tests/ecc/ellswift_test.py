@@ -71,29 +71,15 @@ def test_ellswift_decode_vectors(row: list[str], arm: str) -> None:
     t = int.from_bytes(ell[32:], byteorder="big", signed=False)
     assert _xswiftec_var(u, t, secp256k1) == x
 
-    # the whole of decode: the vector pins the x-coordinate, the parity of t
-    # pins the y
+    # the whole of decode: the vector pins the x-coordinate, and the parity
+    # of t mod p the y. BIP324's reference.py decodes to an x and stops;
+    # the y rule is libsecp256k1's, secp256k1_ellswift_swiftec_var, which
+    # reads secp256k1_fe_is_odd on t after secp256k1_fe_set_b32_mod
     Q = ellswift.decode_var(ell)
     assert Q[0] == x
+    assert Q[1] % 2 == t % secp256k1.p % 2
     if arm == "bindings":
         assert bytes_from_point(Q) == libsecp256k1_ellswift.decode(ell)
-
-
-@pytest.mark.parametrize("row", decode_vectors())
-@needs_bindings
-def test_the_python_decode_is_the_bindings_one(
-    row: list[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Every decode vector again, the Python decode against the bindings'.
-
-    The vectors fix only the x-coordinate, so this is what checks the y the
-    Python map picks.
-    """
-    ell = bytes.fromhex(row[0])
-    expected = ellswift.decode_var(ell)
-    with monkeypatch.context() as no_bindings:
-        no_bindings.setattr(ellswift, "_libsecp256k1_serves", lambda *_: False)
-        assert ellswift.decode_var(ell) == expected
 
 
 @pytest.mark.parametrize("row", xswiftec_inv_vectors())
