@@ -24,6 +24,7 @@ from btclib_ecc.curves.sec_point import bytes_from_point
 from btclib_ecc.ecc import ellswift
 from btclib_ecc.ecc.ellswift import _xswiftec_inv_var, _xswiftec_var
 from btclib_ecc.exceptions import BTClibEccValueError
+from btclib_ecc.number_theory import mod_sqrt_var
 from tests import both_arms, load_csv, needs_bindings, vector_id
 
 # the other Koblitz curves of the catalogue: a == 0 and a square
@@ -206,3 +207,99 @@ def _key_pair() -> tuple[int, tuple[int, int]]:
     """Return a random secp256k1 key pair."""
     q = secrets.randbelow(secp256k1.n - 1) + 1
     return q, mult(q, secp256k1.G, secp256k1)
+
+
+def _x_exists(x: int, ec: Any) -> bool:
+    """Say whether x is an x-coordinate by Euler's criterion, no ellswift."""
+    return bool(pow(ec._y2(x), (ec.p - 1) // 2, ec.p) != ec.p - 1)
+
+
+def _spec_xswiftec(u: int, t: int, ec: Any) -> int:
+    """Return the map as BIP324's reference writes it: three inverses."""
+    p = ec.p
+    c0 = mod_sqrt_var(-3 % p, p)
+    u, t = u % p or 1, t % p or 1
+    if (pow(u, 3, p) + t * t + ec._b) % p == 0:
+        t = 2 * t % p
+    X = (pow(u, 3, p) + ec._b - t * t) * pow(2 * t, -1, p) % p
+    Y = (X + t) * pow(c0 * u, -1, p) % p
+    candidates = (
+        (u + 4 * Y * Y) % p,
+        (-X * pow(Y, -1, p) - u) * pow(2, -1, p) % p,
+        (X * pow(Y, -1, p) - u) * pow(2, -1, p) % p,
+    )
+    return int(next(x for x in candidates if _x_exists(x, ec)))
+
+
+@pytest.mark.parametrize("curve_name", ["secp256k1", *OTHER_CURVES])
+def test_the_fraction_map_is_the_reference_map(curve_name: str) -> None:
+    """The fraction form returns what the three-inverse form returns.
+
+    Random pairs return through whichever candidate they reach; the pairs
+    with u^3 + b + t^2 == 0 and the zero ones are built, being out of
+    reach of chance.
+    """
+    ec = CURVES[curve_name]
+    p = ec.p
+    pairs = [(secrets.randbelow(p), secrets.randbelow(p)) for _ in range(100)]
+    pairs += [(0, 0), (0, 5), (5, 0), (p, p + 1)]
+    for u in range(1, 100):
+        minus_g = -(pow(u, 3, p) + ec._b) % p
+        if pow(minus_g, (p - 1) // 2, p) == 1:
+            t = mod_sqrt_var(minus_g, p)
+            pairs += [(u, t), (u, p - t)]
+    assert len(pairs) > 104
+    for u, t in pairs:
+        assert _xswiftec_var(u, t, ec) == _spec_xswiftec(u, t, ec)
+
+
+def _spec_xswiftec_inv(x: int, u: int, case: int, ec: Any) -> int | None:
+    """Return the inverse as BIP324's reference writes it: roots first."""
+    p = ec.p
+    c0 = mod_sqrt_var(-3 % p, p)
+
+    def sqrt(a: int) -> int | None:
+        try:
+            return int(mod_sqrt_var(a, p))
+        except BTClibEccValueError:
+            return None
+
+    if case & 2 == 0:
+        if _x_exists((-x - u) % p, ec):
+            return None
+        v = x
+        s = -(pow(u, 3, p) + ec._b) * pow(u * u + u * v + v * v, -1, p) % p
+    else:
+        s = (x - u) % p
+        r = sqrt(-s * (4 * (pow(u, 3, p) + ec._b) + 3 * s * u * u) % p)
+        if s == 0 or r is None or (case & 1 and r == 0):
+            return None
+        v = (-u + r * pow(s, -1, p)) * pow(2, -1, p) % p
+    w = sqrt(s)
+    if w is None:
+        return None
+    sign, c = {0: (-1, 1 - c0), 1: (1, 1 + c0), 4: (1, 1 - c0), 5: (-1, 1 + c0)}[
+        case & 5
+    ]
+    return int(sign * w * (u * c * pow(2, -1, p) + v) % p)
+
+
+@pytest.mark.parametrize("curve_name", ["secp256k1", *OTHER_CURVES])
+def test_the_inverse_is_the_reference_inverse(curve_name: str) -> None:
+    """Every case answers what the roots-first form answers, None included.
+
+    The answers are counted: a test of squareness that refused every case
+    would still agree on the cases the reference refuses.
+    """
+    ec = CURVES[curve_name]
+    answers = 0
+    for _ in range(20):
+        x = mult(secrets.randbelow(ec.n - 1) + 1, ec.G, ec)[0]
+        u = secrets.randbelow(ec.p - 1) + 1
+        for case in range(8):
+            t = _xswiftec_inv_var(x, u, case, ec)
+            assert t == _spec_xswiftec_inv(x, u, case, ec)
+            if t is not None:
+                assert _spec_xswiftec(u, t, ec) == x
+                answers += 1
+    assert answers > 0

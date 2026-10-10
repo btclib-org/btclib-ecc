@@ -509,6 +509,11 @@ random operands of 256 bits down to 64, the ratio between the two ends:
     exponent and measures 1.01x, and the catalogue holds both kinds —
     `secp224k1`, `secp224r1` and `nistp224` are 1 mod 4 — so the caller
     picks which it gets and the suffix states the worse case
+- the value of a full-size residue: `ellswift._is_x_fraction_var`
+    reduces its product mod `p` before the symbol, so its operands'
+    size moves it by 1.08x, and the symbol's loop over that residue
+    spreads it by 1.3x within one size, as Tonelli-Shanks's does; the
+    scripts are in issue btclib-org/btclib-ecc#195
 - one modular inverse, in the layer above: `aff_from_jac_var` at 2.96x,
     `x_aff_from_jac_var` at 1.93x, `aff_from_jac_batch_var` at 1.67x and
     `y_aff_from_jac_var` at 1.42x follow the `Z` they are handed;
@@ -537,17 +542,16 @@ nothing to branch on. What measures at that floor keeps its plain name,
 and each is here so that the next reader does not have to re-derive it:
 `dsa._assert_as_valid_` 1.07x and `dsa._recover_pub_key_` 1.05x,
 `ssa._assert_as_valid_` 1.07x and `ssa._recover_pub_key_` 1.06x,
-`ellswift._try_sqrt` 1.05x, `sec_point.point_from_octets` 1.01x,
-`ssa.point_from_bip340pub_key` 1.03x and `Sig.assert_valid` 1.03x. The
-inverse or the root inside each of them is real, and it is diluted: an
-inverse varying by 1.32x is 10 us of a 40 us verification.
+`sec_point.point_from_octets` 1.01x, `ssa.point_from_bip340pub_key` 1.03x
+and `Sig.assert_valid` 1.03x. The inverse or the root inside each of them
+is real, and it is diluted: an inverse varying by 1.32x is 10 us of a
+40 us verification.
 `ellswift._constants` is memoized on the curve and receives no value at
 all.
 
-The one number worth keeping in view is `ellswift._xswiftec_inv_var`, at
-**29.62x**. That is an early return and not a slower sum, which is what a
-data-dependent branch looks like on a clock, and it is why the SwiftEC
-map carries the suffix.
+`ellswift._xswiftec_inv_var` is the one to keep in view: its cost follows
+an early return, not a slower sum, which is what a data-dependent branch
+looks like on a clock, and it is why the SwiftEC map carries the suffix.
 
 Three tiers of duration follow, of which only the first is constant-time:
 

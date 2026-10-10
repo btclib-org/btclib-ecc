@@ -56,10 +56,9 @@ from btclib_ecc.curves.curve import (
     _y_even_var,
 )
 from btclib_ecc.exceptions import (
-    BTClibEccRuntimeError,
     BTClibEccValueError,
 )
-from btclib_ecc.number_theory import mod_inv_var, mod_sqrt_var
+from btclib_ecc.number_theory import legendre_symbol_var, mod_inv_var, mod_sqrt_var
 
 __all__ = [
     "create_var",
@@ -88,22 +87,26 @@ def _constants(ec: Curve) -> tuple[int, int]:
     return _CONSTANTS[ec]
 
 
-def _try_sqrt(a: int, p: int) -> int | None:
-    """Return a square root of a mod p, or None when a is not a square.
+def _is_square_var(a: int, p: int) -> bool:
+    """Return True if a is a square mod p, zero included.
 
-    mod_sqrt_var raises instead, which is the wrong shape for the map: a
-    non-square is one of the branches, taken for about half the inputs,
-    and not an error to phrase.
-
-    That refusal is the whole of the test, rather than a legendre_symbol_var
-    asked before it: mod_sqrt_var squares its candidate back to compare with
-    a, which is the same question answered, and on a 256-bit prime the
-    symbol is an exponentiation the size of the root's.
+    Both directions ask it before an inverse or a root they might not
+    need, as libsecp256k1 does with secp256k1_fe_is_square_var: a
+    root of a non-square is a full exponentiation on secp256k1's p
+    before it is refused, where the symbol is a gcd. Its duration is
+    that of `legendre_symbol_var`.
     """
-    try:
-        return mod_sqrt_var(a, p)
-    except BTClibEccValueError:
-        return None
+    return legendre_symbol_var(a, p) != -1
+
+
+def _is_x_fraction_var(n: int, d: int, b: int, p: int) -> bool:
+    """Return True if n/d is an x-coordinate of y^2 = x^3 + b, for d != 0.
+
+    (n/d)^3 + b is a square exactly when d^4 times it is, which is
+    d*n^3 + b*d^4 and takes no inverse. It is libsecp256k1's
+    secp256k1_ge_x_frac_on_curve_var.
+    """
+    return _is_square_var((d * n**3 + b * d**4) % p, p)
 
 
 def _xswiftec_var(u: int, t: int, ec: Curve) -> int:
@@ -115,37 +118,37 @@ def _xswiftec_var(u: int, t: int, ec: Curve) -> int:
     reducing them is the first thing the map does.
     """
     p = ec.p
+    b = ec._b
     minus_3_sqrt, inv2 = _constants(ec)
     u %= p
     t %= p
     # zero has no inverse, and either substitution keeps the map total
     if u == 0:
         u = 1
-    if t == 0:
-        t = 1
-    # u^3 + t^2 + b == 0 would make X below zero, whose Y is not a point
-    if (pow(u, 3, p) + t * t + ec._b) % p == 0:
-        t = 2 * t % p
-    X = (pow(u, 3, p) + ec._b - t * t) * mod_inv_var(2 * t, p) % p
-    Y = (X + t) * mod_inv_var(minus_3_sqrt * u % p, p) % p
-    inv_Y = mod_inv_var(Y, p)
-    # three candidates, in the order the specification gives them: the
-    # first that is an x-coordinate is the answer, and one of them is
-    for x in (
-        (u + 4 * Y * Y) % p,
-        (-X * inv_Y - u) * inv2 % p,
-        (X * inv_Y - u) * inv2 % p,
-    ):
-        if _is_x_coordinate_var(x, ec):
-            return x
-    # unreachable, and here for the return type rather than for the case:
-    # the map is total -- the SwiftEC paper's result is that one of the
-    # three candidates is always an x-coordinate, and BIP324's reference
-    # implementation writes this line as `assert False`
-    err_msg = "no x-coordinate for the given field elements"  # pragma: no cover -- one of the three candidates is always an x-coordinate
-    raise BTClibEccRuntimeError(
-        err_msg
-    )  # pragma: no cover -- one of the three candidates is always an x-coordinate
+    s = t * t % p or 1
+    g = (pow(u, 3, p) + b) % p
+    # g + s == 0 would make q zero, and q is the denominator of the second
+    # and third candidates
+    if (g + s) % p == 0:
+        s = 4 * s % p
+    q = (g + s) % p
+    # Each candidate is a fraction n/d, tested without an inverse; only the
+    # one that returns is inverted. This is libsecp256k1's
+    # secp256k1_ellswift_xswiftec_frac_var, with X and Y folded away:
+    # Y^2 = -q^2/(12*s*u^2) and X/Y = sqrt(-3)*u*(g-s)/q.
+    d = 3 * s * u * u % p
+    n = (3 * s * pow(u, 3, p) - q * q) % p
+    if _is_x_fraction_var(n, d, b, p):
+        return n * mod_inv_var(d, p) % p
+    # the second candidate is u*(c1*s + c2*g)/q, with c1 and c2 the
+    # halves of sqrt(-3) - 1 and -sqrt(-3) - 1
+    c1 = (minus_3_sqrt - 1) * inv2 % p
+    c2 = (-minus_3_sqrt - 1) * inv2 % p
+    n = u * (c1 * s + c2 * g) % p
+    if _is_x_fraction_var(n, q, b, p):
+        return n * mod_inv_var(q, p) % p
+    # the third candidate, (X/Y - u)/2, is -(x2 + u)
+    return -(n + u * q) * mod_inv_var(q, p) % p
 
 
 def _xswiftec_inv_var(x: int, u: int, case: int, ec: Curve) -> int | None:  # noqa: PLR0911
@@ -168,23 +171,30 @@ def _xswiftec_inv_var(x: int, u: int, case: int, ec: Curve) -> int | None:  # no
         if _is_x_coordinate_var((-x - u) % p, ec):
             return None
         v = x
-        s = -(pow(u, 3, p) + b) * mod_inv_var((u * u + u * v + v * v) % p, p) % p
+        num = -(pow(u, 3, p) + b) % p
+        den = (u * u + u * v + v * v) % p
+        # s = num/den is a square exactly when num*den is, and den is not
+        # zero: x being an x-coordinate and -x-u not one rules it out.
+        # The test comes before the inverse, which a failing case does
+        # not pay for
+        if not _is_square_var(num * den % p, p):
+            return None
+        s = num * mod_inv_var(den, p) % p
     else:
         s = (x - u) % p
-        if s == 0:
+        if s == 0 or not _is_square_var(s, p):
             return None
-        r = _try_sqrt(-s * (4 * (pow(u, 3, p) + b) + 3 * s * u % p * u) % p, p)
-        if r is None:
+        q = -s * (4 * (pow(u, 3, p) + b) + 3 * s * u % p * u) % p
+        if not _is_square_var(q, p):
             return None
+        r = mod_sqrt_var(q, p)  # a square, so a root exists
         # r == 0 makes the two cases that differ by its sign the same t,
         # and only one of them is to return it
         if case & 1 and r == 0:
             return None
         v = (-u + r * mod_inv_var(s, p)) * inv2 % p
 
-    w = _try_sqrt(s, p)
-    if w is None:
-        return None
+    w = mod_sqrt_var(s, p)
 
     # the low and high bits of case pick the signs of the two square
     # roots, which is the encoding the paper's four branches take
