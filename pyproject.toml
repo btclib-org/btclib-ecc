@@ -338,6 +338,8 @@ evalues = "evalues"
 # "ands" is the verb, a call site's further condition anded onto the
 # bindings predicate, and cannot be written differently
 ands = "ands"
+# Ono, an author of the mixed-coordinates paper the performance page cites
+ono = "ono"
 # `intoto` in the bundle's name `<tag>.intoto.jsonl`, as for codespell above:
 # typos' dictionary offers "into" for it too
 intoto = "intoto"
