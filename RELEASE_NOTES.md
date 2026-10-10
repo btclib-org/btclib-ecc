@@ -9,6 +9,35 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.10.10
+
+- **In v2026.10.8 and earlier, FROST's `deterministic_sign` could leak a
+  signer's secret share** (closes #168). It derived one nonce for a threshold
+  key and for its negation, which share an x-only key. A coordinator that sent
+  one session under both, with no public shares, got two partial signatures
+  over one nonce, and their difference is the share. BIP445 0.11.0 derives the
+  nonce from the share as `sign` uses it, and `frost` follows BIP445 0.12.0.
+
+  Act on it if you called `deterministic_sign` without public shares, with a
+  coordinator you do not trust: upgrade, and treat that secret share as
+  exposed.
+- **`frost` follows BIP445 0.12.0's interface** (closes #168). `my_id` is
+  `signer_id` in `sign`, `deterministic_sign` and `partial_sig_verify_`.
+  `nonce_gen` and `nonce_gen_` take `signer_id` as their second parameter,
+  before `pub_share`. The nonces of `nonce_gen_` and `deterministic_sign`
+  differ from v2026.10.8's for the same inputs, and so do the error messages.
+  `deterministic_sign` refuses an `agg_other_nonce` given for one signer, and
+  one missing for more.
+
+  Act on it if you use `frost`: pass `signer_id=` where you passed `my_id=`;
+  pass `nonce_gen_` a `signer_id` second, `None` where you have none; pass
+  `nonce_gen`'s arguments after `sec_share` by keyword. Re-pin any stored
+  nonce, partial signature or error message.
+- **`musig2.extract_adaptor` returns the adaptor secret as an int, not as its
+  32-byte big-endian encoding** (closes #189).
+
+  Act on it if you use the bytes: call `t.to_bytes(32, "big")` on the result.
+
 ## v2026.10.8
 
 - **`Rewound` and `NonceChain` no longer print their fields**
