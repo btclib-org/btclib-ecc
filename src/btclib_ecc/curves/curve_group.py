@@ -1497,7 +1497,7 @@ def _double_mult_var(
 def _multi_mult_pairs(
     scalars: Sequence[int], jac_points: Sequence[JacPoint]
 ) -> list[tuple[int, JacPoint]]:
-    """Check the arguments of a multi multiplication and drop the zeros.
+    """Check the arguments of a multi multiplication, drop what adds nothing.
 
     Shared by the two implementations below so that they answer the same
     errors to the same arguments: whichever of them _multi_mult_var calls is
@@ -1506,6 +1506,14 @@ def _multi_mult_pairs(
     rather than carried, which Bos-Coster needs -- it would be a zero
     divisor in its Euclidean step -- and interleaved wNAF is glad of,
     a scalar of zero costing a table it would never index.
+
+    A point at infinity contributes nothing either, and libsecp256k1's
+    `secp256k1_ecmult_strauss_wnaf` skips it too. In the interleaved wNAF
+    a point kept costs a table of odd multiples like any other: 1290 us
+    for three points, one at infinity, against 1052 us for the two finite
+    ones alone. Testing PJ[2] costs 0.03 us over eight points (issue
+    btclib-org/btclib-ecc#198: best of five, secp256k1, Python 3.14,
+    macOS arm64, bindings off).
     """
     if len(scalars) != len(jac_points):
         err_msg = "mismatch between number of scalars and points: "
@@ -1519,7 +1527,7 @@ def _multi_mult_pairs(
     for n, PJ in zip(scalars, jac_points, strict=True):
         if n < 0:
             raise BTClibEccValueError("negative coefficient")
-        if n:
+        if n and PJ[2]:
             pairs.append((n, PJ))
     return pairs
 
@@ -1804,11 +1812,13 @@ def _multi_mult_var(
     branch nobody takes.
 
     The zeros are counted out before the dispatch rather than left to
-    len(), because a zero scalar is dropped downstream and the batch that
-    reaches either implementation is the nonzero one: 56 scalars of which
+    len(), because a zero scalar is dropped downstream: 56 scalars of which
     2 are nonzero is a batch of two, and sending it to Bos-Coster on its
     length costs nearly twice what the wNAF does. The pass that counts
     them is under a thousandth of either at that size.
+
+    A point at infinity is dropped downstream too, and is not counted
+    here, so the batch can be smaller than the count.
 
     The input points are assumed to be on curve, the scalar coefficients
     are assumed to have been reduced mod n if appropriate (e.g. cyclic

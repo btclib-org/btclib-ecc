@@ -73,7 +73,7 @@ Taken, in the function named:
       `_double_mult_w_NAF_var`
     - a wide window for the generator, `WINDOW_G` beside `WINDOW_A`:
       `_FIXED_POINT_W`
-    - a point with a zero scalar skipped: `_multi_mult_pairs`
+    - a point with a zero scalar or at infinity skipped: `_multi_mult_pairs`
     - the lambda split and the lambda image of a point,
       `secp256k1_scalar_split_lambda`, `secp256k1_ge_mul_lambda`:
       `_multiplier_decomposer`, `_endomorphism_split_secp256k1`
@@ -168,9 +168,6 @@ Measured faster and not taken, each with its issue:
       encoded with the squareness tested before the inversion,
       `secp256k1_ellswift_xswiftec_inv_var`: 1.7x of `_xswiftec_inv_var`,
       issue btclib-org/btclib-ecc#195
-    - a point at infinity skipped, as a zero scalar is,
-      `secp256k1_ecmult_strauss_wnaf`: 1.2x of a call with such a point,
-      for 0.03 us a call otherwise, issue btclib-org/btclib-ecc#198
 
 """
 

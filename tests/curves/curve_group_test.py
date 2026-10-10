@@ -36,6 +36,7 @@ from btclib_ecc.curves.curve_group import (
     _mult_recursive_jac_var,
     _mult_regular_window,
     _multi_mult_bos_coster_var,
+    _multi_mult_pairs,
     _multi_mult_var,
     _multi_mult_w_NAF_var,
     _multiples,
@@ -919,6 +920,32 @@ def test_multi_mult_dispatch() -> None:
 
     with pytest.raises(BTClibEccValueError, match="not a multi_mult_var"):
         _multi_mult_var([1], [ec.GJ], ec)
+
+
+def test_multi_mult_drops_a_point_at_infinity() -> None:
+    """A point at infinity adds nothing, whichever implementation sums.
+
+    Asked of both by name and through the dispatch, among finite points
+    and with nothing but points at infinity, where no pair is left.
+    """
+    ec = ec23_31
+    HJ = _jac_from_aff(second_generator(ec))
+    rnd = random.Random(0x198)
+    assert _multi_mult_pairs([3, 0, 5], [INFJ, ec.GJ, HJ]) == [(5, HJ)]
+    for size in (BOS_COSTER_THRESHOLD - 1, BOS_COSTER_THRESHOLD):
+        scalars = [rnd.randrange(1, ec.n) for _ in range(size)]
+        finite = [ec.GJ if i % 2 else HJ for i in range(size)]
+        mixed = [INFJ if i % 5 == 0 else PJ for i, PJ in enumerate(finite)]
+        for points in (mixed, [INFJ] * size, [INFJ, *finite[1:]]):
+            expected = _sum_of_mults(scalars, points, ec)
+            for result in (
+                _multi_mult_var(scalars, points, ec),
+                _multi_mult_w_NAF_var(
+                    scalars, points, ec, _MULTI_MULT_W, ec._fixed_points
+                ),
+                _multi_mult_bos_coster_var(scalars, points, ec),
+            ):
+                assert ec.is_jac_equal(result, expected)
 
 
 def test_multi_mult_distant_magnitudes() -> None:
