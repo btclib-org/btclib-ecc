@@ -46,9 +46,9 @@ __all__ = [
 def sign_(msg: Octets, prv_key: Integer, nonce: Integer) -> ssa.Sig:
     """Return the BIP340 signature of msg with the caller's nonce.
 
-    A nonce of odd-y point is negated, as BIP340 negates its own, so
-    the signature's r is the x-coordinate of nonce*G either way. The
-    signature is verified before it is returned.
+    A nonce whose point has odd y is negated, as BIP340 negates its
+    own, so the signature's r is the x-coordinate of nonce*G either way.
+    The signature is verified before it is returned.
 
     Never sign two messages with one nonce: it reveals the private key.
     """
