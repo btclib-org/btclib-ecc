@@ -24,7 +24,7 @@ import pytest
 from btclib_ecc.curves import CURVES, bytes_from_point, mult, secp256k1
 from btclib_ecc.ecc import dsa, ecdsa_adaptor
 from btclib_ecc.exceptions import BTClibEccValueError
-from tests import load, vector_id
+from tests import both_arms, load, vector_id
 
 _VECTORS: list[dict[str, Any]] = load("ecc", "_data", "ecdsa_adaptor.json")
 _N = secp256k1.n
@@ -56,6 +56,7 @@ def _sig(vector: dict[str, Any]) -> dsa.Sig:
 
 
 @pytest.mark.parametrize("vector", **_ids("verification"))
+@both_arms
 def test_verification_vectors(vector: dict[str, Any]) -> None:
     """Each verification case: verify, then decrypt, then recover."""
     adaptor_sig = vector["adaptor_sig"]
@@ -83,6 +84,7 @@ def test_verification_vectors(vector: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("vector", **_ids("recovery"))
+@both_arms
 def test_recovery_vectors(vector: dict[str, Any]) -> None:
     """Each recovery case: the key comes back, or the case is refused."""
     adaptor_sig = vector["adaptor_sig"]
@@ -102,6 +104,7 @@ def test_recovery_vectors(vector: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("vector", **_ids("serialization"))
+@both_arms
 def test_serialization_vectors(vector: dict[str, Any]) -> None:
     """Each serialization case parses, or is refused: `verify` says False."""
     adaptor_sig = vector["adaptor_sig"]

@@ -24,7 +24,7 @@ from btclib_ecc.curves.sec_point import bytes_from_point
 from btclib_ecc.ecc import ellswift
 from btclib_ecc.ecc.ellswift import _xswiftec_inv_var, _xswiftec_var
 from btclib_ecc.exceptions import BTClibEccValueError
-from tests import load_csv, needs_bindings, vector_id
+from tests import both_arms, load_csv, needs_bindings, vector_id
 
 # the other Koblitz curves of the catalogue: a == 0 and a square
 # -3, which is all the map wants, so the Python path serves them and this
@@ -54,9 +54,8 @@ def xswiftec_inv_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("row", decode_vectors())
-@needs_bindings
-def test_ellswift_decode_vectors(row: list[str]) -> None:
-    """BIP324's decode vectors, against the map and against the bindings.
+def test_ellswift_decode_vectors(row: list[str], arm: str) -> None:
+    """BIP324's decode vectors, against the map, and the bindings on their arm.
 
     - https://github.com/bitcoin/bips/blob/master/bip-0324/ellswift_decode_test_vectors.csv
 
@@ -72,32 +71,19 @@ def test_ellswift_decode_vectors(row: list[str]) -> None:
     t = int.from_bytes(ell[32:], byteorder="big", signed=False)
     assert _xswiftec_var(u, t, secp256k1) == x
 
-    # the whole of decode, both paths, and the bindings beside them: the
-    # vector pins the x-coordinate, the parity of t pins the y
+    # the whole of decode: the vector pins the x-coordinate, and the parity
+    # of t mod p the y. BIP324's reference.py decodes to an x and stops;
+    # the y rule is libsecp256k1's, secp256k1_ellswift_swiftec_var, which
+    # reads secp256k1_fe_is_odd on t after secp256k1_fe_set_b32_mod
     Q = ellswift.decode_var(ell)
     assert Q[0] == x
-    assert bytes_from_point(Q) == libsecp256k1_ellswift.decode(ell)
-
-
-@pytest.mark.parametrize("row", decode_vectors())
-@needs_bindings
-def test_the_python_decode_is_the_bindings_one(
-    row: list[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Every decode vector again, with the dispatch patched off.
-
-    `decode` hands secp256k1 to libsecp256k1, so without this the Python
-    map would be exercised by `_xswiftec_var` alone and never through the
-    function a caller reaches.
-    """
-    ell = bytes.fromhex(row[0])
-    expected = ellswift.decode_var(ell)
-    with monkeypatch.context() as no_bindings:
-        no_bindings.setattr(ellswift, "_libsecp256k1_serves", lambda *_: False)
-        assert ellswift.decode_var(ell) == expected
+    assert Q[1] % 2 == t % secp256k1.p % 2
+    if arm == "bindings":
+        assert bytes_from_point(Q) == libsecp256k1_ellswift.decode(ell)
 
 
 @pytest.mark.parametrize("row", xswiftec_inv_vectors())
+@both_arms
 def test_xswiftec_inv_vectors(row: list[str]) -> None:
     """BIP324's inverse vectors: eight cases per row, failures included.
 

@@ -17,7 +17,7 @@ import pytest
 from btclib_ecc.curves import bytes_from_point, mult, secp256k1
 from btclib_ecc.ecc import dlc_oracle, ssa
 from btclib_ecc.exceptions import BTClibEccValueError
-from tests import load, vector_id
+from tests import both_arms, load, vector_id
 
 random.seed(42)
 
@@ -27,6 +27,7 @@ _VECTORS: list[dict[str, Any]] = load("ecc", "_data", "dlc_schnorr_test.json")
 @pytest.mark.parametrize(
     "vector", _VECTORS, ids=[vector_id(i) for i in range(len(_VECTORS))]
 )
+@both_arms
 def test_vectors(vector: dict[str, Any]) -> None:
     """Each case: the keys, the signature and its point."""
     inputs = vector["inputs"]

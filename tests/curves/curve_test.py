@@ -81,7 +81,7 @@ from btclib_ecc.curves.curve_group import (
 from btclib_ecc.ecc import second_generator
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
 from btclib_ecc.number_theory import _is_prime, mod_inv_var, mod_sqrt_var
-from tests import load, needs_bindings, vector_id
+from tests import both_arms, load, needs_bindings, vector_id
 
 # test curves: very low cardinality. The name is p and n, in that order,
 # so the ones with the larger second number are the n > p ones -- ec7_11,
@@ -192,6 +192,7 @@ def test_mult_on_secp256k1() -> None:
         )
     ],
 )
+@both_arms
 def test_secp256k1_py_vectors(vector: dict[str, str]) -> None:
     """Reproduce secp256k1-py's pubkey vectors, in both encodings."""
     prv_key = bytes.fromhex(vector["seckey"])

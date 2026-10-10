@@ -60,7 +60,7 @@ from btclib_ecc.exceptions import (
     BTClibEccValueError,
     InvalidContributionError,
 )
-from tests import load, needs_bindings, needs_zkp, vector_id
+from tests import both_arms, load, needs_bindings, needs_zkp, vector_id
 
 if INSTALLED:
     from btclib_secp256k1 import musig as libsecp256k1_musig
@@ -116,6 +116,7 @@ def assert_error(error: dict[str, Any], exc: Exception) -> None:
         assert str(exc) == error["message"]
 
 
+@both_arms
 def test_key_sort_vectors() -> None:
     """Reproduce BIP327's key_sort_vectors.json, sorting into a new list."""
     test_data = load("ecc", "_data", "key_sort_vectors.json")
@@ -144,6 +145,7 @@ def key_agg_valid_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("pub_keys, expected", key_agg_valid_vectors())
+@both_arms
 def test_key_agg_vectors(pub_keys: list[bytes], expected: bytes) -> None:
     """Reproduce the valid cases of BIP327's key_agg_vectors.json."""
     assert musig2.key_agg(pub_keys).x_only_pub_key == expected
@@ -166,6 +168,7 @@ def key_agg_error_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("pub_keys, tweaks, is_xonly, error", key_agg_error_vectors())
+@both_arms
 def test_key_agg_error_vectors(
     pub_keys: list[bytes], tweaks: list[bytes], is_xonly: list[bool], error: Any
 ) -> None:
@@ -185,6 +188,7 @@ def nonce_gen_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", nonce_gen_vectors())
+@both_arms
 def test_nonce_gen_vectors(case: dict[str, Any]) -> None:
     """Reproduce BIP327's nonce_gen_vectors.json."""
     sec_nonce, pub_nonce = musig2.nonce_gen_(
@@ -216,6 +220,7 @@ def nonce_agg_valid_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("pub_nonces, expected", nonce_agg_valid_vectors())
+@both_arms
 def test_nonce_agg_vectors(pub_nonces: list[bytes], expected: bytes) -> None:
     """Reproduce the valid cases of BIP327's nonce_agg_vectors.json."""
     assert musig2.nonce_agg(pub_nonces) == expected
@@ -235,6 +240,7 @@ def nonce_agg_error_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("pub_nonces, error", nonce_agg_error_vectors())
+@both_arms
 def test_nonce_agg_error_vectors(pub_nonces: list[bytes], error: Any) -> None:
     """Reproduce the error cases of BIP327's nonce_agg_vectors.json."""
     with pytest.raises(_ERRORS) as excinfo:
@@ -251,6 +257,7 @@ _SV_AGG_NONCES = _hex_all(_SIGN_VERIFY["aggnonces"])
 _SV_MSGS = _hex_all(_SIGN_VERIFY["msgs"])
 
 
+@both_arms
 def test_sign_verify_vectors_consistency() -> None:
     """The file's own cross-references, as the reference checks them."""
     assert _SV_PUB_KEYS[0] == musig2.individual_pub_key(_SV_SK)
@@ -272,6 +279,7 @@ def sign_verify_valid_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", sign_verify_valid_vectors())
+@both_arms
 def test_sign_verify_valid_vectors(case: dict[str, Any]) -> None:
     """Reproduce the valid cases of BIP327's sign_verify_vectors.json."""
     pub_keys = [_SV_PUB_KEYS[i] for i in case["key_indices"]]
@@ -321,6 +329,7 @@ def sign_error_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", sign_error_vectors())
+@both_arms
 def test_sign_error_vectors(case: dict[str, Any]) -> None:
     """Reproduce the sign error cases of BIP327's sign_verify_vectors.json."""
     pub_keys = [_SV_PUB_KEYS[i] for i in case["key_indices"]]
@@ -343,6 +352,7 @@ def verify_fail_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", verify_fail_vectors())
+@both_arms
 def test_verify_fail_vectors(case: dict[str, Any]) -> None:
     """Reproduce the verify fail cases of sign_verify_vectors.json."""
     pub_keys = [_SV_PUB_KEYS[i] for i in case["key_indices"]]
@@ -362,6 +372,7 @@ def verify_error_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", verify_error_vectors())
+@both_arms
 def test_verify_error_vectors(case: dict[str, Any]) -> None:
     """Reproduce the verify error cases of sign_verify_vectors.json."""
     pub_keys = [_SV_PUB_KEYS[i] for i in case["key_indices"]]
@@ -384,6 +395,7 @@ _TW_TWEAKS = _hex_all(_TWEAK["tweaks"])
 _TW_MSG = bytes.fromhex(_TWEAK["msg"])
 
 
+@both_arms
 def test_tweak_vectors_consistency() -> None:
     """The file's own cross-references, as the reference checks them."""
     assert _TW_PUB_KEYS[0] == musig2.individual_pub_key(_TW_SK)
@@ -400,6 +412,7 @@ def tweak_valid_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", tweak_valid_vectors())
+@both_arms
 def test_tweak_valid_vectors(case: dict[str, Any]) -> None:
     """Reproduce the valid cases of BIP327's tweak_vectors.json."""
     pub_keys = [_TW_PUB_KEYS[i] for i in case["key_indices"]]
@@ -433,6 +446,7 @@ def tweak_error_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", tweak_error_vectors())
+@both_arms
 def test_tweak_error_vectors(case: dict[str, Any]) -> None:
     """Reproduce the error cases of BIP327's tweak_vectors.json."""
     pub_keys = [_TW_PUB_KEYS[i] for i in case["key_indices"]]
@@ -451,6 +465,7 @@ _DS_PUB_KEYS = _hex_all(_DET_SIGN["pubkeys"])
 _DS_MSGS = _hex_all(_DET_SIGN["msgs"])
 
 
+@both_arms
 def test_det_sign_vectors_consistency() -> None:
     """Check the file's one cross-reference, pubkeys[0] against sk."""
     assert _DS_PUB_KEYS[0] == musig2.individual_pub_key(_DS_SK)
@@ -465,6 +480,7 @@ def det_sign_valid_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", det_sign_valid_vectors())
+@both_arms
 def test_det_sign_valid_vectors(case: dict[str, Any]) -> None:
     """Reproduce the valid cases of BIP327's det_sign_vectors.json."""
     pub_keys = [_DS_PUB_KEYS[i] for i in case["key_indices"]]
@@ -496,6 +512,7 @@ def det_sign_error_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", det_sign_error_vectors())
+@both_arms
 def test_det_sign_error_vectors(case: dict[str, Any]) -> None:
     """Reproduce the error cases of BIP327's det_sign_vectors.json."""
     pub_keys = [_DS_PUB_KEYS[i] for i in case["key_indices"]]
@@ -529,6 +546,7 @@ def sig_agg_valid_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", sig_agg_valid_vectors())
+@both_arms
 def test_sig_agg_valid_vectors(case: dict[str, Any]) -> None:
     """Reproduce the valid cases of BIP327's sig_agg_vectors.json."""
     pub_nonces = [_SA_PUB_NONCES[i] for i in case["nonce_indices"]]
@@ -558,6 +576,7 @@ def sig_agg_error_vectors() -> list[Any]:
 
 
 @pytest.mark.parametrize("case", sig_agg_error_vectors())
+@both_arms
 def test_sig_agg_error_vectors(case: dict[str, Any]) -> None:
     """Reproduce the error cases of BIP327's sig_agg_vectors.json."""
     pub_nonces = [_SA_PUB_NONCES[i] for i in case["nonce_indices"]]

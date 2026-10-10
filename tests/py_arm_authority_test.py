@@ -51,6 +51,13 @@ this file is written to notice). A sentinel and not a gate: it has no
 branch rule, so on a pull request that is not itself about this file,
 the script or the workflow, the table can go stale until the next run.
 
+**A run with the bindings installed meets these vectors on the Python arm
+too**: through `both_arms`, whose `arm` fixture in `tests/conftest.py` runs
+a test once per arm, through `wycheproof_test.py`'s `bindings` parameter,
+or, for `rfc6979.json`, because only the Python arm serves its curves. That
+changes nothing in this inventory: it is measured, and re-derived, with no
+bindings installed, where the bindings arm is skipped.
+
 **The attribution is per module, and a module may also hold tests this
 project wrote.** `tests/curves/curve_test.py` is the clearest case: it
 reads Core's `pubkey.json` and carries a great deal else. So an entry
@@ -85,6 +92,8 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
         "test_vectors_generate_proof.csv",
         "test_vectors_verify_proof.csv",
     ),
+    "ecc/dlc_oracle_test.py": ("dlc_schnorr_test.json",),
+    "ecc/ecdsa_adaptor_test.py": ("ecdsa_adaptor.json",),
     "ecc/ellswift_test.py": (
         "ellswift_decode_test_vectors.csv",
         "xswiftec_inv_test_vectors.csv",
@@ -120,6 +129,8 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.curve._add": ("curves/curve_test.py",),
     "curves.curve._jac_double_mult_var": (
         "ecc/der_test.py",
+        "ecc/dlc_oracle_test.py",
+        "ecc/ecdsa_adaptor_test.py",
         "ecc/frost_test.py",
         "ecc/musig2_test.py",
         "ecc/rfc6979_test.py",
@@ -129,7 +140,9 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.curve._mult_checked": (
         "curves/curve_test.py",
         "ecc/der_test.py",
+        "ecc/dlc_oracle_test.py",
         "ecc/dleq_test.py",
+        "ecc/ecdsa_adaptor_test.py",
         "ecc/ellswift_test.py",
         "ecc/frost_test.py",
         "ecc/musig2_test.py",
@@ -151,7 +164,9 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.curve._x_octets": (
         "curves/curve_test.py",
         "ecc/der_test.py",
+        "ecc/dlc_oracle_test.py",
         "ecc/dleq_test.py",
+        "ecc/ecdsa_adaptor_test.py",
         "ecc/ellswift_test.py",
         "ecc/frost_test.py",
         "ecc/musig2_test.py",
@@ -161,7 +176,9 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.curve.double_mult_var": (
         "curves/curve_test.py",
+        "ecc/dlc_oracle_test.py",
         "ecc/dleq_test.py",
+        "ecc/ecdsa_adaptor_test.py",
         "ecc/ssa_test.py",
     ),
     "curves.curve.multi_mult_var": (
@@ -176,6 +193,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "ecc.dh.diffie_hellman": ("ecc/wycheproof_test.py",),
     "ecc.dsa.__init__": (),
     "ecc.dsa.assert_as_valid_": (
+        "ecc/ecdsa_adaptor_test.py",
         "ecc/rfc6979_test.py",
         "ecc/wycheproof_test.py",
     ),
@@ -193,6 +211,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "ecc.musig2.partial_sig_verify_": ("ecc/musig2_test.py",),
     "ecc.ssa.__init__": ("ecc/ssa_test.py",),
     "ecc.ssa.assert_as_valid_": (
+        "ecc/dlc_oracle_test.py",
         "ecc/frost_test.py",
         "ecc/musig2_test.py",
         "ecc/ssa_test.py",

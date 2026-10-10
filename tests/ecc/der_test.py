@@ -12,7 +12,7 @@ from btclib_ecc.curves.curve import CURVES
 from btclib_ecc.ecc import dsa
 from btclib_ecc.ecc.dsa import Sig
 from btclib_ecc.exceptions import BTClibEccValueError
-from tests import load, needs_bindings
+from tests import both_arms, load, needs_bindings
 
 ec = secp256k1
 
@@ -112,6 +112,7 @@ def test_der_sequence_length_is_der_for_every_curve() -> None:
         assert _independent_parse(raw) == (sig.r, sig.s), name
 
 
+@both_arms
 def test_der_matches_a_vendored_der_oracle() -> None:
     """`serialize` matches bytes an outside DER encoder wrote, per curve.
 
