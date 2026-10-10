@@ -78,6 +78,9 @@ Taken, in the function named:
     - the lambda split and the lambda image of a point,
       `secp256k1_scalar_split_lambda`, `secp256k1_ge_mul_lambda`:
       `_multiplier_decomposer`, `_endomorphism_split_secp256k1`
+    - the lambda image of a table by x * beta,
+      `secp256k1_ecmult_table_get_ge_lambda`: `_lambda_image`, which
+      `_mult_endomorphism_secp256k1` forms its second table with
     - mixed addition, `secp256k1_gej_add_ge_var`: `add_jac_aff`
     - doubling for a == 0, `secp256k1_gej_double`: `_double_jac_helper`
     - one inversion for many points, `secp256k1_ge_set_all_gej_var`:
@@ -108,6 +111,11 @@ secp256k1, Python 3.14.6, macOS arm64; a figure is the speed of
 libsecp256k1's technique over the code here. The scripts for the figures
 with no issue of their own are in issue btclib-org/btclib-ecc#185:
 
+    - the same image for the tables of a verification,
+      `secp256k1_ecmult_table_get_ge_lambda`: 1.01x to 1.03x of
+      `_double_mult_endomorphism_secp256k1_var`; it needs a hook in
+      `_multi_mult_w_NAF_var` or a copy of its loop. The script is in a
+      comment on issue btclib-org/btclib-ecc#193
     - Pippenger, `secp256k1_ecmult_pippenger_wnaf`: `_multi_mult_var`
     - `secp256k1_gej_eq_x_var`: the verification in `dsa._assert_as_valid_`
     - the field inverse by an addition chain or safegcd,
@@ -164,20 +172,13 @@ Not taken, for a reason, and not measured:
       `curve._tweak_add_var` declines the multiplication of P by one, and
       adds the generator's product to P instead
 
-Measured faster and not taken, each with its issue:
-
-    - the lambda image of a table by x * beta,
-      `secp256k1_ecmult_table_get_ge_lambda`: 1.10x of
-      `_mult_endomorphism_secp256k1` and 1.03x of a verification, issue
-      btclib-org/btclib-ecc#193
-
 """
 
 from __future__ import annotations
 
 from math import ceil
 
-from btclib_ecc.alias import INFJ, JacPoint
+from btclib_ecc.alias import INFJ, JacPoint, Point
 
 # the wNAF recoding and the table of odd multiples it indexes live in
 # curve_group, next to _convert_number_to_base_var and for the same reason:
@@ -429,13 +430,14 @@ def _double_mult_regular_window(
     per coefficient, and their opposites, to make one addition per window
     per coefficient -- where the wNAF builds half as many points and adds
     on one digit in w+1. This function is therefore not what
-    `double_mult_var` runs -- verification's coefficients are public -- but
-    what _mult_endomorphism_secp256k1 runs, whose two are halves of a
-    secret.
+    `double_mult_var` runs -- verification's coefficients are public. Its
+    loop, `_regular_window_loop`, is what _mult_endomorphism_secp256k1 runs,
+    whose two coefficients are halves of a secret; this function is that
+    loop with the tables built here, and the tests call it.
 
     scalar_len is the bit count the digits are fixed to, ec.scalar_len by
-    default. It is a parameter because the caller that wants this function
-    has coefficients shorter than the group's by construction:
+    default. It is a parameter because the loop's caller has coefficients
+    shorter than the group's by construction:
     _mult_endomorphism_secp256k1 splits a 256-bit scalar into two halves of
     128 bits, and the group's own 256 would double the work for nothing.
 
@@ -451,15 +453,42 @@ def _double_mult_regular_window(
     if w <= 0:
         raise BTClibEccValueError(f"non positive w: {w}")
 
+    return _regular_window_loop(
+        u,
+        HJ,
+        _signed_odd_multiples_aff(HJ, ec, w),
+        v,
+        QJ,
+        _signed_odd_multiples_aff(QJ, ec, w),
+        ec,
+        w,
+        scalar_len,
+    )
+
+
+def _regular_window_loop(
+    u: int,
+    HJ: JacPoint,
+    TH: list[Point],
+    v: int,
+    QJ: JacPoint,
+    TQ: list[Point],
+    ec: CurveGroup,
+    w: int,
+    scalar_len: int,
+) -> JacPoint:
+    """Return u*HJ + v*QJ from TH and TQ, the signed tables of HJ and QJ.
+
+    It is `_double_mult_regular_window`'s loop, which
+    `_mult_endomorphism_secp256k1` calls with a table formed by
+    `_lambda_image`. The callers check u, v and w.
+    """
     # as in _mult_regular_window: the count is the curve's, or the caller's,
     # and a coefficient above it is multiplied in the digits it needs
     bits = max(scalar_len or ec.scalar_len, u.bit_length(), v.bit_length())
     size = ceil(bits / w)
     us = signed_odd_digits(u | 1, w, size)
     vs = signed_odd_digits(v | 1, w, size)
-
-    TH = _signed_odd_multiples_aff(HJ, ec, w)
-    TQ = _signed_odd_multiples_aff(QJ, ec, w)
     offset = (1 << w) - 1
 
     # the accumulator starts at the sum of two table entries, so infinity
@@ -531,11 +560,12 @@ def _multiplier_decomposer(m: int) -> tuple[int, int]:
 
 
 # the bits either half of the decomposition can have, and the digit count
-# _double_mult_regular_window is fixed to below. It is the rounding error of
-# _multiplier_decomposer and not a measurement: round-to-nearest leaves at
-# most half a basis vector of each, |m1| <= (|a1| + |a2|)/2 and
-# |m2| <= (|b1| + |b2|)/2, both of which are 128-bit numbers with the
-# constants above. libsecp256k1's scalar_split_lambda states the same 128
+# _mult_endomorphism_secp256k1 fixes _regular_window_loop to. It is the
+# rounding error of _multiplier_decomposer and not a measurement:
+# round-to-nearest leaves at most half a basis vector of each,
+# |m1| <= (|a1| + |a2|)/2 and |m2| <= (|b1| + |b2|)/2, both of which are
+# 128-bit numbers with the constants above. libsecp256k1's
+# scalar_split_lambda states the same 128
 _HALF_LEN = 128
 
 
@@ -568,6 +598,23 @@ def _endomorphism_split_secp256k1(
     return abs(m1), P, abs(m2), K
 
 
+def _lambda_image(T: list[Point], ec: CurveGroup) -> list[Point]:
+    """Return the affine table T with each entry mapped by lambda.
+
+    One field multiplication an entry: lambda*(x, y) is (beta*x, y), where
+    the entries of a table built for lambda*Q would cost an addition each.
+    This is libsecp256k1's `secp256k1_ecmult_table_get_ge_lambda` and
+    `secp256k1_ge_mul_lambda`. An entry at infinity keeps its y of 0, which
+    is what infinity is in affine coordinates, so it stays infinity.
+
+    The table of K = +-lambda*P is this one up to the sign the split put on
+    the point: `_endomorphism_split_secp256k1` negates P and K separately,
+    so K is lambda*P when P and K have the same y and -lambda*P when not.
+    """
+    p = ec.p
+    return [(x * _BETA % p, y) for x, y in T]
+
+
 def _mult_endomorphism_secp256k1(
     m: int, Q: JacPoint, ec: CurveGroup, w: int
 ) -> JacPoint:
@@ -579,21 +626,33 @@ def _mult_endomorphism_secp256k1(
     doublings. It is what `curves.mult` runs for a secp256k1 point that is
     not the generator and that the bindings do not take.
 
-    The regular windows of _double_mult_regular_window, so the number of point
+    The regular windows of _regular_window_loop, so the number of point
     additions is the same for every scalar: the scalar of a `curves.mult` is a
     private key or a nonce in every caller this package has, which is what issue
     btclib-org/btclib#254 is about. _mult_endomorphism_secp256k1_var below is
     algorithm 3.77 as it is written, and what it costs to be regular is measured
     there.
 
+    The second table is the first's image under lambda, `_lambda_image`,
+    rather than a table built for lambda*Q.
+
     w=4 by measurement: the regular windows cost a little less at w=4
     than at w=5, over 30 random 256-bit scalars, best of five.
     """
     if m < 0:
         raise BTClibEccValueError("negative m")
+    # a number cannot be written in basis 1 (ie w=0)
+    if w <= 0:
+        raise BTClibEccValueError(f"non positive w: {w}")
 
     m1, P, m2, K = _endomorphism_split_secp256k1(m, Q, ec)
-    return _double_mult_regular_window(m1, P, m2, K, ec, w, _HALF_LEN)
+    TP = _signed_odd_multiples_aff(P, ec, w)
+    image = _lambda_image(TP, ec)
+    # a signed table is its own negation read backwards, so the opposite
+    # sign is the reversed image; selected by index, as the split selects
+    # its points, and not under an `if` on the sign of a half
+    TK = (image, image[::-1])[K[1] != P[1]]
+    return _regular_window_loop(m1, P, TP, m2, K, TK, ec, w, _HALF_LEN)
 
 
 def _mult_endomorphism_secp256k1_var(
@@ -603,12 +662,11 @@ def _mult_endomorphism_secp256k1_var(
 
     The same decomposition as `_mult_endomorphism_secp256k1`, over
     `_double_mult_w_NAF_var` rather than the regular windows, and the
-    faster of the two, by 16%, over 30 random 256-bit scalars, best of
-    five, at w=4. What that 16% buys is a cost the scalar decides: a wNAF
-    adds on a nonzero digit, so its additions follow the recoded weight of
-    the halves the split makes, where the regular windows make 79
-    additions and 126 doublings for every scalar of the curve -- at w=4,
-    counted by the `_CountingGroup` of tests/curves/curve_group_test.py,
+    faster of the two at w=4. What that buys is a cost the scalar
+    decides: a wNAF adds on a nonzero digit, so its additions follow the
+    recoded weight of the halves the split makes, where the regular windows
+    make 72 additions and 125 doublings for every scalar of the curve -- at
+    w=4, counted by the `_CountingGroup` of tests/curves/curve_group_test.py,
     whose docstring carries the command.
 
     So nothing signs with this one, and it is here to be measured against

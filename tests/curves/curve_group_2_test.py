@@ -4,24 +4,33 @@
 
 """Tests for the `btclib_ecc.curves.curve_group_2` module."""
 
+import random
 import secrets
 from collections.abc import Callable
 
 import pytest
 
-from btclib_ecc.alias import INFJ, JacPoint
+from btclib_ecc.alias import INF, INFJ, JacPoint
 from btclib_ecc.curves import Curve, secp256k1
-from btclib_ecc.curves.curve_group import _double_mult_var, _mult
+from btclib_ecc.curves.curve_group import (
+    _double_mult_var,
+    _mult,
+    _odd_multiples_aff,
+    _signed_odd_multiples_aff,
+)
 
 # from the module that defines them: btclib_ecc.curves does not export the
 # individual multiplication implementations
 from btclib_ecc.curves.curve_group_2 import (
+    _BETA,
     _HALF_LEN,
     _LAM,
     _N,
     _double_mult_endomorphism_secp256k1_var,
     _double_mult_regular_window,
     _double_mult_w_NAF_var,
+    _endomorphism_split_secp256k1,
+    _lambda_image,
     _mult_endomorphism_secp256k1,
     _mult_endomorphism_secp256k1_var,
     _mult_sliding_window_var,
@@ -29,6 +38,7 @@ from btclib_ecc.curves.curve_group_2 import (
     _multiplier_decomposer,
 )
 from btclib_ecc.exceptions import BTClibEccValueError
+from tests.curves.curve_group_test import _CountingGroup
 from tests.curves.curve_test import low_card_curves
 
 ec23_31 = low_card_curves["ec23_31"]
@@ -334,3 +344,72 @@ def test_double_mult_regular_window() -> None:
         _double_mult_regular_window(1, ec.GJ, -1, ec.GJ, ec, w=4, scalar_len=0)
     with pytest.raises(BTClibEccValueError, match="non positive w: "):
         _double_mult_regular_window(1, ec.GJ, 1, ec.GJ, ec, 0, scalar_len=0)
+
+
+def test_lambda_image_is_the_table_of_the_split_point() -> None:
+    """The table of K is the image of the table of P, up to the sign.
+
+    Against the tables built for K directly, over scalars of every pair of
+    signs of the two halves, and over a point whose Z is not 1.
+    """
+    ec = secp256k1
+    rnd = random.Random(0x1A3BDA)
+    QJ = _mult(777, ec.double_jac(ec.GJ), ec)
+    assert QJ[2] != 1
+    signs = set()
+    for m in [rnd.randrange(ec.n) for _ in range(40)] + [1, 2, ec.n - 1]:
+        _, P, _, K = _endomorphism_split_secp256k1(m, QJ, ec)
+        signs.add((P[1] == QJ[1], K[1] == QJ[1]))
+        for w in (1, 2, 3, 4, 5):
+            opposite = K[1] != P[1]
+
+            odd = _lambda_image(_odd_multiples_aff(P, ec, w), ec)
+            if opposite:
+                odd = [ec.negate(R) for R in odd]
+            assert odd == _odd_multiples_aff(K, ec, w), (m, w)
+
+            signed = _lambda_image(_signed_odd_multiples_aff(P, ec, w), ec)
+            if opposite:
+                signed = signed[::-1]
+            assert signed == _signed_odd_multiples_aff(K, ec, w), (m, w)
+    assert len(signs) == 4, signs
+
+
+def test_mult_endomorphism_makes_the_same_operations_for_every_scalar() -> None:
+    """One count of additions and doublings (btclib-org/btclib#254).
+
+    Over scalars that give every pair of signs of the two halves, the
+    selection of the second table included.
+    """
+    rnd = random.Random(0x9EC0DE)
+    scalars = [rnd.randrange(secp256k1.n) for _ in range(20)]
+    scalars += [0, 1, 2, 3, 1 << 100, secp256k1.n >> 17, secp256k1.n - 1]
+
+    ec = _CountingGroup()
+    signs = set()
+    counts = set()
+    for m in scalars:
+        m1, m2 = _multiplier_decomposer(m)
+        signs.add((m1 < 0, m2 < 0))
+        ec.additions = ec.doublings = 0
+        _mult_endomorphism_secp256k1(m, secp256k1.GJ, ec, 4)
+        counts.add((ec.additions, ec.doublings))
+    assert len(signs) == 4, signs
+    assert len(counts) == 1, counts
+
+
+def test_mult_endomorphism_refuses_a_non_positive_w() -> None:
+    """Both endomorphism multiplications refuse a non-positive w."""
+    for w in (0, -1):
+        with pytest.raises(BTClibEccValueError, match="non positive w: "):
+            _mult_endomorphism_secp256k1(1, secp256k1.GJ, secp256k1, w)
+        with pytest.raises(BTClibEccValueError, match="non positive w: "):
+            _mult_endomorphism_secp256k1_var(1, secp256k1.GJ, secp256k1, w)
+
+
+def test_lambda_image_keeps_infinity() -> None:
+    """An entry at infinity keeps the y of 0 that affine infinity is."""
+    ec = secp256k1
+    image = _lambda_image([INF, ec.G], ec)
+    assert image[0][1] == 0
+    assert image[1] == (ec.G[0] * _BETA % ec.p, ec.G[1])
