@@ -116,6 +116,13 @@ btclib_ecc.ecc.ssa module
    :members:
    :show-inheritance:
 
+btclib_ecc.ecc.ssa\_adaptor module
+----------------------------------
+
+.. automodule:: btclib_ecc.ecc.ssa_adaptor
+   :members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

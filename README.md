@@ -86,6 +86,9 @@ It is fully annotated and ships `py.typed`.
 - [DLC oracle](https://github.com/discreetlogcontracts/dlcspecs/blob/master/Oracle.md)
   signatures, BIP340 with a nonce committed in advance, and their
   signature points
+- single-signer BIP340 adaptor signatures, after the module
+  [BlockstreamResearch/secp256k1-zkp#299](https://github.com/BlockstreamResearch/secp256k1-zkp/pull/299)
+  proposes
 - [BIP374](https://github.com/bitcoin/bips/blob/master/bip-0374.mediawiki)
   discrete logarithm equality proofs
 - ECIES in the BIE1 layout, the block cipher supplied by the caller

@@ -14,6 +14,7 @@ Diffie-Hellman key agreement, the BIE1 ECIES built on top of it, the
 ElligatorSwift encoding of a public key, the ECDSA adaptor signatures of
 the DLC specification, the
 BIP340 signatures of a DLC oracle with a nonce committed in advance, the
+single-signer BIP340 adaptor signatures, the
 BIP374 proof that two points share one discrete logarithm, and the
 RFC6979, BIP340 and sign-to-contract nonces. The curve arithmetic underneath is
 btclib_ecc.curves, and the rule between the two is that direction: ecc
@@ -78,6 +79,7 @@ from btclib_ecc.ecc import (
     rangeproof,
     rfc6979_nonce,
     ssa,
+    ssa_adaptor,
 )
 from btclib_ecc.ecc.dh import diffie_hellman
 from btclib_ecc.ecc.pedersen import second_generator
@@ -101,4 +103,5 @@ __all__ = [
     "rfc6979_nonce",
     "second_generator",
     "ssa",
+    "ssa_adaptor",
 ]
