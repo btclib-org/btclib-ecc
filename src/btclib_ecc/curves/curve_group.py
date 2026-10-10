@@ -1534,7 +1534,7 @@ def _double_mult_var(
 def _multi_mult_pairs(
     scalars: Sequence[int], jac_points: Sequence[JacPoint]
 ) -> list[tuple[int, JacPoint]]:
-    """Check the arguments of a multi multiplication and drop the zeros.
+    """Check the arguments of a multi multiplication, drop what adds nothing.
 
     Shared by the two implementations below so that they answer the same
     errors to the same arguments: whichever of them _multi_mult_var calls is
@@ -1543,6 +1543,11 @@ def _multi_mult_pairs(
     rather than carried, which Bos-Coster needs -- it would be a zero
     divisor in its Euclidean step -- and interleaved wNAF is glad of,
     a scalar of zero costing a table it would never index.
+
+    A point at infinity contributes nothing either, and libsecp256k1's
+    `secp256k1_ecmult_strauss_wnaf` skips it too. In the interleaved wNAF
+    a point kept costs a table of odd multiples like any other (issue
+    btclib-org/btclib-ecc#198 has the script that measures it).
     """
     if len(scalars) != len(jac_points):
         err_msg = "mismatch between number of scalars and points: "
@@ -1556,7 +1561,7 @@ def _multi_mult_pairs(
     for n, PJ in zip(scalars, jac_points, strict=True):
         if n < 0:
             raise BTClibEccValueError("negative coefficient")
-        if n:
+        if n and PJ[2]:
             pairs.append((n, PJ))
     return pairs
 
@@ -1824,9 +1829,10 @@ def _multi_mult_var(
 ) -> JacPoint:
     """Return the multi scalar multiplication u1*Q1 + ... + un*Qn.
 
-    Interleaved wNAF up to BOS_COSTER_THRESHOLD nonzero scalars and Bos-Coster
-    from there on, the two crossing where the shared doublings stop paying for
-    themselves (issue btclib-org/btclib#212). Both are kept, and not only to be
+    Interleaved wNAF below BOS_COSTER_THRESHOLD kept pairs, each a nonzero
+    scalar on a finite point, and Bos-Coster from there on, the two crossing
+    where the shared doublings stop paying for themselves (issue
+    btclib-org/btclib#212). Both are kept, and not only to be
     dispatched between: the library is didactic as much as it is a library, and
     Bos-Coster is the one that can be read in twenty lines.
 
@@ -1840,18 +1846,18 @@ def _multi_mult_var(
     this package is asked to verify -- and a threshold nobody reaches is a
     branch nobody takes.
 
-    The zeros are counted out before the dispatch rather than left to
-    len(), because a zero scalar is dropped downstream and the batch that
-    reaches either implementation is the nonzero one: 56 scalars of which
-    2 are nonzero is a batch of two, and sending it to Bos-Coster on its
-    length costs nearly twice what the wNAF does. The pass that counts
-    them is under a thousandth of either at that size.
+    The zeros and the points at infinity are counted out before the dispatch
+    rather than left to len(), because both are dropped downstream: 56
+    scalars of which 2 are nonzero is a batch of two, and sending it to
+    Bos-Coster on its length costs more than the wNAF does.
 
     The input points are assumed to be on curve, the scalar coefficients
     are assumed to have been reduced mod n if appropriate (e.g. cyclic
     groups of order n).
     """
-    if sum(1 for n in scalars if n) < BOS_COSTER_THRESHOLD:
+    # a length mismatch falls through to _multi_mult_pairs, which raises it
+    kept = sum(1 for n, PJ in zip(scalars, jac_points, strict=False) if n and PJ[2])
+    if kept < BOS_COSTER_THRESHOLD:
         return _multi_mult_w_NAF_var(
             scalars, jac_points, ec, _MULTI_MULT_W, ec._fixed_points
         )
