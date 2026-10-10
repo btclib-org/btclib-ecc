@@ -188,6 +188,14 @@ def _parse(adaptor_sig: Octets) -> tuple[Point, Point, int, int, int]:
     A wrong length, a point that is not on the curve, an s_a or s not in
     the scalar range, a zero s_a, or an R whose x-coordinate is zero
     modulo n. R's x-coordinate may be n or above; r is that value modulo n.
+
+    The proof's e is not refused at n or above: it is reduced modulo n,
+    as libsecp256k1-zkp reduces it with `secp256k1_scalar_set_b32` and no
+    overflow check. The reduction is harmless, e being a hash output.
+    `dleq` refuses e >= n because BIP374 says so. The DLC specification
+    says only "Parse proof as two scalars (b,c)". A second
+    encoding, e + n, fits 32 bytes only for e < 2^256 - n, about 2^-128
+    of proofs.
     """
     data = bytes_from_octets(adaptor_sig, _SIG_SIZE)
     R = point_from_octets(data[:_R_END])
