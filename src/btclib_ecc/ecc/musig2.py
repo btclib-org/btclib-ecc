@@ -1194,7 +1194,7 @@ def adapt(pre_sig: PreSignature, t: Integer, session_ctx: SessionContext) -> ssa
 
 def extract_adaptor(
     sig: ssa.Sig, pre_sig: PreSignature, session_ctx: SessionContext
-) -> bytes:
+) -> int:
     """Return the secret adaptor a signature reveals against its pre-signature.
 
     The inverse of `adapt`, over the same `session_ctx`: whoever holds a
@@ -1205,9 +1205,12 @@ def extract_adaptor(
     the aggregate key here: extraction is arithmetic on two scalars, and
     a `sig` that does not verify still yields the `t` that would make it
     the one `adapt` would have produced from a matching `pre_sig`.
+
+    `zkp.musig`'s `extract_adaptor` answers the same `t` as 32
+    big-endian bytes.
     """
     values = session_values(session_ctx)
     t = (sig.s - pre_sig.s) % secp256k1.n
     if values.R[1] % 2:
         t = -t % secp256k1.n
-    return t.to_bytes(_SCALAR_SIZE, "big")
+    return t
