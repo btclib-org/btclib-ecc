@@ -9,13 +9,16 @@ These cover the other curves and hash functions.
 """
 
 from hashlib import sha256, sha512
+from typing import Any
 
 import pytest
 
-from btclib_ecc.alias import HashF
+from btclib_ecc.alias import HashF, Point
+from btclib_ecc.curves import mult, secp256k1
 from btclib_ecc.curves.curve import CURVES
 from btclib_ecc.ecc import bip340_nonce, ssa
-from btclib_ecc.ecc.bip340_nonce import bip340_nonce_
+from btclib_ecc.ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
+from btclib_ecc.exceptions import BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
 from tests import Sha256FirstByte
 from tests.curves.curve_test import byte_boundary_curves
@@ -136,3 +139,39 @@ def test_a_one_byte_hash_is_stretched_when_n_has_more_bits(
         k, _, _, _ = bip340_nonce_(b"a message", q, bytes(1), ec, Sha256FirstByte)
         assert 0 < k < ec.n
         assert bool(calls) == stretched
+
+
+def test_a_given_pub_key_spares_the_multiplication_and_changes_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A given point of the key gives the answer of the derived one."""
+    calls: list[int] = []
+
+    def spy(k: int, *args: Any, **kwargs: Any) -> Point:
+        calls.append(k)
+        return mult(k, *args, **kwargs)
+
+    for q in (1, 0x1234567890ABCDEF, secp256k1.n - 1):
+        expected = bip340_nonce_(b"a message", q, bytes(32))
+        Q = mult(q)
+        calls.clear()
+        with monkeypatch.context() as patch:
+            patch.setattr("btclib_ecc.ecc.bip340_nonce.mult", spy)
+            assert (
+                _nonce_with_pub_key_(b"a message", q, bytes(32), secp256k1, sha256, Q)
+                == expected
+            )
+        assert len(calls) == 1
+
+        # the control: without the point the derivation multiplies twice
+        calls.clear()
+        with monkeypatch.context() as patch:
+            patch.setattr("btclib_ecc.ecc.bip340_nonce.mult", spy)
+            _nonce_with_pub_key_(b"a message", q, bytes(32), secp256k1, sha256, None)
+        assert len(calls) == 2
+
+
+def test_the_key_is_refused_before_the_aux() -> None:
+    """With a bad key and a bad aux, the key is the one named."""
+    with pytest.raises(BTClibEccValueError, match="private key not in"):
+        bip340_nonce_(b"m", 0, b"\x01")

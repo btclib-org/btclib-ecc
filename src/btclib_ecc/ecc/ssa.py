@@ -96,7 +96,7 @@ from btclib_ecc.curves.curve import (
     _y_even_var,
     mult,
 )
-from btclib_ecc.ecc.bip340_nonce import bip340_nonce_
+from btclib_ecc.ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
 from btclib_ecc.ecc.commit_nonce import (
     commit_entropy_,
     commit_nonce_,
@@ -470,12 +470,8 @@ def _checked_sign_(c: int, signature: Sig, x_Q: int, ec: Curve, verify: bool) ->
     # tweaked one the signature commits to.
     #
     # The lift is the one thing this arm pays that the delegated one
-    # does not: `bip340_nonce_` computes Q to answer x_Q and keeps
-    # only the x, so the even-y point has to be recovered here --
-    # `assert_as_valid_` does the same and for the same reason. No
-    # `pub_key` argument would remove it, the caller's key being
-    # x-only in this scheme, which is the second half of why the
-    # docstring declines one
+    # does not: the nonce derivation answers only x_Q, so the even-y
+    # point is recovered here, as `assert_as_valid_` does
     if not verify:
         return signature
     QJ = x_Q, _y_even_var(x_Q, ec), 1
@@ -504,6 +500,23 @@ def _checked_sign_(c: int, signature: Sig, x_Q: int, ec: Curve, verify: bool) ->
             "signing produced a signature that does not verify"
         ) from e
     return signature
+
+
+def _sign_python_(
+    msg: bytes,
+    prv_key: Integer,
+    pub_key: Point | None,
+    aux: bytes,
+    ec: Curve,
+    hf: HashF,
+    verify: bool,
+) -> Sig:
+    # pub_key is prv_key's point where the caller holds it, so that the
+    # nonce derivation does not multiply for it again
+    # k is the nonce: an integer in the range 1..n-1.
+    k, x_K, q, x_Q = _nonce_with_pub_key_(msg, prv_key, aux, ec, hf, pub_key)
+    c = challenge_(msg, x_Q, x_K, ec, hf)
+    return _checked_sign_(c, _sign_(c, q, k, x_K, ec), x_Q, ec, verify)
 
 
 def _sign_commit_(
@@ -678,10 +691,7 @@ def sign_(
         return Sig.parse(signature)
 
     if commit_hash is None:
-        # k is the nonce: an integer in the range 1..n-1.
-        k, x_K, q, x_Q = bip340_nonce_(msg, prv_key, aux, ec, hf)
-        c = challenge_(msg, x_Q, x_K, ec, hf)
-        return _checked_sign_(c, _sign_(c, q, k, x_K, ec), x_Q, ec, verify)
+        return _sign_python_(msg, prv_key, None, aux, ec, hf, verify)
 
     return _sign_commit_(msg, prv_key, aux, commit_hash, ec, hf, verify)
 
@@ -797,16 +807,16 @@ class Signer:
     that drops the key afterwards is what `sign_` already is.
 
     A curve or a hash function the bindings do not serve has no keypair
-    to hold: there every signature is `sign_`'s, so `wipe` has no
-    keypair to overwrite and the `with` still reads the same -- what it
-    does on that arm is drop the scalar and stop the signing, which is
-    all it can. And the scalar is held on that arm alone: where a keypair
-    exists it holds the same secret in memory that can be overwritten, so
-    a second copy as a python int would be kept for nothing. What is not
-    solved either way is the object the private key arrived in, nor that
-    scalar where the Python arm needs it -- an int cannot be overwritten,
-    only dropped, and SECURITY.md's limitations section is where that is
-    stated for the library at large.
+    to hold: there the signer holds the key's public point, computed once.
+    On that arm `wipe` has no keypair to overwrite and the `with` still
+    reads the same -- what it does there is drop the scalar and stop the
+    signing, which is all it can. And the scalar is held on that arm
+    alone: where a keypair exists it holds the same secret in memory that
+    can be overwritten, so a second copy as a python int would be kept
+    for nothing. What is not solved either way is the object the private
+    key arrived in, nor that scalar where the Python arm needs it -- an
+    int cannot be overwritten, only dropped, and SECURITY.md's limitations
+    section is where that is stated for the library at large.
     """
 
     def __init__(
@@ -823,6 +833,9 @@ class Signer:
         self._signer = (
             libsecp256k1_ssa.Signer(self._q) if _libsecp256k1_serves(ec, hf) else None
         )
+        # the Python arm's counterpart of the keypair's stored point:
+        # public, and multiplied for once here rather than per signature
+        self._Q = mult(self._q, ec=ec) if self._signer is None else None
         # the scalar is what the Python arm signs with, and nothing else
         # reads it: where a keypair was built it holds the same secret in
         # memory the bindings can overwrite, so keeping the int beside it
@@ -863,6 +876,7 @@ class Signer:
             self._signer.wipe()
             self._signer = None
         self._q = 0
+        self._Q = None
         self._wiped = True
 
     def sign_(
@@ -882,11 +896,6 @@ class Signer:
         if self._wiped:
             raise BTClibEccValueError("the signer is wiped")
 
-        if self._signer is None:
-            return sign_(
-                msg, self._q, aux, self._ec, self._hf, verify=verify
-            ).serialize()
-
         # the aux `sign_` would have drawn, drawn here for the same
         # reason: BIP340's auxiliary randomness is per signature, and a
         # signer reusing one would derive one nonce for two messages
@@ -896,6 +905,20 @@ class Signer:
             if aux is None
             else bytes_from_octets(aux, self._hf_len)
         )
+
+        if self._signer is None:
+            # `sign_` asks at each signature whether the bindings serve,
+            # and so does this: a signer built while they were switched
+            # off signs with them once they are switched on again. The
+            # held point is used only where the Python arithmetic signs
+            if _libsecp256k1_serves(self._ec, self._hf):
+                return sign_(
+                    msg, self._q, aux, self._ec, self._hf, verify=verify
+                ).serialize()
+            return _sign_python_(
+                msg, self._q, self._Q, aux, self._ec, self._hf, verify
+            ).serialize()
+
         # `sign_custom` and not `sign`, for the reason `sign_` above gives at
         # its own dispatch: `sign` is the 32-byte entry point, and BIP340 puts
         # no size on its message. Signing through it would gate the size, as
