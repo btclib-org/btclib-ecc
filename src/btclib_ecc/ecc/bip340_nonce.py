@@ -35,7 +35,7 @@ import secrets
 from hashlib import sha256
 
 from btclib_ecc._utils import bytes_from_octets, int_from_bits
-from btclib_ecc.alias import HashF, Integer, Octets
+from btclib_ecc.alias import HashF, Integer, Octets, Point
 from btclib_ecc.curves import Curve, mult, scalar_from_prv_key, secp256k1
 from btclib_ecc.hashes import tagged_hash
 
@@ -137,12 +137,30 @@ def bip340_nonce_(
     stretched the same way to the size of n, so that it covers all of
     the key.
     """
+    return _nonce_with_pub_key_(msg, prv_key, aux, ec, hf, None)
+
+
+def _nonce_with_pub_key_(
+    msg: Octets,
+    prv_key: Integer,
+    aux: Octets | None,
+    ec: Curve,
+    hf: HashF,
+    pub_key: Point | None,
+) -> tuple[int, int, int, int]:
+    """Return what `bip340_nonce_` returns, given prv_key's point if held.
+
+    A given point saves the generator multiplication that derives it.
+    It is not checked: a wrong one gives a signature that verifies under
+    no key, which the default self-check refuses. Only `Signer` passes
+    one, computed from its own scalar.
+    """
     hf_len = hf().digest_size
     msg = bytes_from_octets(msg)
 
     q = scalar_from_prv_key(prv_key, ec)
 
-    x_Q, y_Q = mult(q, ec=ec)
+    x_Q, y_Q = mult(q, ec=ec) if pub_key is None else pub_key
     if y_Q % 2:
         q = ec.n - q
 

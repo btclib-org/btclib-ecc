@@ -2084,3 +2084,63 @@ def test_every_key_with_a_one_byte_hash(name: str) -> None:
         signed += 1
     assert signed
     assert refused
+
+
+def test_python_arm_signer_derives_the_nonce_with_one_multiplication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The nonce derivation multiplies once: the signer holds the key's point.
+
+    The keys cover both parities of y. The signatures are `sign_`'s, octet
+    for octet, for the same message and aux.
+    """
+    no_bindings(monkeypatch)
+    keys = [0x1234567890ABCDEF, 1, secp256k1.n - 1]
+    parities = {mult(q)[1] % 2 for q in keys}
+    assert parities == {0, 1}
+
+    calls: list[int] = []
+
+    def spy(q: int, *args: Any, **kwargs: Any) -> Point:
+        calls.append(q)
+        return mult(q, *args, **kwargs)
+
+    for q in keys:
+        with ssa.Signer(q) as signer:
+            assert signer._signer is None
+            for msg in (b"", b"a message", bytes(1000)):
+                aux = bytes(range(32))
+                expected = ssa.sign_(msg, q, aux).serialize()
+                with monkeypatch.context() as patch:
+                    patch.setattr("btclib_ecc.ecc.bip340_nonce.mult", spy)
+                    calls.clear()
+                    assert signer.sign_(msg, aux) == expected
+                    assert len(calls) == 1
+                assert signer.sign_(msg, aux, verify=False) == expected
+
+    signer = ssa.Signer(keys[0])
+    signer.wipe()
+    assert signer._Q is None
+
+
+@needs_bindings
+def test_a_signer_built_without_bindings_uses_them_once_served(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The dispatch is asked at each signature, as `sign_` asks it."""
+    q = 0x1234567890ABCDEF
+    with monkeypatch.context() as patch:
+        no_bindings(patch)
+        signer = ssa.Signer(q)
+    assert signer._signer is None
+
+    calls: list[bytes] = []
+    real = libsecp256k1_ssa.sign_custom
+
+    def spy(*args: Any, **kwargs: Any) -> bytes:
+        calls.append(b"")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(libsecp256k1_ssa, "sign_custom", spy)
+    assert signer.sign_(b"m", bytes(32)) == ssa.sign_(b"m", q, bytes(32)).serialize()
+    assert len(calls) == 2

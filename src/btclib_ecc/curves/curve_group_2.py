@@ -88,6 +88,8 @@ Taken, in the function named:
       gives the same digits; see the measurement below
     - a table for the generator, `secp256k1_ecmult_gen_prec_table`:
       `_cached_fixed_base_multiples`, `_mult_fixed_base`
+    - the keypair holding the public key, `secp256k1_keypair_create`:
+      `ssa.Signer`, on both arms, and `bip340_nonce._nonce_with_pub_key_`
 
 Measured and not taken, with the verdict where it is kept. Best of five,
 secp256k1, Python 3.14.6, macOS arm64; a figure is the speed of
@@ -166,10 +168,6 @@ Measured faster and not taken, each with its issue:
       encoded with the squareness tested before the inversion,
       `secp256k1_ellswift_xswiftec_inv_var`: 1.7x of `_xswiftec_inv_var`,
       issue btclib-org/btclib-ecc#195
-    - the keypair holding the public key, `secp256k1_keypair_create`:
-      `ssa.Signer` holds one only where the bindings serve; on the Python
-      arm a signature without the self-check is 1.8x to 1.9x faster for
-      not multiplying the key again, issue btclib-org/btclib-ecc#197
     - a point at infinity skipped, as a zero scalar is,
       `secp256k1_ecmult_strauss_wnaf`: 1.2x of a call with such a point,
       for 0.03 us a call otherwise, issue btclib-org/btclib-ecc#198
