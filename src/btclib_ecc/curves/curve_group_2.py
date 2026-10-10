@@ -481,8 +481,7 @@ def _regular_window_loop(
 
     It is `_double_mult_regular_window`'s loop, which
     `_mult_endomorphism_secp256k1` calls with a table formed by
-    `_lambda_image`. Neither coefficient may be negative, which the callers
-    see to, and `signed_odd_digits` refuses a w that is not positive.
+    `_lambda_image`. The callers check u, v and w.
     """
     # as in _mult_regular_window: the count is the curve's, or the caller's,
     # and a coefficient above it is multiplied in the digits it needs
@@ -641,6 +640,9 @@ def _mult_endomorphism_secp256k1(
     """
     if m < 0:
         raise BTClibEccValueError("negative m")
+    # a number cannot be written in basis 1 (ie w=0)
+    if w <= 0:
+        raise BTClibEccValueError(f"non positive w: {w}")
 
     m1, P, m2, K = _endomorphism_split_secp256k1(m, Q, ec)
     TP = _signed_odd_multiples_aff(P, ec, w)

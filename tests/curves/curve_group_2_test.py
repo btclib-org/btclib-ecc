@@ -395,3 +395,12 @@ def test_mult_endomorphism_makes_the_same_operations_for_every_scalar() -> None:
         counts.add((ec.additions, ec.doublings))
     assert len(signs) == 4, signs
     assert len(counts) == 1, counts
+
+
+def test_mult_endomorphism_refuses_a_non_positive_w() -> None:
+    """The refusal `_double_mult_regular_window` made before the table image."""
+    for w in (0, -1):
+        with pytest.raises(BTClibEccValueError, match="non positive w: "):
+            _mult_endomorphism_secp256k1(1, secp256k1.GJ, secp256k1, w)
+        with pytest.raises(BTClibEccValueError, match="non positive w: "):
+            _mult_endomorphism_secp256k1_var(1, secp256k1.GJ, secp256k1, w)
