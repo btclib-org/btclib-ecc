@@ -1792,9 +1792,10 @@ def _multi_mult_var(
 ) -> JacPoint:
     """Return the multi scalar multiplication u1*Q1 + ... + un*Qn.
 
-    Interleaved wNAF up to BOS_COSTER_THRESHOLD nonzero scalars and Bos-Coster
-    from there on, the two crossing where the shared doublings stop paying for
-    themselves (issue btclib-org/btclib#212). Both are kept, and not only to be
+    Interleaved wNAF below BOS_COSTER_THRESHOLD kept pairs, each a nonzero
+    scalar on a finite point, and Bos-Coster from there on, the two crossing
+    where the shared doublings stop paying for themselves (issue
+    btclib-org/btclib#212). Both are kept, and not only to be
     dispatched between: the library is didactic as much as it is a library, and
     Bos-Coster is the one that can be read in twenty lines.
 
@@ -1818,6 +1819,7 @@ def _multi_mult_var(
     are assumed to have been reduced mod n if appropriate (e.g. cyclic
     groups of order n).
     """
+    # a length mismatch falls through to _multi_mult_pairs, which raises it
     kept = sum(1 for n, PJ in zip(scalars, jac_points, strict=False) if n and PJ[2])
     if kept < BOS_COSTER_THRESHOLD:
         return _multi_mult_w_NAF_var(
