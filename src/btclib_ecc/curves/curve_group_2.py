@@ -113,21 +113,12 @@ with no issue of their own are in issue btclib-org/btclib-ecc#185:
       measures. `secp256k1_fe_normalizes_to_zero`,
       `secp256k1_fe_mul_int`, `secp256k1_fe_add` and `secp256k1_scalar_add`
       have no routine here: each is an integer operator and a `%`
-    - a separate squaring, `secp256k1_fe_sqr_inner`: CPython's long_mul
-      takes the squaring path when both operands are the same object
-    - the masked table lookup, `secp256k1_ecmult_const`'s cmov scan: a list
-      index is a list index
     - the lambda split by multiply and shift, `secp256k1_scalar_mul_shift_var`:
       `_multiplier_decomposer` rounds with `(_B2 * m + n // 2) // n`; the
       split is paid once per multiplication, three orders of magnitude
       under it. Splitting the generator at 2^128 instead,
       `secp256k1_scalar_split_128`, saves 0.6 us of 575 us of a double
       multiplication
-    - the table with no inversion, `secp256k1_ge_table_set_globalz`: it
-      would remove the single inversion a call spends; the rest of the
-      conversion is three products an entry, which forming the odd multiples
-      on an isomorphic curve also pays, and the accumulator would have to
-      live in that frame
     - the unified addition, `secp256k1_gej_add_ge` after Brier and Joye:
       its core, without the cases, is 0.97x of `add_jac_aff`
     - the halving doubling, `secp256k1_fe_half` in `secp256k1_gej_double`:
@@ -144,8 +135,17 @@ with no issue of their own are in issue btclib-org/btclib-ecc#185:
       needs their y, and `dh.diffie_hellman` is given P whole, so it has
       no root to save. The root is 14% of a `mult`
 
-Not taken, for a reason kept beside the code and not measured:
+Not taken, for a reason, and not measured:
 
+    - a separate squaring, `secp256k1_fe_sqr_inner`: CPython's long_mul
+      takes the squaring path when both operands are the same object
+    - the masked table lookup, `secp256k1_ecmult_const`'s cmov scan: a list
+      index is a list index
+    - the table with no inversion, `secp256k1_ge_table_set_globalz`: it
+      would remove the single inversion a call spends; the rest of the
+      conversion is three products an entry, which forming the odd multiples
+      on an isomorphic curve also pays, and the accumulator would have to
+      live in that frame
     - the tweak added in one call, `secp256k1_eckey_pubkey_tweak_add`:
       `curve._tweak_add_var` declines the multiplication of P by one, and
       adds the generator's product to P instead
