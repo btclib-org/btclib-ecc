@@ -1070,11 +1070,12 @@ class PreparedPoint:
     Two tables answer to it, one per operation:
 
     - `mult` takes the fixed-base comb of the generator instead of the
-      GLV endomorphism, five times cheaper a call once its table is
-      built -- 1024 points on secp256k1. Break-even is 7 multiplications
-      of the one point, measured in issue btclib-org/btclib-ecc#194 --
-      `dh.diffie_hellman` against a counterparty, a taproot internal key
-      tweaked repeatedly, `pedersen` against a fixed second generator.
+      GLV endomorphism, which builds nothing: a warm call is cheaper,
+      and the table a build to pay for. Issue btclib-org/btclib-ecc#194
+      holds the break-even and its measurement. A point that comes back
+      is where it pays: `dh.diffie_hellman` against a counterparty, a
+      taproot internal key tweaked repeatedly, `pedersen` against a fixed
+      second generator.
     - a verification under it -- `dsa` and `ssa` both take one where they
       take a public key -- memoizes the wNAF tables of the key's two
       endomorphism halves at `_FIXED_POINT_W` instead of rebuilding them

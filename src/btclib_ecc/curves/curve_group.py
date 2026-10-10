@@ -1197,22 +1197,13 @@ def _mult_fixed_base(
     subgroup of odd prime order meets that, and `curve.PreparedPoint`
     sends any other point to another arm.
 
-    8 teeth and spacing 8 by measurement on secp256k1, issue
-    btclib-org/btclib-ecc#194, against a table per digit position at
-    w=6, which makes no doubling. The first call, table built, takes 3.3
-    ms against 9.4 ms; a warm call 110 us against 134 us; a hundred calls
-    14.2 ms against 22.7 ms. The table is 1024 points against 2752.
-    Spacing 4 is 8% faster warm, and its table, twice the size, repays
-    its build only after some 330 calls.
+    8 teeth and spacing 8, by measurement on secp256k1; issue
+    btclib-org/btclib-ecc#194 holds the script and the table.
 
     The reason for keeping a table is the point repeating and not the
     point being the generator, so `curve.PreparedPoint` reaches here as
-    well, for a caller who has said its own point will come back.
-    Break-even is 7 multiplications of that point, by the same
-    measurement: a table to build, against a warm call five times
-    cheaper than the GLV endomorphism `curves.mult` otherwise runs,
-    which builds nothing. That is why nothing infers it: for a point
-    multiplied once the build is pure loss.
+    well, for a caller who has said its own point will come back. That
+    object is where the trade is written.
 
     The accumulator is rescaled where `curves.mult` rescales the point on
     its other arm: the table here is memoized and canonical, so it is the
