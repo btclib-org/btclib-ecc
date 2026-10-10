@@ -53,11 +53,12 @@ what its absence does not promise: nothing here is constant-time.
 
 **Which one runs is not a setting, and a census says why it is not** (issue
 btclib-org/btclib#849). On the generator the regular form is also the faster
-one, by a factor of four: _mult_fixed_base makes no doubling at all, where a
-wNAF makes one per bit however wide its table is and however thoroughly it is
-cached, the factor holding over the memoized odd multiples of G at w=8, w=10 and
-w=12 alike. So the arm every key derivation, every BIP32 child and every signing
-nonce runs has no variable-time alternative to offer. What is left is a
+one, by a factor of five on secp256k1: _mult_fixed_base doubles only between
+comb offsets, where a wNAF makes one doubling per bit however wide its table is
+and however thoroughly it is cached. The factor holds over the memoized odd
+multiples of G at w=8, w=10 and w=12 alike, issue btclib-org/btclib-ecc#194.
+So the arm every key derivation, every BIP32 child and every signing nonce runs
+has no variable-time alternative to offer. What is left is a
 variable-base mult with a secret scalar, measured over ecc.dh: 1.13x on
 secp256k1 and 1.03x on nistp256, the second being that measurement's own noise.
 Beside it, the blinded nonce inverse is a fraction of a percent of a signature,

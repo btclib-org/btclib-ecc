@@ -943,11 +943,12 @@ def _libsecp256k1_multi_mult_var(
 # coefficients take the second
 _ENDOMORPHISM_W = 4
 _DOUBLE_MULT_W = 4
-# and the width the fixed-base ladder holds a table at, which is a
-# third question again: its table is memoized, so what the width buys
-# is paid in memory once and not in additions per call. The
-# measurement is in _mult_fixed_base's docstring
-_FIXED_BASE_W = 6
+# and the comb the fixed-base multiplication holds a table for, which
+# is a third question again: its table is memoized, so what the teeth
+# buy is paid in memory and a build once and not in additions per
+# call. The measurement is in _mult_fixed_base's docstring
+_FIXED_BASE_TEETH = 8
+_FIXED_BASE_SPACING = 8
 
 
 def mult(m_int: Integer, Q: Point | None = None, ec: Curve = secp256k1) -> Point:
@@ -973,10 +974,10 @@ def _mult_checked(m: int, Q: Point | None, ec: Curve, *, prepared: bool) -> Poin
     `prepared` says the caller has undertaken to multiply this point
     again -- `PreparedPoint` is where that undertaking is made and where
     what it costs is written. It sends the point to the same fixed-base
-    ladder the generator runs, whose tables are memoized per point,
+    comb the generator runs, whose tables are memoized per point,
     instead of to the GLV endomorphism, which builds nothing and keeps
     nothing. On the bindings path it changes nothing at all: libsecp256k1
-    is several times faster than the ladder warm, so a prepared point is
+    is several times faster than the comb warm, so a prepared point is
     still faster delegated, and the tables are only reached where the
     bindings decline.
     """
@@ -1006,21 +1007,22 @@ def _mult_checked(m: int, Q: Point | None, ec: Curve, *, prepared: bool) -> Poin
 
     if Q is None or Q == ec.G:
         # the fixed-base case, and the whole of what makes it one: the
-        # point is the same on every call, so its per-position tables are
-        # built once and kept and the multiplication makes no doubling at
-        # all. It is faster than the endomorphism below on secp256k1 too,
-        # so the test is on the point before it is on the curve
-        return ec.aff_from_jac_var(_mult_fixed_base(m, ec.GJ, ec, _FIXED_BASE_W))
+        # point is the same on every call, so its comb table is built once
+        # and kept. It is faster than the endomorphism below on secp256k1
+        # too, so the test is on the point before it is on the curve
+        R = _mult_fixed_base(m, ec.GJ, ec, _FIXED_BASE_TEETH, _FIXED_BASE_SPACING)
+        return ec.aff_from_jac_var(R)
 
     QJ = _jac_from_aff(Q)
 
     if prepared:
-        # the same ladder the generator takes, on the caller's word that
+        # the same comb the generator takes, on the caller's word that
         # this point is the same on the next call too. No blinding of the
         # point here, and none is missing: _mult_fixed_base rescales its
         # accumulator instead, the table it indexes being memoized and
         # therefore canonical
-        return ec.aff_from_jac_var(_mult_fixed_base(m, QJ, ec, _FIXED_BASE_W))
+        R = _mult_fixed_base(m, QJ, ec, _FIXED_BASE_TEETH, _FIXED_BASE_SPACING)
+        return ec.aff_from_jac_var(R)
 
     # what reaches here on secp256k1 is the point the bindings decline
     # -- infinity -- and, with the dispatch
@@ -1057,23 +1059,22 @@ def _mult_checked(m: int, Q: Point | None, ec: Curve, *, prepared: bool) -> Poin
 class PreparedPoint:
     """A point whose multiplication tables are kept, because it will come back.
 
-    The tables of `curve_group` are memoized on `(point, curve, width)`
-    already, so a repeated point would find its own: what is missing is
-    anyone to say that a point *is* repeated. Only the generator is
-    assumed to be, and everything else is treated as arriving once --
-    which is right for most callers and wrong for a few, and no
-    measurement can tell which a caller is. This is where a caller says
-    so.
+    The tables of `curve_group` are memoized on the point, the curve and
+    the table's parameters already, so a repeated point would find its
+    own: what is missing is anyone to say that a point *is* repeated.
+    Only the generator is assumed to be, and everything else is treated
+    as arriving once -- which is right for most callers and wrong for a
+    few, and no measurement can tell which a caller is. This is where a
+    caller says so.
 
     Two tables answer to it, one per operation:
 
-    - `mult` takes the fixed-base ladder of the generator instead of the
-      GLV endomorphism, near four times cheaper a call once the
-      per-position tables are built -- 43 positions of 64 points on
-      secp256k1, some 366 KiB. Break-even is 23 multiplications of the
-      one point -- `dh.diffie_hellman` against a counterparty, a taproot
-      internal key tweaked repeatedly, `pedersen` against a fixed second
-      generator.
+    - `mult` takes the fixed-base comb of the generator instead of the
+      GLV endomorphism, five times cheaper a call once its table is
+      built -- 1024 points on secp256k1. Break-even is 7 multiplications
+      of the one point, measured in issue btclib-org/btclib-ecc#194 --
+      `dh.diffie_hellman` against a counterparty, a taproot internal key
+      tweaked repeatedly, `pedersen` against a fixed second generator.
     - a verification under it -- `dsa` and `ssa` both take one where they
       take a public key -- memoizes the wNAF tables of the key's two
       endomorphism halves at `_FIXED_POINT_W` instead of rebuilding them
@@ -1111,7 +1112,15 @@ class PreparedPoint:
     first multiplication that wants them, because which of the two
     families above is wanted is a question only that call answers.
 
-    Measured on an Apple M5, macOS 26.6, arm64, CPython 3.14, with
+    On a curve with a cofactor the constructor also asks, by one
+    multiplication by n, whether the point is in ⟨G⟩. A point outside it
+    can have a multiple of order 2, whose affine form (x, 0) the comb's
+    tables cannot tell from infinity. So `mult` sends such a point to the
+    arm `curve.mult` takes, which keeps no table. A point of ⟨G⟩ has no
+    multiple of order 2, n being an odd prime.
+
+    The verification figures are measured on an Apple M5, macOS 26.6,
+    arm64, CPython 3.14, with
     `curve._libsecp256k1_available` set to False; best of five
     alternating rounds of 300 to 800 calls, and the median of seven for
     the cold rows, each on a freshly derived point so that the tables are
@@ -1149,6 +1158,8 @@ class PreparedPoint:
     # preparation, and a frozenset of Jacobian triples printed beside a
     # Curve is a screenful saying nothing the point does not
     fixed: frozenset[JacPoint] = field(init=False, repr=False, compare=False)
+    # whether `mult` may take the comb: derived, as `fixed` is
+    _in_subgroup: bool = field(init=False, repr=False, compare=False)
 
     # init=False on the decorator, as `dsa.Sig` has it, and on the
     # `fixed` field besides: that one is derived rather than passed, and
@@ -1157,9 +1168,8 @@ class PreparedPoint:
     def __init__(self, point: Point, ec: Curve = secp256k1) -> None:
         _assert_valid_ec(ec)
         ec.require_on_curve(point)
-        # infinity is on the curve and is not a point to prepare: it has
-        # no affine table -- `_signed_odd_multiples_aff` would convert it
-        # -- and m*INF is INF without any of this
+        # infinity is on the curve and is not a point to prepare: m*INF is
+        # INF without any table
         if not point[1]:
             raise BTClibEccValueError("cannot prepare the point at infinity")
 
@@ -1167,16 +1177,20 @@ class PreparedPoint:
         object.__setattr__(self, "ec", ec)
         PJ = _jac_from_aff(point)
         object.__setattr__(self, "fixed", ec._fixed_points | {PJ, ec.negate_jac(PJ)})
+        # `_assert_in_subgroup`'s test, and its reason for `_mult_jac_var`
+        in_subgroup = ec.cofactor == 1 or _mult_jac_var(ec.n, PJ, ec)[2] == 0
+        object.__setattr__(self, "_in_subgroup", in_subgroup)
 
     def mult(self, m_int: Integer) -> Point:
         """Return m*point, through the tables this point keeps.
 
-        `curve.mult` with the fixed-base arm taken for this point instead
-        of only for the generator; everything else about the call, the
-        dispatch to the bindings included, is the same.
+        `curve.mult` with the fixed-base arm taken for this point, where it
+        is in ⟨G⟩, instead of only for the generator; everything else
+        about the call, the dispatch to the bindings included, is the
+        same.
         """
         m: int = int_from_integer(m_int) % self.ec.n
-        return _mult_checked(m, self.point, self.ec, prepared=True)
+        return _mult_checked(m, self.point, self.ec, prepared=self._in_subgroup)
 
 
 def _double_mult_python_var(
