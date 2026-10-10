@@ -101,7 +101,7 @@ with no issue of their own are in issue btclib-org/btclib-ecc#185:
       where 255 modular squarings in bytecode -- fewer than any chain needs
       -- cost several times what it does. `pow(a, p - 2, p)` costs about
       what those squarings do, which is why `mod_inv_var` does not spell
-      Fermat either:
+      Fermat either, and `number_theory.mod_inv` keeps the measurement:
 
         - https://briansmith.org/ecc-inversion-addition-chains-01
     - Solinas reduction, `secp256k1_fe_mul_inner`: two products by a 33-bit
