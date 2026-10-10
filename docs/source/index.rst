@@ -13,6 +13,7 @@ btclib-ecc documentation
    REVIEWING <reviewing_link.md>
    SECURITY <security_link.md>
    ASSURANCE CASE <assurance_case_link.md>
+   PERFORMANCE <performance.md>
    RELEASE NOTES <release_notes_link.md>
    CHANGELOG <changelog_link.md>
 
