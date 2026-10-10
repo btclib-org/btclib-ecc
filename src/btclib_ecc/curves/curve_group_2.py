@@ -83,10 +83,17 @@ Taken, in the function named:
     - one inversion for many points, `secp256k1_ge_set_all_gej_var`:
       `aff_from_jac_batch_var`
     - squareness by the Jacobi symbol, `secp256k1_fe_is_square_var`:
-      `legendre_symbol_var`, `curve._is_x_coordinate_var`
+      `legendre_symbol_var`, `curve._is_x_coordinate_var`,
+      `ellswift._is_square_var`
     - the square root by an addition chain, `secp256k1_fe_sqrt`:
       `number_theory._sqrt_candidate_secp256k1`, which `mod_sqrt_var` calls
       for secp256k1's p
+    - ElligatorSwift decoded as a fraction,
+      `secp256k1_ellswift_xswiftec_frac_var`: `ellswift._xswiftec_var`,
+      `ellswift._is_x_fraction_var`
+    - ElligatorSwift encoded with the squareness tested before the
+      inversion, `secp256k1_ellswift_xswiftec_inv_var`:
+      `ellswift._xswiftec_inv_var`
     - signed odd digits, `secp256k1_ecmult_const` after Hamburg (eprint
       2012/309, section 3.3): `signed_odd_digits`, Joye-Tunstall's, which
       gives the same digits; see the measurement below
@@ -163,11 +170,6 @@ Measured faster and not taken, each with its issue:
       `secp256k1_ecmult_table_get_ge_lambda`: 1.10x of
       `_mult_endomorphism_secp256k1` and 1.03x of a verification, issue
       btclib-org/btclib-ecc#193
-    - ElligatorSwift decoded as a fraction,
-      `secp256k1_ellswift_xswiftec_frac_var`: 1.6x of `_xswiftec_var`; and
-      encoded with the squareness tested before the inversion,
-      `secp256k1_ellswift_xswiftec_inv_var`: 1.7x of `_xswiftec_inv_var`,
-      issue btclib-org/btclib-ecc#195
 
 """
 
