@@ -116,6 +116,7 @@ from btclib_ecc.exceptions import (
     InvalidContributionError,
 )
 from btclib_ecc.hashes import tagged_hash
+from btclib_ecc.number_theory import mod_inv_var
 
 __all__ = [
     "ID_SIZE",
@@ -304,7 +305,7 @@ def _derive_interpolating_value(ids: Sequence[int], signer_id: int) -> int:
             continue
         num = num * (curr_id + 1) % secp256k1.n
         deno = deno * (curr_id - signer_id) % secp256k1.n
-    return num * pow(deno, -1, secp256k1.n) % secp256k1.n
+    return num * mod_inv_var(deno, secp256k1.n) % secp256k1.n
 
 
 def _derive_pubshare_at(
@@ -328,7 +329,7 @@ def _derive_pubshare_at(
                 continue
             num = num * (x - curr_id) % secp256k1.n
             deno = deno * (signer_id - curr_id) % secp256k1.n
-        coefficients.append(num * pow(deno, -1, secp256k1.n) % secp256k1.n)
+        coefficients.append(num * mod_inv_var(deno, secp256k1.n) % secp256k1.n)
     if len(pub_shares) == 1:
         return mult(coefficients[0], pub_shares[0], secp256k1)
     return multi_mult_var(coefficients, pub_shares, secp256k1)

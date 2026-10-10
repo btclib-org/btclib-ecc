@@ -157,6 +157,7 @@ from btclib_ecc.exceptions import (
     BTClibEccRuntimeError,
     BTClibEccValueError,
 )
+from btclib_ecc.number_theory import mod_inv_var
 
 __all__ = [
     "NonceChain",
@@ -1457,7 +1458,7 @@ def _recover_x(k: int, e: int, s: int) -> int:
     the nonce buys, the chain drawing it. `e` is a challenge and
     `_challenge` refuses zero, so the inverse exists.
     """
-    return (k - s) * pow(e, -1, secp256k1.n) % secp256k1.n
+    return (k - s) * mod_inv_var(e, secp256k1.n) % secp256k1.n
 
 
 def _recover_k(x: int, e: int, s: int) -> int:
