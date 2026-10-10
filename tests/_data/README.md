@@ -82,12 +82,17 @@ A case of this package's own is written in the test module that reads
 the file, never inside the file, so refreshing a pin is a fetch and never
 a merge.
 
-`pulled` is the date of the commit that put the current content in a
-tree, from `git log --follow --diff-filter=A`. A file this repository's
-first commit carried came over from btclib-org/btclib, whose history this
-repository does not carry: its `pulled` is a date in that repository's
-log, and the command is run there, against the file's path under
-`tests/`.
+`pulled` is the date of the commit that added the file, and `refreshed`
+the date of each later commit that changed its bytes. Each is the
+committer date of a commit on the default branch, listed by
+`git log --follow --raw --format='%h %cd' --date=short origin/main -- <path>`.
+A commit whose `--raw` line keeps the blob, a rename, is neither. Where
+`--follow` goes on past a copy (`C`) into another file's history, the
+copy is the commit that added this one. A file this repository's first
+commit carried came over from btclib-org/btclib, whose history this
+repository does not carry: its earlier dates are read in that
+repository's log, against the file's path under `tests/`. That first
+commit is a `refreshed` date only where it changed the bytes.
 
 `behind` counts upstream revisions of that path since the pin. It is a
 staleness figure, not a defect: a vector file is a fixed set of cases and
@@ -155,7 +160,7 @@ path    bip-0340/test-vectors.csv
 commit  200f9b26fe0a2f235a2af8b30c4be9f12f6bc9cb  2023-04-20
 blob    672339129a844a060591bb22f444158ff45438ed
 ours    aa317a3b3d53aa904def8b5a625b13073898b349
-pulled  2020-04-04, refreshed 2020-11-22 and 2026-07-30
+pulled  2020-04-04, refreshed 2020-11-22, 2020-12-08 and 2026-07-30
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -417,7 +422,7 @@ path    bip-0374/test_vectors_verify_proof.csv
 commit  fc874dd5d34239e070c0fdb8c4ed6a1dd2a94147  2026-08-19
 blob    1368013b03521c97984b65ba0586b99dd8818564
 ours    2d4acdf1fa0ca3d49c5f853196f934bd91b790a6
-pulled  2026-09-21
+pulled  2026-08-13, refreshed 2026-09-21
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -579,7 +584,7 @@ repo    bitcoin-core/secp256k1
 path    src
 commit  186eec1c1b93d71d2131cd228ca16b4b97738f60  2026-10-02
 ours    633cb36fc1c9f08d0069a510277dccac1835492c
-pulled  2026-09-10, refreshed 2026-09-14 and 2026-10-06
+pulled  2026-09-10, refreshed 2026-09-14 and 2026-10-07
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -750,7 +755,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_sha256_bitcoin_test.json
 commit  234d9689d0cbb77a21fd603d6055ab47498bff69  2026-08-17
 blob    88097c48ba49f358179ac3aa6c6a64562d0f4e65
-pulled  2026-08-25
+pulled  2026-08-13, refreshed 2026-08-25
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -773,7 +778,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_sha256_test.json
 commit  878e5366008753df2064d40c49f8e2f50f9c6af7  2026-05-12
 blob    48797ce3b697f47175bdf4dc93976c2dc94438c5
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -790,7 +795,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_sha256_p1363_test.json
 commit  878e5366008753df2064d40c49f8e2f50f9c6af7  2026-05-12
 blob    3c59b142ede26ecbafecf83341e907dd3bfda40f
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -804,7 +809,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_sha512_test.json
 commit  878e5366008753df2064d40c49f8e2f50f9c6af7  2026-05-12
 blob    612e1912bfb5e523fbe8183e0d12f468e8309a08
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -819,7 +824,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_sha3_256_test.json
 commit  e0df04e0c033f2d25c5051dd06230336c7822358  2025-10-07
 blob    5c6c5901f4d41af8a992cafc4aa31b6bc7b87163
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -834,7 +839,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_sha3_512_test.json
 commit  e0df04e0c033f2d25c5051dd06230336c7822358  2025-10-07
 blob    2a5770e00be1c4d1218b79e8a805f52a0a1c7f26
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -848,7 +853,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_sha512_p1363_test.json
 commit  878e5366008753df2064d40c49f8e2f50f9c6af7  2026-05-12
 blob    089040205b9d99313d284154cdcdc646079d1d43
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -863,7 +868,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_shake128_test.json
 commit  e0df04e0c033f2d25c5051dd06230336c7822358  2025-10-07
 blob    bffa63ed0097e4910a5d99381f88a4b1c12db757
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -879,7 +884,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_shake256_test.json
 commit  e0df04e0c033f2d25c5051dd06230336c7822358  2025-10-07
 blob    5bfb394cf971b3c9a68862f23b1251f3d3e7b1c0
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -898,7 +903,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_shake128_p1363_test.json
 commit  e0df04e0c033f2d25c5051dd06230336c7822358  2025-10-07
 blob    3f63208d4cbeaed6a8c46c430678199bd52d0e50
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -913,7 +918,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_shake256_p1363_test.json
 commit  e0df04e0c033f2d25c5051dd06230336c7822358  2025-10-07
 blob    c2b431b5d76016a8da19fdc1aab1ecaa5cfe12f1
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -927,7 +932,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdh_secp256k1_test.json
 commit  78898104021ebd2cd98820e4112da89b1531d999  2026-03-11
 blob    3ed5207460f29a270e024d0f3c0e1b57d1fa52a9
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -942,7 +947,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdh_secp256k1_webcrypto_test.json
 commit  e0df04e0c033f2d25c5051dd06230336c7822358  2025-10-07
 blob    a675c5378e8d10aad7ae241ef5460f4aefa10d0b
-pulled  2026-09-08
+pulled  2026-08-25
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -959,7 +964,7 @@ path    LICENSE
 commit  31387e2cd596587c859c611027b6a44d2e2b65ff  2018-04-04
 blob    7a4a3ea2424c09fbe48d455aed1eaa94d9124835
 ours    d645695673349e3947e8e5ae42332d0ac3164cd7
-pulled  2026-09-08
+pulled  2026-08-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -1000,7 +1005,7 @@ for NIST P-192, P-224, P-256, P-384 and P-521, as `tests/ecc/rfc6979_test.py`
 says. An RFC number is already an immutable reference — there is no commit to
 pin, and `rfc-editor.org/rfc/rfc6979` is the document.
 
-Pulled 2020-05-08.
+Pulled 2020-05-08, refreshed 2020-11-29 and 2023-01-04.
 
 ### `tests/ecc/_data/zkp_rangeproof_fixed_vectors.json`
 
@@ -1010,7 +1015,7 @@ path    src/modules/rangeproof/tests_impl.h
 commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
 blob    1137404643ab667715e2c5eedd3463dcb20740e6
 ours    572c4e396cffc71a03aaab2e3bef968fed4b6d24
-pulled  2026-09-09
+pulled  2026-09-09, refreshed 2026-09-10
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -1108,7 +1113,8 @@ path    src/modules/ecdsa_s2c/tests_impl.h
 commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
 blob    88eeb1e9e7156d8c99a032ce3eef4423825792c9
 ours    d6ae47ad1802c65b55d52eff6ada843b9c84b5c2
-pulled  2026-08-02
+pulled  2026-08-02, refreshed 2026-08-06, 2026-08-07, 2026-08-09,
+        2026-08-13, 2026-08-14, 2026-09-10 and 2026-09-26
 behind  0 revisions; that commit is the tip of the path
 ```
 
