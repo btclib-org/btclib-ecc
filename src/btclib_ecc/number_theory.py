@@ -340,9 +340,9 @@ def _sqrt_candidate_secp256k1(a: int) -> int:
 
     The addition chain of `secp256k1_fe_sqrt` in libsecp256k1 (v0.8.0,
     `field_impl.h`): the three blocks of 1s in the exponent, of 2, 22 and
-    223 bits, are built as 2^n - 1 powers. It is 1.15x to 1.20x as fast as
-    `pow(a, (p + 1) // 4, p)` on CPython 3.14.6, macOS arm64;
-    btclib-org/btclib-ecc#191 holds the script.
+    223 bits, are built as 2^n - 1 powers. It is faster than
+    `pow(a, (p + 1) // 4, p)`; btclib-org/btclib-ecc#191 holds the script
+    that measures it.
     """
     p = _SECP256K1_P
 
