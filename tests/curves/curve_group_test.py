@@ -11,7 +11,13 @@ import pytest
 from typing_extensions import override
 
 from btclib_ecc.alias import INF, INFJ, JacPoint, Point
-from btclib_ecc.curves import Curve, CurveGroup, find_all_points, secp256k1
+from btclib_ecc.curves import (
+    Curve,
+    CurveGroup,
+    curve_group,
+    find_all_points,
+    secp256k1,
+)
 
 # the mult_* variants under test, and the helpers they are built on, come
 # from the module that defines them: btclib_ecc.curves exports mult,
@@ -946,6 +952,34 @@ def test_multi_mult_drops_a_point_at_infinity() -> None:
                 _multi_mult_bos_coster_var(scalars, points, ec),
             ):
                 assert ec.is_jac_equal(result, expected)
+
+
+def test_multi_mult_dispatch_counts_out_the_points_at_infinity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A batch dispatches on the points it keeps, not on its length."""
+    ec = ec23_31
+    called: list[str] = []
+    monkeypatch.setattr(
+        curve_group,
+        "_multi_mult_w_NAF_var",
+        lambda *args: called.append("wNAF"),
+    )
+    monkeypatch.setattr(
+        curve_group,
+        "_multi_mult_bos_coster_var",
+        lambda *args: called.append("Bos-Coster"),
+    )
+    size = BOS_COSTER_THRESHOLD
+    scalars = [1] * (size + 2)
+    finite = [ec.GJ] * size
+    for points, expected in (
+        (finite + [INFJ, INFJ], "Bos-Coster"),
+        (finite[1:] + [INFJ] * 3, "wNAF"),
+    ):
+        called.clear()
+        _multi_mult_var(scalars, points, ec)
+        assert called == [expected]
 
 
 def test_multi_mult_distant_magnitudes() -> None:
