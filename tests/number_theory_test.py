@@ -6,6 +6,7 @@
 
 import math
 import secrets
+from unittest.mock import Mock
 
 import pytest
 from hypothesis import given
@@ -440,26 +441,54 @@ def test_mod_inv_blinded_never_hands_the_operand_to_the_euclid(
     assert len(set(seen)) == len(seen)
 
 
-def test_mod_inv_blinded_answers_a_factor_that_is_a_zero_divisor(
+def test_mod_inv_blinded_redraws_a_factor_that_is_a_zero_divisor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A composite modulus can make the drawn factor non-invertible.
+    """On a composite modulus the factor is redrawn until it is invertible.
 
-    The product is then non-invertible while the operand is not, and the
-    answer still has to be the operand's inverse -- reached by inverting
-    it unblinded, which is the one case where the protection is lost and
-    the result is not. A prime modulus cannot take this path, and every
-    modulus the library blinds against is one: `curves.Curve` requires
-    the group order prime.
+    A zero divisor would make the product non-invertible, and inverting the
+    operand unblinded instead would hand it to `mod_inv_var`: never done.
+    The two zero divisors cost a failed call each and a gcd.
     """
-    # 1 + randbelow(m - 1) == 2, a zero divisor mod 8
-    monkeypatch.setattr(secrets, "randbelow", lambda _: 1)
-    assert mod_inv(3, 8) == mod_inv_var(3, 8) == 3
+    handed: list[int] = []
+    real_mod_inv = number_theory.mod_inv_var
 
-    # and an operand that has no inverse of its own still reports one,
-    # naming itself rather than the product the caller never formed
-    with pytest.raises(BTClibEccValueError, match="no inverse mod 8"):
-        mod_inv(2, 8)
+    def recording_mod_inv(a: int, m: int) -> int:
+        handed.append(a)
+        return real_mod_inv(a, m)
+
+    monkeypatch.setattr(number_theory, "mod_inv_var", recording_mod_inv)
+
+    # 1 + randbelow(9) is 2 and then 5, both zero divisors mod 10, and then 3
+    draws = iter([1, 4, 2])
+    monkeypatch.setattr(secrets, "randbelow", lambda _: next(draws))
+    assert mod_inv(3, 10) == real_mod_inv(3, 10) == 7
+    # the euclid sees the products of the three factors, never the operand
+    assert handed == [6, 5, 9]
+    assert next(draws, None) is None
+
+    # an operand that has no inverse of its own still reports one, and
+    # `mod_inv_var` still sees only the product
+    handed.clear()
+    monkeypatch.setattr(secrets, "randbelow", lambda _: 2)
+    with pytest.raises(BTClibEccValueError, match="no inverse mod 10"):
+        mod_inv(4, 10)
+    assert handed == [2]
+
+
+def test_mod_inv_blinded_takes_no_gcd_on_a_prime_modulus(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A gcd would be a second Euclid, timed on the secret factor.
+
+    Only an error takes one, to tell its cause.
+    """
+    gcd = Mock(wraps=math.gcd)
+    monkeypatch.setattr(math, "gcd", gcd)
+    for m in (7, 97, 2**256 - 2**32 - 977):
+        assert mod_inv(5, m) * 5 % m == 1
+        assert mod_inv_batch([3, 5], m) == mod_inv_batch_var([3, 5], m)
+    gcd.assert_not_called()
 
 
 @given(a=st.integers(), m=st.integers(min_value=1))
@@ -503,6 +532,41 @@ def test_mod_inv_batch_is_mod_inv_batch_var() -> None:
     for bad_modulus in (0, -7, 3.0, False):
         with pytest.raises((BTClibEccTypeError, BTClibEccValueError)):
             mod_inv_batch([1], bad_modulus)  # type: ignore[arg-type]
+
+
+def test_mod_inv_batch_falls_back_to_each_element_on_a_zero_divisor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A zero-divisor batch factor makes each element draw its own.
+
+    And a zero divisor drawn there is redrawn: the Euclid is never handed
+    an operand itself.
+    """
+    handed: list[int] = []
+    real_mod_inv = number_theory.mod_inv_var
+
+    def recording_mod_inv(a: int, m: int) -> int:
+        handed.append(a)
+        return real_mod_inv(a, m)
+
+    monkeypatch.setattr(number_theory, "mod_inv_var", recording_mod_inv)
+
+    # the batch draws 2 and 3, and 2 is a zero divisor mod 10; then 3
+    # draws 2, a zero divisor, and 3 again; then 7 draws 3
+    draws = iter([1, 2, 1, 2, 2])
+    monkeypatch.setattr(secrets, "randbelow", lambda _: next(draws))
+    assert mod_inv_batch([3, 7], 10) == [7, 3]
+    assert next(draws, None) is None
+    assert 3 not in handed
+    assert 7 not in handed
+
+
+def test_mod_inv_batch_of_a_long_sequence_on_a_composite_modulus() -> None:
+    """Redrawing the whole batch until every factor is a unit is too slow.
+
+    It would take rounds exponential in n.
+    """
+    assert mod_inv_batch([1] * 40, 10) == [1] * 40
 
 
 def test_mod_inv_batch_blinds_each_element_on_its_own(

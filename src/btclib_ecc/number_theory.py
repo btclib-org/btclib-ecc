@@ -17,6 +17,7 @@ with the following modifications:
 
 from __future__ import annotations
 
+import math
 import secrets
 from collections.abc import Sequence
 from math import isqrt
@@ -88,6 +89,24 @@ def xgcd_var(a: int, b: int) -> tuple[int, int, int]:
     return b, x0, y0
 
 
+def _no_inverse(m: int) -> BTClibEccValueError:
+    """Return the error for an operand with no inverse mod m.
+
+    The operand is not named: it may be a secret.
+    """
+    err_msg = "no inverse mod "
+    err_msg += f"{hex_string(m)}" if m > 0xFFFFFFFF else f"{m}"
+    return BTClibEccValueError(err_msg)
+
+
+def _blinding_factor(m: int) -> int:
+    """Return a random nonzero factor mod m.
+
+    m == 1 has only the factor 1, every integer being zero modulo it.
+    """
+    return 1 + secrets.randbelow(m - 1) if m > 1 else 1
+
+
 def mod_inv_var(a: int, m: int) -> int:
     """Return the inverse of a (mod m).
 
@@ -114,10 +133,7 @@ def mod_inv_var(a: int, m: int) -> int:
     try:
         return pow(a, -1, m)
     except ValueError:
-        # the operand is not named: it may be a secret
-        err_msg = "no inverse mod "
-        err_msg += f"{hex_string(m)}" if m > 0xFFFFFFFF else f"{m}"
-        raise BTClibEccValueError(err_msg) from None
+        raise _no_inverse(m) from None
 
 
 def mod_inv(a: int, m: int) -> int:
@@ -136,9 +152,8 @@ def mod_inv(a: int, m: int) -> int:
     (b*a)^-1 * b is a^-1 for every b invertible mod m, so drawing b at
     random leaves an inverse whose iteration count follows b and tells an
     observer nothing about a: 1.02x across the same range of operands,
-    where `mod_inv_var` is 2.06x. Two multiplications, two reductions
-    and a draw from `secrets`, which is 1.11x on a 256-bit operand and
-    1.5% of the whole Python signature it sits in. Fermat's
+    where `mod_inv_var` is 2.06x. What it adds is two multiplications,
+    two reductions and a draw from `secrets`. Fermat's
     `pow(a, m - 2, m)` is the alternative and is flat for a different
     reason, its ladder running on the fixed exponent rather than on a
     random operand; it is not the one chosen, at 8.38x.
@@ -154,25 +169,28 @@ def mod_inv(a: int, m: int) -> int:
     is. SECURITY.md publishes the Python path as variable-time, and
     CONTRIBUTING.md has what a name in this library does and does not
     promise about duration.
+
+    m does not have to be a prime, and the blinding holds for any m.
+    The factor's gcd with m, a second Euclid timed on the secret factor,
+    is taken only when the product has no inverse: a factor that is not
+    a unit, which only a composite m draws, is then redrawn, and an
+    operand with no inverse raises. The expected number of draws is
+    (m - 1) / phi(m). `mod_inv_var` is never handed the operand itself.
     """
     _assert_valid_operand(a)
     _assert_valid_modulus(m)
 
-    # a nonzero b, and one the modulus leaves room to draw: m == 1 has
-    # only b = 1, every integer being zero modulo it
-    b = 1 + secrets.randbelow(m - 1) if m > 1 else 1
-    try:
-        return mod_inv_var(a * b % m, m) * b % m
-    except BTClibEccValueError:
-        # a product is invertible only if both factors are, so this is
-        # either the caller's own non-invertible a -- and the call below
-        # raises about the operand they passed, where the one above would
-        # name a product they never formed -- or a b that is a zero
-        # divisor, which only a composite m has. The blinding is lost in
-        # that second case and the answer is not; every modulus this is
-        # asked about in the library is the order of a group, which
-        # `curves.Curve` requires prime
-        return mod_inv_var(a, m)
+    while True:
+        b = _blinding_factor(m)
+        try:
+            return mod_inv_var(a * b % m, m) * b % m
+        except BTClibEccValueError:
+            # the product has no inverse: b is a zero divisor, which only
+            # a composite m has, or a has none. In the first case redraw;
+            # in the second raise about the operand, not the product the
+            # caller never formed, without inverting the operand
+            if math.gcd(b, m) == 1:
+                raise _no_inverse(m) from None
 
 
 def mod_inv_batch(a: Sequence[int], m: int) -> list[int]:
@@ -203,6 +221,11 @@ def mod_inv_batch(a: Sequence[int], m: int) -> list[int]:
     with n and the one Euclid does not; the trick still wins at every
     size worth batching.
 
+    On a composite modulus a factor can be a zero divisor, and an element
+    can have no inverse: either fails the batch, which is then answered
+    by `mod_inv` on each element in turn, so the cost is at worst n
+    independent calls.
+
     Not constant-time, for the reasons `mod_inv` gives at length. The
     empty sequence is not an error here either.
     """
@@ -213,17 +236,18 @@ def mod_inv_batch(a: Sequence[int], m: int) -> list[int]:
     if not a:
         return []
 
-    # a nonzero factor each, as `mod_inv` draws its one; m == 1 leaves
-    # only the factor 1, every integer being zero modulo it
-    factors = [1 + secrets.randbelow(m - 1) if m > 1 else 1 for _ in a]
+    # a factor each, as `mod_inv` draws its one
+    factors = [_blinding_factor(m) for _ in a]
     blinded = [x * b % m for x, b in zip(a, factors, strict=True)]
     try:
         inverses = mod_inv_batch_var(blinded, m)
     except BTClibEccValueError:
-        # a product is invertible only if every factor is, so an element
-        # with no inverse is the caller's own error and is named as such
-        # -- and a factor that a composite m made a zero divisor lands
-        # here too, where `mod_inv` says what is lost and what is not
+        # a product has no inverse: a factor is a zero divisor, or an
+        # element has none. One at a time, each element draws a factor of
+        # its own and redraws its own zero divisors, or raises: n
+        # independent calls, where redrawing the whole batch until every
+        # factor is a unit would take exponentially many rounds in n. No
+        # gcd is taken of the batch factors, and none of them is kept
         return [mod_inv(x, m) for x in a]
     return [i * b % m for i, b in zip(inverses, factors, strict=True)]
 
