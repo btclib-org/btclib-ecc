@@ -926,13 +926,6 @@ def _convert_number_to_base_var(i: int, base: int) -> list[int]:
     return digits[::-1]
 
 
-def _mods(m: int, w: int) -> int:
-    """Signed modulo function."""
-    w2: int = pow(2, w)
-    M = m % w2
-    return M - w2 if (w2 // 2) <= M else M
-
-
 def _wNAF_of_m_var(m: int, w: int) -> list[int]:
     """WNAF (width-w Non-adjacent form) of number m.
 
@@ -953,22 +946,24 @@ def _wNAF_of_m_var(m: int, w: int) -> list[int]:
     For complete reference see:
     D. Hankerson, 'Guide to Elliptic Curve Cryptography' chapter 3
     """
-    i = 0
-
+    w2 = 1 << w
     M: list[int] = []
     while m > 0:
-        if (m % 2) == 1:
-            if w == 1:
-                # Computing binary NAF of m
-                M.append(2 - (m % 4))
-            else:
-                # Computing wNAF of m
-                M.append(_mods(m, w))
-            m -= M[i]
+        # a run of zero bits goes in one shift, not one bit at a time
+        zeros = (m & -m).bit_length() - 1
+        if zeros:
+            M.extend([0] * zeros)
+            m >>= zeros
+        if w == 1:
+            # Computing binary NAF of m
+            d = 2 - (m & 3)
         else:
-            M.append(0)
-        m //= 2
-        i += 1
+            # Computing wNAF of m
+            d = m & (w2 - 1)
+            if d >= w2 >> 1:
+                d -= w2
+        M.append(d)
+        m = (m - d) >> 1
 
     return M
 
