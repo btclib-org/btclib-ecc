@@ -265,6 +265,14 @@ def test_verify_is_false_for_an_unacceptable_adaptor_signature() -> None:
         assert not ecdsa_adaptor.verify(bad, _MSG, _PUB, _ENC)
 
 
+def test_proof_e_is_reduced_modulo_n() -> None:
+    """A proof e of n or above is read modulo n, as the reference reads it."""
+    adaptor_sig = ecdsa_adaptor.encrypt(_MSG, _X, _ENC, _AUX)
+    for e in (_N, _N + 5):
+        parsed = ecdsa_adaptor._parse(_with(adaptor_sig, 98, e.to_bytes(32, "big")))
+        assert parsed[3] == e - _N
+
+
 def test_r_of_zero_modulo_n_is_refused() -> None:
     """An R with x = n is on the curve and has r = 0, which is no ECDSA r."""
     adaptor_sig = ecdsa_adaptor.encrypt(_MSG, _X, _ENC, _AUX)
