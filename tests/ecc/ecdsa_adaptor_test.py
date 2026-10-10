@@ -14,9 +14,12 @@ adaptor signature parses. A case with an `error` is one that must fail.
 
 No vector encrypts, the specification leaving the nonce open, so
 `encrypt` is held to round trips and to one output of libsecp256k1-zkp,
-which `_ZKP_ENCRYPT` cites.
+which `_ZKP_ENCRYPT` cites. The tests marked `zkp` at the end of the file
+hold all four operations to `btclib_secp256k1.zkp.ecdsa_adaptor` on random
+inputs.
 """
 
+import random
 from typing import Any
 
 import pytest
@@ -24,7 +27,17 @@ import pytest
 from btclib_ecc.curves import CURVES, bytes_from_point, mult, secp256k1
 from btclib_ecc.ecc import dsa, ecdsa_adaptor
 from btclib_ecc.exceptions import BTClibEccValueError
-from tests import both_arms, load, vector_id
+from tests import both_arms, load, needs_zkp, vector_id
+
+# guarded module scope, the same shape `btclib_ecc._libsecp256k1` uses: this
+# file is collected in every job, including the no-bindings one and the one
+# at the floor, whose `btclib_secp256k1` has no `zkp.ecdsa_adaptor`, and
+# pytest imports every module it collects before `needs_zkp` can skip
+# anything in it
+try:
+    from btclib_secp256k1.zkp import ecdsa_adaptor as zkp_ecdsa_adaptor
+except ImportError:  # pragma: no cover -- no binding with zkp.ecdsa_adaptor
+    zkp_ecdsa_adaptor = None  # type: ignore[assignment]
 
 _VECTORS: list[dict[str, Any]] = load("ecc", "_data", "ecdsa_adaptor.json")
 _N = secp256k1.n
@@ -296,3 +309,99 @@ def test_recover_refuses_what_is_not_a_decryption() -> None:
     other_curve = dsa.Sig(sig.r, sig.s, CURVES["secp256r1"], check_validity=False)
     with pytest.raises(BTClibEccValueError, match="secp256k1"):
         ecdsa_adaptor.recover(adaptor_sig, other_curve, _ENC)
+
+
+def _zkp_cases(count: int) -> list[tuple[bytes, int, bytes, int, bytes, bytes]]:
+    """Return (msg, x, X, y, Y, aux), keys as SEC compressed octets."""
+    rng = random.Random(172)
+    cases = []
+    for _ in range(count):
+        x = 1 + rng.randrange(_N - 1)
+        y = 1 + rng.randrange(_N - 1)
+        pub = bytes_from_point(mult(x), secp256k1)
+        enc = bytes_from_point(mult(y), secp256k1)
+        cases.append((rng.randbytes(32), x, pub, y, enc, rng.randbytes(32)))
+    return cases
+
+
+_ZKP_CASES = _zkp_cases(32)
+
+# `pragma: no cover` on the marker's line of each test below, as
+# `tests/ecc/commit_nonce_test.py` does and for the reason it gives: an
+# unflagged build skips them
+
+
+@needs_zkp  # pragma: no cover -- no zkp.ecdsa_adaptor.encrypt to compare with
+@pytest.mark.parametrize("case", _ZKP_CASES, ids=range(len(_ZKP_CASES)))
+def test_encrypt_matches_zkp(case: tuple[bytes, int, bytes, int, bytes, bytes]) -> None:
+    """The same message, keys and aux give the same 162 octets."""
+    msg, x, _, _, enc, aux = case
+    assert ecdsa_adaptor.encrypt(msg, x, enc, aux) == zkp_ecdsa_adaptor.encrypt(
+        msg, x, enc, aux_rand32=aux
+    )
+
+
+@needs_zkp  # pragma: no cover -- no zkp.ecdsa_adaptor.verify to compare with
+@pytest.mark.parametrize("case", _ZKP_CASES, ids=range(len(_ZKP_CASES)))
+def test_verify_agrees_with_zkp(
+    case: tuple[bytes, int, bytes, int, bytes, bytes],
+) -> None:
+    """Both accept either adaptor signature and refuse the same changes."""
+    msg, x, pub, y, enc, aux = case
+    for adaptor_sig in (
+        ecdsa_adaptor.encrypt(msg, x, enc, aux),
+        zkp_ecdsa_adaptor.encrypt(msg, x, enc, aux_rand32=aux),
+    ):
+        assert ecdsa_adaptor.verify(adaptor_sig, msg, pub, enc)
+        assert zkp_ecdsa_adaptor.verify(adaptor_sig, pub, msg, enc)
+
+        other_pub = bytes_from_point(mult(x + 1), secp256k1)
+        other_enc = bytes_from_point(mult(y + 1), secp256k1)
+        refused = [
+            (adaptor_sig, bytes([msg[0] ^ 1]) + msg[1:], pub, enc),
+            (adaptor_sig, msg, other_pub, enc),
+            (adaptor_sig, msg, pub, other_enc),
+        ]
+        # a change in each field: R, R_a, s_a, e and s
+        refused += [
+            (_with(adaptor_sig, i, bytes([adaptor_sig[i] ^ 1])), msg, pub, enc)
+            for i in (0, 33, 66, 98, 130)
+        ]
+        for sig_, m_, p_, e_ in refused:
+            assert not ecdsa_adaptor.verify(sig_, m_, p_, e_)
+            assert not zkp_ecdsa_adaptor.verify(sig_, p_, m_, e_)
+
+
+@needs_zkp  # pragma: no cover -- no zkp.ecdsa_adaptor.decrypt to compare with
+@pytest.mark.parametrize("case", _ZKP_CASES, ids=range(len(_ZKP_CASES)))
+def test_decrypt_matches_zkp(case: tuple[bytes, int, bytes, int, bytes, bytes]) -> None:
+    """The low-s signature is the same, for a key and for its negation."""
+    msg, x, pub, y, enc, aux = case
+    adaptor_sig = ecdsa_adaptor.encrypt(msg, x, enc, aux)
+    for key in (y, _N - y):
+        sig = ecdsa_adaptor.decrypt(adaptor_sig, key)
+        zkp_sig = zkp_ecdsa_adaptor.decrypt(key, adaptor_sig)
+        assert dsa._compact(sig) == zkp_sig
+        assert dsa.verify_(msg, pub, sig)
+
+
+@needs_zkp  # pragma: no cover -- no zkp.ecdsa_adaptor.recover to compare with
+@pytest.mark.parametrize("case", _ZKP_CASES, ids=range(len(_ZKP_CASES)))
+def test_recover_matches_zkp(case: tuple[bytes, int, bytes, int, bytes, bytes]) -> None:
+    """The same key comes back for an encryption key and for its negation."""
+    msg, x, _, y, enc, aux = case
+    adaptor_sig = zkp_ecdsa_adaptor.encrypt(msg, x, enc, aux_rand32=aux)
+    sig = ecdsa_adaptor.decrypt(adaptor_sig, y)
+    zkp_sig = zkp_ecdsa_adaptor.decrypt(y, adaptor_sig)
+    negated = bytes([enc[0] ^ 1]) + enc[1:]
+    for key, enc_key in ((y, enc), (_N - y, negated)):
+        zkp_key = zkp_ecdsa_adaptor.recover(zkp_sig, adaptor_sig, enc_key)
+        assert zkp_key == key.to_bytes(32, "big")
+        assert ecdsa_adaptor.recover(adaptor_sig, sig, enc_key) == key
+
+    # both refuse a signature that is no decryption under this key
+    other = bytes_from_point(mult(y + 1), secp256k1)
+    with pytest.raises(ValueError, match="does not match"):
+        zkp_ecdsa_adaptor.recover(zkp_sig, adaptor_sig, other)
+    with pytest.raises(BTClibEccValueError):
+        ecdsa_adaptor.recover(adaptor_sig, sig, other)
