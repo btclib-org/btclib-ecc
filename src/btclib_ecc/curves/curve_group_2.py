@@ -604,7 +604,8 @@ def _lambda_image(T: list[Point], ec: CurveGroup) -> list[Point]:
     One field multiplication an entry: lambda*(x, y) is (beta*x, y), where
     the entries of a table built for lambda*Q would cost an addition each.
     This is libsecp256k1's `secp256k1_ecmult_table_get_ge_lambda` and
-    `secp256k1_ge_mul_lambda`. Infinity, (0, 0), maps to itself.
+    `secp256k1_ge_mul_lambda`. An entry at infinity keeps its y of 0, which
+    is what infinity is in affine coordinates, so it stays infinity.
 
     The table of K = +-lambda*P is this one up to the sign the split put on
     the point: `_endomorphism_split_secp256k1` negates P and K separately,

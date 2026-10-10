@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 import pytest
 
-from btclib_ecc.alias import INFJ, JacPoint
+from btclib_ecc.alias import INF, INFJ, JacPoint
 from btclib_ecc.curves import Curve, secp256k1
 from btclib_ecc.curves.curve_group import (
     _double_mult_var,
@@ -22,6 +22,7 @@ from btclib_ecc.curves.curve_group import (
 # from the module that defines them: btclib_ecc.curves does not export the
 # individual multiplication implementations
 from btclib_ecc.curves.curve_group_2 import (
+    _BETA,
     _HALF_LEN,
     _LAM,
     _N,
@@ -404,3 +405,11 @@ def test_mult_endomorphism_refuses_a_non_positive_w() -> None:
             _mult_endomorphism_secp256k1(1, secp256k1.GJ, secp256k1, w)
         with pytest.raises(BTClibEccValueError, match="non positive w: "):
             _mult_endomorphism_secp256k1_var(1, secp256k1.GJ, secp256k1, w)
+
+
+def test_lambda_image_keeps_infinity() -> None:
+    """An entry at infinity keeps the y of 0 that affine infinity is."""
+    ec = secp256k1
+    image = _lambda_image([INF, ec.G], ec)
+    assert image[0][1] == 0
+    assert image[1] == (ec.G[0] * _BETA % ec.p, ec.G[1])
