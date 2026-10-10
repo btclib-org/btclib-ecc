@@ -111,10 +111,9 @@ from pathlib import Path
 # than naming what actually runs
 _GH = shutil.which("gh") or "gh"
 
-# what gh prints for a server error, the one error retried; a
-# secondary rate limit is not, since GitHub asks for a wait of its
-# retry-after header, which gh's stderr does not carry, or of at
-# least a minute
+# gh's stderr for a server error. A secondary rate limit is not
+# retried: GitHub asks to wait as long as its retry-after header says,
+# which gh's stderr does not carry, or at least a minute.
 _TRANSIENT = re.compile(r"HTTP 5\d\d")
 _ATTEMPTS = 3
 
