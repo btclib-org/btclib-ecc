@@ -73,6 +73,7 @@ from btclib_ecc.number_theory import (
     _sqrt_candidate_secp256k1,
     legendre_symbol_var,
     mod_inv,
+    mod_inv_var,
     mod_sqrt_var,
 )
 
@@ -173,7 +174,9 @@ _SECOND_GENERATION = b"2nd generation: "
 # against the literal. `ecc.ellswift._constants` derives the same root
 # the same way, SwiftEC being written around it too.
 _SQRT_MINUS_3 = mod_sqrt_var(-3 % secp256k1.p, secp256k1.p)
-_HALF_SQRT_MINUS_3_LESS_1 = (_SQRT_MINUS_3 - 1) * pow(2, -1, secp256k1.p) % secp256k1.p
+_HALF_SQRT_MINUS_3_LESS_1 = (
+    (_SQRT_MINUS_3 - 1) * mod_inv_var(2, secp256k1.p) % secp256k1.p
+)
 
 
 def _shallue_van_de_woestijne(t: int) -> Point:
