@@ -90,8 +90,8 @@ def _constants(ec: Curve) -> tuple[int, int]:
 def _is_square_var(a: int, p: int) -> bool:
     """Return True if a is a square mod p, zero included.
 
-    The inverse direction asks it before every inverse and root it might
-    not need, as libsecp256k1 does with secp256k1_fe_is_square_var: a
+    Both directions ask it before an inverse or a root they might not
+    need, as libsecp256k1 does with secp256k1_fe_is_square_var: a
     root of a non-square is a full exponentiation on secp256k1's p
     before it is refused, where the symbol is a gcd. Its duration is
     that of `legendre_symbol_var`.
@@ -132,9 +132,8 @@ def _xswiftec_var(u: int, t: int, ec: Curve) -> int:
     if (g + s) % p == 0:
         s = 4 * s % p
     q = (g + s) % p
-    # Each candidate is a fraction, and it is tested as one: n/d is an
-    # x-coordinate when d*n^3 + b*d^4 is a square, and no inverse is taken
-    # until the one that returns. This is libsecp256k1's
+    # Each candidate is a fraction n/d, tested without an inverse; only the
+    # one that returns is inverted. This is libsecp256k1's
     # secp256k1_ellswift_xswiftec_frac_var, with X and Y folded away:
     # Y^2 = -q^2/(12*s*u^2) and X/Y = sqrt(-3)*u*(g-s)/q.
     d = 3 * s * u * u % p
