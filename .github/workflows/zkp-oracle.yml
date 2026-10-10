@@ -17,7 +17,8 @@ name: zkp-oracle
 # Every oracle compares this package against libsecp256k1-zkp and moves
 # no run-time path: sign-to-contract in both directions
 # (`tests/ecc/commit_nonce_test.py`), the MuSig2 adaptor
-# (`tests/ecc/musig2_test.py`), the Pedersen commitment and generator
+# (`tests/ecc/musig2_test.py`), the ECDSA adaptor
+# (`tests/ecc/ecdsa_adaptor_test.py`), the Pedersen commitment and generator
 # (`tests/ecc/pedersen_test.py`), the rangeproof codec and writer
 # (`tests/ecc/rangeproof_test.py`) and the Borromean ring signature
 # (`tests/ecc/borromean_test.py`).
@@ -55,6 +56,7 @@ on:
       - tests/conftest.py
       - tests/ecc/borromean_test.py
       - tests/ecc/commit_nonce_test.py
+      - tests/ecc/ecdsa_adaptor_test.py
       - tests/ecc/musig2_test.py
       - tests/ecc/pedersen_test.py
       - tests/ecc/rangeproof_test.py
@@ -62,6 +64,7 @@ on:
       - src/btclib_ecc/ecc/borromean.py
       - src/btclib_ecc/ecc/dsa.py
       - src/btclib_ecc/ecc/commit_nonce.py
+      - src/btclib_ecc/ecc/ecdsa_adaptor.py
       - src/btclib_ecc/ecc/musig2.py
       - src/btclib_ecc/ecc/pedersen.py
       - src/btclib_ecc/ecc/rangeproof.py
