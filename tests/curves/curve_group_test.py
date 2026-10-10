@@ -963,19 +963,19 @@ def test_multi_mult_dispatch_counts_out_the_points_at_infinity(
     monkeypatch.setattr(
         curve_group,
         "_multi_mult_w_NAF_var",
-        lambda *args: called.append("wNAF"),
+        lambda *_: called.append("wNAF"),
     )
     monkeypatch.setattr(
         curve_group,
         "_multi_mult_bos_coster_var",
-        lambda *args: called.append("Bos-Coster"),
+        lambda *_: called.append("Bos-Coster"),
     )
     size = BOS_COSTER_THRESHOLD
     scalars = [1] * (size + 2)
     finite = [ec.GJ] * size
     for points, expected in (
-        (finite + [INFJ, INFJ], "Bos-Coster"),
-        (finite[1:] + [INFJ] * 3, "wNAF"),
+        ([*finite, INFJ, INFJ], "Bos-Coster"),
+        ([*finite[1:], *[INFJ] * 3], "wNAF"),
     ):
         called.clear()
         _multi_mult_var(scalars, points, ec)
