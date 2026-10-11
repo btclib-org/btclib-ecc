@@ -598,8 +598,12 @@ method name every `Sig` class shares; `apply_tweak` and `nonce_agg` of
 `musig2` and `frost`, the names of BIP327 and BIP445;
 `curve.TweakChain.point`, which runs the bindings' chain where they serve
 and `_tweak_add_var` where they do not or the chain declines;
-`ssa_adaptor.adapt` and `extract_adaptor`, secp256k1-zkp#299's names,
-`adapt` also taking the adaptor secret, which a `_var` name would forbid;
+`ssa_adaptor.adapt`, the name of BlockstreamResearch/secp256k1-zkp#299,
+which takes the adaptor secret a `_var` name would forbid;
+`ssa_adaptor.extract_adaptor`, the name of `musig2.extract_adaptor` and of
+secp256k1-zkp's MuSig2 module; `ecdsa_adaptor.decrypt`, the name of
+`discreetlogcontracts/dlcspecs`'s ECDSA adaptor specification, which takes
+the decryption key and so cannot be `_var` either;
 `rangeproof._recover_x`, which is handed a secret nonce and whose one
 variable-time step, the inverse, is on the public `e`; and
 `pedersen.commitment_from_octets`, `generator_from_octets`,
