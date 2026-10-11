@@ -602,7 +602,8 @@ they serve and `_tweak_add_var` where they do not or the chain declines;
 `adapt` also taking the adaptor secret, which a `_var` name would forbid;
 and `pedersen.commitment_from_octets`, `generator_from_octets`,
 `bytes_from_commitment`, `bytes_from_generator` and `frost.tweak_ctx_init`,
-which wrap a private `_var` function. A named exception stops the carry, so
+which are public, and a public name is not broken for a private `_var`
+function it wraps. A named exception stops the carry, so
 its callers are not reached.
 
 `ellswift._xswiftec_inv_var` has no loop of its own: it returns early, on
