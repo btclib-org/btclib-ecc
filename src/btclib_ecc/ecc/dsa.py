@@ -1414,7 +1414,7 @@ class Signer:
     On the delegated arm, secp256k1 with sha256 by default and therefore
     the common case, `wipe` zeroes that buffer. On any other curve or
     hash function -- the bindings declining, or
-    `curves.set_libsecp256k1_serving(False)` turning them off for the
+    `curves.set_libsecp256k1_serving(serving=False)` turning them off for the
     whole process -- every signature is the Python arithmetic of
     `_sign_`, which never crosses into the bindings at all: the secret
     this object holds there is a plain integer the whole of its life,
