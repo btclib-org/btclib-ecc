@@ -205,15 +205,15 @@ def _cbytes_ext(P: Point) -> bytes:
     return _INF_BYTES if P[1] == 0 else _cbytes(P)
 
 
-def _cpoint(octets: Octets) -> Point:
+def _cpoint_var(octets: Octets) -> Point:
     """Deserialize a compressed point, refusing anything else."""
     return point_from_octets_var(bytes_from_octets(octets, PK_SIZE), secp256k1)
 
 
-def _cpoint_ext(octets: Octets) -> Point:
+def _cpoint_ext_var(octets: Octets) -> Point:
     """Deserialize a point that may be the infinity one."""
     data = bytes_from_octets(octets, PK_SIZE)
-    return INF if data == _INF_BYTES else _cpoint(data)
+    return INF if data == _INF_BYTES else _cpoint_var(data)
 
 
 def _bytes_xor(a: bytes, b: bytes) -> bytes:
@@ -394,7 +394,7 @@ def _parse_present_pub_shares(
         if pub_share is None:
             continue
         try:
-            point = _cpoint(pub_share)
+            point = _cpoint_var(pub_share)
         except BTClibEccValueError as e:
             raise BTClibEccValueError(
                 f"The pubshare at index {i} is not a valid point."
@@ -425,7 +425,7 @@ def validate_threshold_info(info: ThresholdInfo) -> None:
     if n > MAX_PARTICIPANTS:
         raise BTClibEccValueError(_MAX_PARTICIPANTS_ERR)
     try:
-        _cpoint(thresh_pk)
+        _cpoint_var(thresh_pk)
     except BTClibEccValueError as e:
         raise BTClibEccValueError("The thresh_pk is not a valid point.") from e
 
@@ -473,7 +473,7 @@ class TweakContext:
 
 def tweak_ctx_init(thresh_pk: Octets) -> TweakContext:
     """Return a fresh `TweakContext` over an untweaked threshold public key."""
-    return TweakContext(_cpoint(thresh_pk), 1, 0)
+    return TweakContext(_cpoint_var(thresh_pk), 1, 0)
 
 
 def apply_tweak(tweak_ctx: TweakContext, tweak: Octets, is_xonly: bool) -> TweakContext:
@@ -666,7 +666,7 @@ def nonce_agg(pub_nonces: Sequence[Octets]) -> bytes:
         R_j: list[Point] = []
         for i, pub_nonce in enumerate(nonces):
             try:
-                R_j.append(_cpoint(pub_nonce[j * PK_SIZE : (j + 1) * PK_SIZE]))
+                R_j.append(_cpoint_var(pub_nonce[j * PK_SIZE : (j + 1) * PK_SIZE]))
             except BTClibEccValueError as e:
                 raise InvalidContributionError(i, "pubnonce") from e
         agg_nonce += _cbytes_ext(_sum_var(R_j, secp256k1))
@@ -689,7 +689,7 @@ def _parse_session_pub_shares(
             )
         if pub_shares is not None:
             try:
-                pub_share_points.append(_cpoint(pub_shares[idx]))
+                pub_share_points.append(_cpoint_var(pub_shares[idx]))
             except BTClibEccValueError as e:
                 raise BTClibEccValueError(
                     f"The pubshare at index {idx} is not a valid point."
@@ -842,8 +842,8 @@ def session_values(session_ctx: SessionContext) -> SessionValues:
     )
     b = int.from_bytes(coeff_hash, "big") % secp256k1.n
     try:
-        R_1 = _cpoint_ext(session_ctx.agg_nonce[:PK_SIZE])
-        R_2 = _cpoint_ext(session_ctx.agg_nonce[PK_SIZE:])
+        R_1 = _cpoint_ext_var(session_ctx.agg_nonce[:PK_SIZE])
+        R_2 = _cpoint_ext_var(session_ctx.agg_nonce[PK_SIZE:])
     except BTClibEccValueError as err:
         raise InvalidContributionError(None, "aggnonce") from err
     R = secp256k1.add_var(R_1, mult(b, R_2, secp256k1))
@@ -1078,15 +1078,15 @@ def partial_sig_verify_(
         return False
     pub_nonce = bytes_from_octets(pub_nonce, _NONCE_SIZE)
     try:
-        R_s1 = _cpoint(pub_nonce[:PK_SIZE])
-        R_s2 = _cpoint(pub_nonce[PK_SIZE:])
+        R_s1 = _cpoint_var(pub_nonce[:PK_SIZE])
+        R_s2 = _cpoint_var(pub_nonce[PK_SIZE:])
     except BTClibEccValueError:
         return False
     R_s = secp256k1.add_var(R_s1, mult(values.b, R_s2, secp256k1))
     if values.R[1] % 2:
         R_s = secp256k1.negate(R_s)
     try:
-        P = _cpoint(pub_share)
+        P = _cpoint_var(pub_share)
     except BTClibEccValueError:
         return False
     if (

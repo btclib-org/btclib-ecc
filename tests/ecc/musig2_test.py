@@ -882,7 +882,7 @@ def test_partial_sig_verify_reuses_the_bindings_session() -> None:
 
 @pytest.mark.skipif(
     not is_libsecp256k1_serving(),
-    reason="partial_sig_verify_ takes the Python arm here, its own _cpoint",
+    reason="partial_sig_verify_ takes the Python arm here, its own _cpoint_var",
 )
 def test_partial_sig_verify_refuses_a_malformed_own_pub_nonce() -> None:
     """The delegated arm refuses a bad own nonce with BTClibEccValueError.
@@ -1058,9 +1058,9 @@ def test_partial_sig_agg_and_its_adaptor_twin_refuse_each_others_sessions() -> N
 def test_adaptor_must_be_a_valid_point() -> None:
     """Verify a malformed adaptor is InvalidContributionError, not a crash.
 
-    The all-zero placeholder is what `_cpoint_ext` reads as infinity for
-    an aggregate nonce; the adaptor point is parsed with the plain
-    `_cpoint` instead, which refuses it -- a public adaptor, unlike a
+    The all-zero placeholder is what `_cpoint_ext_var` reads as infinity for
+    an aggregate nonce; the adaptor point is parsed with
+    `_cpoint_var` instead, which refuses it -- a public adaptor, unlike a
     nonce half, is never the infinity point.
     """
     pk_1 = musig2.individual_pub_key(_SK_1)

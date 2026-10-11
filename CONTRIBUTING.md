@@ -565,9 +565,11 @@ a `_var` function on its operand takes the suffix with it:
 `aff_from_jac_var` and `add_aff_var` are an extended Euclid and a few
 products, `y_var`, `sec_point.point_from_octets_var` and
 `ssa.point_from_bip340pub_key_var` are a square root on a compressed or an
-x-only key, and `crack_prv_key_var` is an inverse around a hashing and a
-parsing that do not follow the operand's value. A function that only
-spends one among other work keeps the plain name, as a verification does.
+x-only key, `musig2._cpoint_var`, `frost._cpoint_var` and their
+`_cpoint_ext_var` are that parse behind a size check, and `crack_prv_key_var`
+is an inverse around a hashing and a parsing that do not follow the operand's
+value. A function where the `_var` call is one step among other work, or one
+path of a type dispatch, keeps the plain name, as a verification does.
 Otherwise most of the package's call graph would carry it, public functions
 included, a suffix on the package saying nothing. Blinding is the other
 boundary: `mult` calls `aff_from_jac_var`, and `_blinded_jac` replaced the
@@ -577,12 +579,12 @@ to ask of a new name is whether the value of a valid operand decides how
 many times the function, or the `_var` function that is its work, loops or
 leaves early.
 
-**These keep the plain name: a `_var` call is not the bulk of their
-work, or it is not on an operand.** `dsa._assert_as_valid_` and
-`ssa._assert_as_valid_` spend their bulk, `_jac_double_mult_var`, on
-scalars derived from the operands, not on an operand, and
-`dsa._recover_pub_key_` and `ssa._recover_pub_key_` likewise, their one
-square root, on `r` or its lift, being one step among other work.
+**These keep the plain name.** `dsa._assert_as_valid_` and
+`ssa._assert_as_valid_` spend their bulk, `_jac_double_mult_var`, on a pair
+of scalars of which one comes from a hash of the operands: `c` in ssa, and
+`u` in dsa, the message hash times 1/s. `dsa._recover_pub_key_` and
+`ssa._recover_pub_key_` have one square root, on `r` or its lift, among
+other work.
 `ellswift._constants` is memoized on the curve and receives no value at
 all.
 
@@ -591,6 +593,9 @@ x-coordinates congruent to `r` and keep their names, as exceptions to the
 rule. They loop again only for `r < p - n`: a negligible share of
 signatures on every prime-order curve, and almost every `r` on the insecure
 cofactor-4 curves `secp112r2` and `secp128r2`.
+
+`frost.tweak_ctx_init` keeps its name as well: it builds a context object,
+and a public name is not broken for a parse it wraps.
 
 `ellswift._xswiftec_inv_var` has no loop of its own: it returns early, on
 whether its operands are squares, before the inverse and the square roots
