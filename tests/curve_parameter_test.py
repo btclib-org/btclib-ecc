@@ -86,7 +86,7 @@ from btclib_ecc.curves.sec_point import (
     bytes_from_point,
     bytes_from_prv_key_int,
     mult_pub_key,
-    point_from_octets,
+    point_from_octets_var,
     point_from_pub_key,
     scalar_from_prv_key,
 )
@@ -227,8 +227,8 @@ _CASES = (
         {"pub_key": _SEC},
     ),
     _Case(
-        "btclib_ecc.curves.sec_point.point_from_octets",
-        point_from_octets,
+        "btclib_ecc.curves.sec_point.point_from_octets_var",
+        point_from_octets_var,
         {"pub_key": _SEC},
     ),
     _Case(
@@ -381,8 +381,8 @@ _CASES = (
         {"prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.point_from_bip340pub_key",
-        ssa.point_from_bip340pub_key,
+        "btclib_ecc.ecc.ssa.point_from_bip340pub_key_var",
+        ssa.point_from_bip340pub_key_var,
         {"x_Q": _PUB_KEY[0]},
     ),
     _Case("btclib_ecc.ecc.ssa.gen_keys", ssa.gen_keys, {"prv_key": _PRV_KEY}),

@@ -58,7 +58,7 @@ from btclib_ecc.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
-from btclib_ecc.curves.sec_point import point_from_octets
+from btclib_ecc.curves.sec_point import point_from_octets_var
 from btclib_ecc.ecc import ssa
 from btclib_ecc.exceptions import BTClibEccRuntimeError, BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
@@ -151,7 +151,7 @@ def presign(
 def _parse(pre_sig: Octets) -> tuple[Point, int]:
     """Return (R', s), refusing an R' that is no point and an s not below n."""
     data = bytes_from_octets(pre_sig, _PRE_SIG_SIZE)
-    R1 = point_from_octets(data[:_POINT_SIZE])
+    R1 = point_from_octets_var(data[:_POINT_SIZE])
     s = int.from_bytes(data[_POINT_SIZE:], "big")
     if s >= secp256k1.n:
         raise BTClibEccValueError("s not in 0..n-1")
@@ -170,7 +170,7 @@ def extract(pre_sig: Octets, msg: Octets, pub_key: ssa.BIP340PubKey) -> Point:
     """
     R1, s = _parse(pre_sig)
     m = bytes_from_octets(msg, _SCALAR_SIZE)
-    P = ssa.point_from_bip340pub_key(pub_key)
+    P = ssa.point_from_bip340pub_key_var(pub_key)
 
     # k*G, up to the sign the parity of R' gave k
     R = double_mult_var(s, secp256k1.G, -_challenge(R1[0], P[0], m), P)
@@ -215,7 +215,7 @@ def verify(
     # rest into False
     bytes_from_octets(pre_sig, _PRE_SIG_SIZE)
     bytes_from_octets(msg, _SCALAR_SIZE)
-    ssa.point_from_bip340pub_key(pub_key)
+    ssa.point_from_bip340pub_key_var(pub_key)
     point_from_pub_key(adaptor)
     try:
         assert_as_valid(pre_sig, msg, pub_key, adaptor)

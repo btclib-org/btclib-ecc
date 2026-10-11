@@ -108,7 +108,7 @@ from btclib_ecc._utils import assert_type, bytes_from_octets, is_integer, is_oct
 from btclib_ecc.alias import INF, Octets, Point
 from btclib_ecc.curves import mult, multi_mult_var, secp256k1
 from btclib_ecc.curves.curve import _sum_var, _tweak_add_var
-from btclib_ecc.curves.sec_point import bytes_from_point, point_from_octets
+from btclib_ecc.curves.sec_point import bytes_from_point, point_from_octets_var
 from btclib_ecc.ecc import ssa
 from btclib_ecc.exceptions import (
     BTClibEccTypeError,
@@ -207,7 +207,7 @@ def _cbytes_ext(P: Point) -> bytes:
 
 def _cpoint(octets: Octets) -> Point:
     """Deserialize a compressed point, refusing anything else."""
-    return point_from_octets(bytes_from_octets(octets, PK_SIZE), secp256k1)
+    return point_from_octets_var(bytes_from_octets(octets, PK_SIZE), secp256k1)
 
 
 def _cpoint_ext(octets: Octets) -> Point:

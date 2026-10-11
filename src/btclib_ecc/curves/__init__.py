@@ -96,7 +96,7 @@ mypy could check.
 
 point_from_pub_key is the public half of that pair, and PubKey is what it
 takes: the point as a tuple, as a PreparedPoint, or as the SEC octets
-point_from_octets parses. Both halves are here rather than in a converter
+point_from_octets_var parses. Both halves are here rather than in a converter
 above because a scalar in 1..n-1 and a point of the curve are facts about
 the curve, and nothing above knows more about either than this package
 does. A WIF and an extended key are not among the spellings of either:
@@ -126,7 +126,7 @@ from btclib_ecc.curves.sec_point import (
     bytes_from_point,
     bytes_from_prv_key_int,
     mult_pub_key,
-    point_from_octets,
+    point_from_octets_var,
     point_from_pub_key,
     scalar_from_prv_key,
 )
@@ -148,7 +148,7 @@ __all__ = [
     "mult",
     "mult_pub_key",
     "multi_mult_var",
-    "point_from_octets",
+    "point_from_octets_var",
     "point_from_pub_key",
     "scalar_from_prv_key",
     "secp256k1",

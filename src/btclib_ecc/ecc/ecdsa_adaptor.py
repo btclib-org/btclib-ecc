@@ -57,7 +57,7 @@ from btclib_ecc.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
-from btclib_ecc.curves.sec_point import point_from_octets
+from btclib_ecc.curves.sec_point import point_from_octets_var
 from btclib_ecc.ecc.dsa import Sig
 from btclib_ecc.exceptions import BTClibEccRuntimeError, BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
@@ -198,8 +198,8 @@ def _parse(adaptor_sig: Octets) -> tuple[Point, Point, int, int, int]:
     of proofs.
     """
     data = bytes_from_octets(adaptor_sig, _SIG_SIZE)
-    R = point_from_octets(data[:_R_END])
-    Ra = point_from_octets(data[_R_END:_RA_END])
+    R = point_from_octets_var(data[:_R_END])
+    Ra = point_from_octets_var(data[_R_END:_RA_END])
     s_a = int.from_bytes(data[_RA_END:_SA_END], "big")
     e = _scalar(data[_SA_END:_E_END])
     s = int.from_bytes(data[_E_END:], "big")

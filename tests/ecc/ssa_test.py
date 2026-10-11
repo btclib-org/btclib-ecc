@@ -100,7 +100,7 @@ def test_signature() -> None:
     with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_as_valid(msg, INF, sig)
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        ssa.point_from_bip340pub_key(INF)
+        ssa.point_from_bip340pub_key_var(INF)
 
     sig_invalid = ssa.Sig(sig.ec.p, sig.s, check_validity=False)
     assert not ssa.verify(msg, x_Q, sig_invalid)
@@ -291,28 +291,29 @@ def test_the_sighash_type_of_a_witness_signature_is_the_callers() -> None:
     assert ssa.verify(msg, pub_key, sig_bin)
 
 
-def test_point_from_bip340pub_key() -> None:
+def test_point_from_bip340pub_key_var() -> None:
     """Verify every accepted pub_key representation yields the point."""
     q, x_Q = ssa.gen_keys()
     Q = mult(q)
     # an int
-    assert ssa.point_from_bip340pub_key(x_Q) == Q
+    assert ssa.point_from_bip340pub_key_var(x_Q) == Q
     # the same integer as bytes
     x_Q_bytes = x_Q.to_bytes(32, "big", signed=False)
-    assert ssa.point_from_bip340pub_key(x_Q_bytes) == Q
+    assert ssa.point_from_bip340pub_key_var(x_Q_bytes) == Q
     # the same integer as a hex string
-    assert ssa.point_from_bip340pub_key(x_Q_bytes.hex()) == Q
+    assert ssa.point_from_bip340pub_key_var(x_Q_bytes.hex()) == Q
     # tuple Point
-    assert ssa.point_from_bip340pub_key(Q) == Q
+    assert ssa.point_from_bip340pub_key_var(Q) == Q
     # 33 bytes
-    assert ssa.point_from_bip340pub_key(bytes_from_point(Q)) == Q
+    assert ssa.point_from_bip340pub_key_var(bytes_from_point(Q)) == Q
     # 33 bytes hex-string
-    assert ssa.point_from_bip340pub_key(bytes_from_point(Q).hex()) == Q
+    assert ssa.point_from_bip340pub_key_var(bytes_from_point(Q).hex()) == Q
     # 65 bytes
-    assert ssa.point_from_bip340pub_key(bytes_from_point(Q, compressed=False)) == Q
+    assert ssa.point_from_bip340pub_key_var(bytes_from_point(Q, compressed=False)) == Q
     # 65 bytes hex-string
     assert (
-        ssa.point_from_bip340pub_key(bytes_from_point(Q, compressed=False).hex()) == Q
+        ssa.point_from_bip340pub_key_var(bytes_from_point(Q, compressed=False).hex())
+        == Q
     )
 
 
@@ -342,10 +343,10 @@ def test_an_extended_key_is_no_longer_a_bip340_key() -> None:
     # dropping the union leaves -- a string reaching here is octets or
     # it is nothing
     with pytest.raises(BTClibEccValueError, match="invalid hex string"):
-        ssa.point_from_bip340pub_key(xpub)
+        ssa.point_from_bip340pub_key_var(xpub)
     err_msg = r"invalid size: 111 bytes instead of \(32, 33, 65\)"
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        ssa.point_from_bip340pub_key(xpub.encode("ascii"))
+        ssa.point_from_bip340pub_key_var(xpub.encode("ascii"))
 
 
 def test_a_buffer_is_octets_at_every_size_this_takes() -> None:
@@ -357,7 +358,7 @@ def test_a_buffer_is_octets_at_every_size_this_takes() -> None:
     module inherits.
 
     All three sizes because two of them worked and one did not: the
-    dispatch this replaces reached `point_from_octets` for a SEC key,
+    dispatch this replaces reached `point_from_octets_var` for a SEC key,
     which takes any buffer, and fell through to an x-only branch that
     asked for `(str, bytes)` and so refused the same value one size
     down. Nothing decided that; it was where the fallback sat.
@@ -372,13 +373,13 @@ def test_a_buffer_is_octets_at_every_size_this_takes() -> None:
 
     for octets in spellings:
         for buffer in (bytearray(octets), memoryview(octets)):
-            assert ssa.point_from_bip340pub_key(buffer) == Q
+            assert ssa.point_from_bip340pub_key_var(buffer) == Q
 
 
 def test_octets_of_no_key_size_name_every_size_there_is() -> None:
     """Three sizes are accepted, so three are named (btclib-org/btclib#1188).
 
-    `point_from_octets` knows two of them, the SEC pair, and this module
+    `point_from_octets_var` knows two of them, the SEC pair, and this module
     adds the x-only one on top -- so a refusal delegated to it would
     tell a caller that 32 octets are wrong when they are the spelling
     BIP340 itself defines.
@@ -386,7 +387,7 @@ def test_octets_of_no_key_size_name_every_size_there_is() -> None:
     for size in (0, 31, 34, 64):
         err_msg = f"invalid size: {size} bytes instead of \\(32, 33, 65\\)"
         with pytest.raises(BTClibEccValueError, match=err_msg):
-            ssa.point_from_bip340pub_key(b"\x11" * size)
+            ssa.point_from_bip340pub_key_var(b"\x11" * size)
 
 
 def test_low_cardinality() -> None:
@@ -1287,7 +1288,7 @@ def test_libsecp256k1_x_only_conversion() -> None:
 
     The bindings' x-only surface takes 32 bytes and nothing else: a
     compressed key there is a ValueError.
-    point_from_bip340pub_key normalizes first, so the odd-y key below
+    point_from_bip340pub_key_var normalizes first, so the odd-y key below
     verifies through the same even-y point in whatever representation
     it is handed in. This test is what keeps that true: a refactor that
     starts passing a compressed key straight through would fail here
@@ -1373,8 +1374,8 @@ def test_recovery_answers_only_keys_of_the_subgroup(name: str) -> None:
     Issue btclib-org/btclib-ecc#125.
 
     Every x that lifts, every s and every challenge: the key answered is one
-    `point_from_bip340pub_key` accepts, and an x whose lift is outside <G> is
-    refused.
+    `point_from_bip340pub_key_var` accepts, and an x whose lift is outside <G>
+    is refused.
     """
     ec = cofactor_curves[name]
     answered = 0
@@ -1391,7 +1392,7 @@ def test_recovery_answers_only_keys_of_the_subgroup(name: str) -> None:
                 except BTClibEccValueError as e:
                     refusals.append(str(e))
                     continue
-                assert ssa.point_from_bip340pub_key(x_Q, ec)[0] == x_Q
+                assert ssa.point_from_bip340pub_key_var(x_Q, ec)[0] == x_Q
                 answered += 1
     assert answered
     # outside <G>, or the two-torsion point of y = 0
@@ -1482,7 +1483,7 @@ def test_verification_under_a_prepared_key(monkeypatch: pytest.MonkeyPatch) -> N
     msg = b"Satoshi Nakamoto"
     sig = ssa.sign(msg, prv_key)
 
-    even = ssa.point_from_bip340pub_key(x_Q)
+    even = ssa.point_from_bip340pub_key_var(x_Q)
     odd = even[0], secp256k1.p - even[1]
     for _ in range(2):
         for key in (x_Q, PreparedPoint(even), PreparedPoint(odd)):
@@ -1980,14 +1981,14 @@ def test_cofactor_curve_refuses_a_key_outside_the_subgroup(
     with pytest.raises(BTClibEccValueError, match=err_msg):
         ssa.assert_as_valid_(msg, x_T.to_bytes(ec.p_size, "big"), sig, hf)
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        ssa.point_from_bip340pub_key(x_T, ec)
+        ssa.point_from_bip340pub_key_var(x_T, ec)
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        ssa.point_from_bip340pub_key(T, ec)
+        ssa.point_from_bip340pub_key_var(T, ec)
 
     # the curve's real two-torsion point is no point of the curve
     two_T = ec.aff_from_jac_var(ec.double_jac(_jac_from_aff(T)))
     with pytest.raises(BTClibEccValueError, match="ambiguous point"):
-        ssa.point_from_bip340pub_key(two_T[0], ec)
+        ssa.point_from_bip340pub_key_var(two_T[0], ec)
 
     # the tuple spelling is read as a key and refused ahead of the verification
     with pytest.raises(BTClibEccValueError, match=err_msg):
@@ -2047,8 +2048,8 @@ def test_cofactor_curve_still_verifies_a_valid_signature(
 
     assert ssa.verify(msg, x_Q, sig)
     assert ssa.verify(msg, x_Q.to_bytes(ec.p_size, "big"), sig)
-    assert ssa.verify(msg, ssa.point_from_bip340pub_key(x_Q, ec), sig)
-    assert ssa.point_from_bip340pub_key(x_Q, ec)[0] == x_Q
+    assert ssa.verify(msg, ssa.point_from_bip340pub_key_var(x_Q, ec), sig)
+    assert ssa.point_from_bip340pub_key_var(x_Q, ec)[0] == x_Q
     ssa.assert_as_valid(msg, x_Q, sig)
 
     _, x_Q2 = ssa.gen_keys(9, ec)
@@ -2092,11 +2093,11 @@ def test_low_cardinality_with_cofactor(name: str) -> None:
     err_msg = "point not in the subgroup generated by G"
     for x in _SMALL_ORDER_X[name]:
         with pytest.raises(BTClibEccValueError, match=err_msg):
-            ssa.point_from_bip340pub_key(x, ec)
+            ssa.point_from_bip340pub_key_var(x, ec)
     if name in _TWO_TORSION_X:
         err_msg = "ambiguous point"
         with pytest.raises(BTClibEccValueError, match=err_msg):
-            ssa.point_from_bip340pub_key(_TWO_TORSION_X[name], ec)
+            ssa.point_from_bip340pub_key_var(_TWO_TORSION_X[name], ec)
 
 
 @pytest.mark.parametrize("name", list(byte_boundary_curves))

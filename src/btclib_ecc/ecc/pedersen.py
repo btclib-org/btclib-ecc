@@ -35,7 +35,7 @@ octet reports whether y is a quadratic residue:
 `ecc.rangeproof` hashes a point under and lifts a ring commitment's x
 against, and that module reaches the codec below for both rather than
 carrying one of its own. Lifting such an octet by the parity the
-`02`/`03` of `curves.point_from_octets` carries answers the same point
+`02`/`03` of `curves.point_from_octets_var` carries answers the same point
 for some x and its negation for others, with nothing in the octets to
 say which reading wrote them, so the two are not one function under two
 names.

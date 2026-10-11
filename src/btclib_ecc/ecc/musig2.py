@@ -134,7 +134,7 @@ from btclib_ecc.curves.curve import _libsecp256k1_serves, _sum_var, _tweak_add_v
 from btclib_ecc.curves.sec_point import (
     bytes_from_point,
     bytes_from_prv_key_int,
-    point_from_octets,
+    point_from_octets_var,
 )
 from btclib_ecc.ecc import ssa
 from btclib_ecc.exceptions import (
@@ -231,13 +231,13 @@ def _cbytes_ext(P: Point) -> bytes:
 def _cpoint(octets: Octets) -> Point:
     """Deserialize a compressed point, refusing anything else.
 
-    `point_from_octets` is the SEC parser and takes the uncompressed
+    `point_from_octets_var` is the SEC parser and takes the uncompressed
     0x04 form too; the size check ahead of it is what makes this
     BIP327's `cpoint`, which is compressed-only -- a 33-byte input with
     an 0x04 prefix is then the wrong size for what its prefix announces,
     and is refused as such.
     """
-    return point_from_octets(bytes_from_octets(octets, _PK_SIZE), secp256k1)
+    return point_from_octets_var(bytes_from_octets(octets, _PK_SIZE), secp256k1)
 
 
 def _cpoint_ext(octets: Octets) -> Point:

@@ -404,7 +404,7 @@ for. That is what makes a truth safe — `strict="no"` is strict,
 `order_check="no"` checks the order — and it is a fact about the *name*,
 not about the check. So a flag whose `True` is the permissive value is a
 kind however little it computes, because the misreading waives the very
-refusal it was written to make: `point_from_octets`' `hybrid` parses the
+refusal it was written to make: `point_from_octets_var`'s `hybrid` parses the
 prefixes it was written to keep out.
 
 **Which of the two a flag is, is written down for every one of them.**
@@ -433,7 +433,7 @@ gate, so a new one is a prefix or a decision somebody wrote down.
   the one prefix that warns a caller it still needs an `except`.
 
 A converter is named for what it returns -- `bytes_from_octets`,
-`point_from_octets` -- and a query for what it answers.
+`point_from_octets_var` -- and a query for what it answers.
 
 **A member that takes nothing but `self` is a `@property`**, whatever it
 answers, and that is gated too: it is read off the object rather than
@@ -563,26 +563,27 @@ operands of 256 bits down to 64, as the ratio between the two ends:
 **Carrying the suffix up a call is a judgement.** A function whose work is
 a `_var` function on its operand takes the suffix with it:
 `aff_from_jac_var` and `add_aff_var` are an extended Euclid and a few
-products, `y_var` is a square root, and `crack_prv_key_var` is an inverse
-around a hashing and a parsing that do not follow the operand's value. A
-function that only spends one among other work keeps the plain name, as a
-verification, a parse or a decompression does. Otherwise most of the
-package's call graph would carry it, public functions included, a suffix
-on the package saying nothing. Blinding is the other boundary: `mult`
-calls `aff_from_jac_var`, and `_blinded_jac` replaced the `Z` that inverse
-runs on with a random one, so the operand no longer decides, which the
-0.99x of `mult` in its scalar illustrates. So the question to ask of a new
-name is whether the value of a valid operand decides how many times the
-function, or the `_var` function that is its work, loops or leaves early.
+products, `y_var`, `sec_point.point_from_octets_var` and
+`ssa.point_from_bip340pub_key_var` are a square root on a compressed or an
+x-only key, and `crack_prv_key_var` is an inverse around a hashing and a
+parsing that do not follow the operand's value. A function that only
+spends one among other work keeps the plain name, as a verification does.
+Otherwise most of the package's call graph would carry it, public functions
+included, a suffix on the package saying nothing. Blinding is the other
+boundary: `mult` calls `aff_from_jac_var`, and `_blinded_jac` replaced the
+`Z` that inverse runs on with a random one, so the operand no longer
+decides, which the 0.99x of `mult` in its scalar illustrates. So the question
+to ask of a new name is whether the value of a valid operand decides how
+many times the function, or the `_var` function that is its work, loops or
+leaves early.
 
 **These keep the plain name: a `_var` call is not the bulk of their
-work.** `dsa._assert_as_valid_` and `dsa._recover_pub_key_`,
-`ssa._assert_as_valid_` and `ssa._recover_pub_key_`,
-`sec_point.point_from_octets` and `ssa.point_from_bip340pub_key` spend
-the inverse, the root or the double multiplication among other work, and
-hold no loop of their own that follows an operand. Timed against
-`add_jac` as the floor they measure 1.01x to 1.07x, which illustrates the
-dilution: an inverse varying by 1.32x is 10 us of a 40 us verification.
+work, or it is not on an operand.** `dsa._assert_as_valid_` and
+`ssa._assert_as_valid_` spend their bulk, `_jac_double_mult_var`, on
+scalars derived from the operands, not on an operand, and
+`dsa._recover_pub_key_` and `ssa._recover_pub_key_` likewise, their one
+square root, on `r` or its lift, being among other work. That is dilution:
+an inverse varying by 1.32x is 10 us of a 40 us verification.
 `ellswift._constants` is memoized on the curve and receives no value at
 all.
 

@@ -39,7 +39,7 @@ from btclib_ecc.ecc.borromean import BorromeanSig
 from btclib_ecc.ecc.dsa import recover_pub_key_, recover_sec_
 from btclib_ecc.ecc.dsa import sign as dsa_sign
 from btclib_ecc.ecc.ssa import challenge_ as ssa_challenge_
-from btclib_ecc.ecc.ssa import point_from_bip340pub_key
+from btclib_ecc.ecc.ssa import point_from_bip340pub_key_var
 from btclib_ecc.ecc.ssa import sign as ssa_sign
 from btclib_ecc.ecc.ssa import verify as ssa_verify
 from btclib_ecc.exceptions import BTClibEccTypeError
@@ -84,7 +84,7 @@ _CASES: list[tuple[str, Callable[[Any], object]]] = [
     ("hex string", hex_string),
     ("curve multiplier", mult),
     ("curve scalar", scalar_from_prv_key),
-    ("BIP340 x-only key", point_from_bip340pub_key),
+    ("BIP340 x-only key", point_from_bip340pub_key_var),
     # not the converter twice: `verify` answers False where it cannot
     # verify, so what this pins is that the refusal is not one of those
     # answers -- `BTClibEccTypeError` is a `TypeError` and the except
@@ -127,7 +127,7 @@ _CASES: list[tuple[str, Callable[[Any], object]]] = [
     ("public key point", lambda v: point_from_pub_key((v, secp256k1.G[1]))),
     (
         "BIP340 x-only point",
-        lambda v: point_from_bip340pub_key((v, secp256k1.G[1])),
+        lambda v: point_from_bip340pub_key_var((v, secp256k1.G[1])),
     ),
     ("prepared point", lambda v: PreparedPoint((v, secp256k1.G[1]))),
     ("point to sec bytes", lambda v: bytes_from_point((v, secp256k1.G[1]))),
@@ -166,7 +166,7 @@ _WORDINGS = [
     ("curve multiplier", mult, "non-integer: True"),
     ("curve scalar", scalar_from_prv_key, "non-integer: True"),
     ("dsa signing key", lambda v: dsa_sign(b"msg", v), "non-integer: True"),
-    ("BIP340 x-only key", point_from_bip340pub_key, "non-integer: True"),
+    ("BIP340 x-only key", point_from_bip340pub_key_var, "non-integer: True"),
     # the trailing-underscore layer's own type gate on a bare `int`, one
     # sentence per parameter and neither routed through `int_from_integer`
     (
@@ -237,7 +237,7 @@ def test_the_integers_a_bool_refusal_must_not_take_with_it() -> None:
     assert hex_string(1) == "01"
     assert mult(1) == secp256k1.G
     assert scalar_from_prv_key(1) == 1
-    assert point_from_bip340pub_key(secp256k1.G[0]) == secp256k1.G
+    assert point_from_bip340pub_key_var(secp256k1.G[0]) == secp256k1.G
     assert ssa_verify(b"msg", secp256k1.G[0], _SSA_SIG)
     assert ssa_challenge_(b"msg", 1, 1, secp256k1, hashlib.sha256)
     assert recover_pub_key_(1, _DSA_MSG_HASH, _DSA_SIG) == secp256k1.G

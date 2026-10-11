@@ -226,7 +226,7 @@ class Curve(CurveGroup):
     dividing the cofactor, small and attacker-chosen, and `mult` does not
     refuse one on its own, reducing whatever scalar it is given mod n
     regardless of the point's own order. `sec_point.point_from_pub_key`
-    and `point_from_octets` are where a point read from the outside is
+    and `point_from_octets_var` are where a point read from the outside is
     confined to ⟨G⟩, refusing one whose unreduced n·Q is not INF (issue
     btclib-org/btclib-ecc#15).
 
@@ -813,7 +813,7 @@ def _sec_from_point(Q: Point) -> bytes:
     reads without lifting an x coordinate back to a point, a sixth of
     what a whole multiplication costs; and, asked of ec_pubkey_serialize
     on the way out, the form that does not drop a y this side would have
-    to lift again -- point_from_octets on the compressed form costs
+    to lift again -- point_from_octets_var on the compressed form costs
     better than twice what it does on this one, a lift delegated to the
     bindings against two int.from_bytes, the lesson public BIP32 derivation
     teaches. The 32 octets more are all but free to
@@ -939,7 +939,7 @@ def _point_from_sec(sec: bytes) -> Point:
     """Return the point of an uncompressed 0x04 || x || y serialization.
 
     The inverse of `_sec_from_point`, and read rather than parsed through
-    `point_from_octets` for the same reason it writes rather than
+    `point_from_octets_var` for the same reason it writes rather than
     serializes: these are octets libsecp256k1 has just written, of a point
     it has just computed, so proving them a point of the curve again is
     work with a known answer.

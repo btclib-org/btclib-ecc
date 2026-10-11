@@ -92,7 +92,7 @@ def test_extract_adaptor_vectors(vector: dict[str, Any]) -> None:
 def test_unparsable_key_vectors(vector: dict[str, Any]) -> None:
     """A key upstream does not parse is refused here too."""
     with pytest.raises(BTClibEccValueError):
-        ssa.point_from_bip340pub_key(vector["pk"])
+        ssa.point_from_bip340pub_key_var(vector["pk"])
 
 
 @pytest.mark.parametrize("vector", **_ids("ec_pubkey_parse"))

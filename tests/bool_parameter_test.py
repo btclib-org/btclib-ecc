@@ -71,7 +71,7 @@ from btclib_ecc.curves.curve import (
 from btclib_ecc.curves.sec_point import (
     bytes_from_point,
     bytes_from_prv_key_int,
-    point_from_octets,
+    point_from_octets_var,
 )
 from btclib_ecc.ecc import dsa, frost, musig2, ssa
 from btclib_ecc.exceptions import BTClibEccTypeError
@@ -256,9 +256,9 @@ _KINDS = (
     # is here for the other half of the line: its `True` is the
     # permissive value, the refusal it was written to make, waived
     _Case(
-        "btclib_ecc.curves.sec_point.point_from_octets",
+        "btclib_ecc.curves.sec_point.point_from_octets_var",
         "hybrid",
-        point_from_octets,
+        point_from_octets_var,
         {"pub_key": _SEC},
         reason="`True` accepts the 0x06 and 0x07 prefixes, so a non-bool"
         " parses the very forms it was written down to keep out",

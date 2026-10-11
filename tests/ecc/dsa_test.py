@@ -26,7 +26,7 @@ from btclib_ecc.curves import (
     curve_group,
     double_mult_var,
     mult,
-    point_from_octets,
+    point_from_octets_var,
     point_from_pub_key,
     scalar_from_prv_key,
     secp256k1,
@@ -731,7 +731,7 @@ def test_forge_hash_sig() -> None:
     # see https://twitter.com/pwuille/status/1063582706288586752
     # Satoshi's key
     key = "03 11db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5c"
-    Q = point_from_octets(key, ec)
+    Q = point_from_octets_var(key, ec)
 
     # pick u1 and u2 at will
     u1 = 1
@@ -1892,7 +1892,7 @@ def test_verify_refuses_r_plus_n_overflowing_p(
 
     # control: the vector does reach the overflow case
     assert r + ec.n > ec.p
-    assert mult(r, point_from_octets(key))[0] == 1
+    assert mult(r, point_from_octets_var(key))[0] == 1
 
     def checks() -> None:
         assert not dsa.verify_(bytes(32), key, sig)
@@ -3084,10 +3084,10 @@ def test_recovery_without_the_bindings_is_python_throughout(
 def test_a_hybrid_key_is_refused_on_both_arms(
     bindings: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The bindings parse 0x06 and 0x07 and `point_from_octets` does not.
+    """The bindings parse 0x06 and 0x07 and `point_from_octets_var` does not.
 
     Verifying and signing under a hybrid key are refused on either arm, as
-    `point_from_octets` refuses it without `hybrid=True`: a key valid on one
+    `point_from_octets_var` refuses it without `hybrid=True`: a key valid on one
     install and invalid on another is the defect (issue
     btclib-org/btclib-ecc#75). `verify_` and `verify` parse the key before
     either arm runs, and are pinned here too.
@@ -3100,7 +3100,7 @@ def test_a_hybrid_key_is_refused_on_both_arms(
     sig = dsa.sign_(msg_hash, q)
     body = Q[0].to_bytes(32, "big") + Q[1].to_bytes(32, "big")
     hybrid = (b"\x07" if Q[1] & 1 else b"\x06") + body
-    assert point_from_octets(hybrid, hybrid=True) == Q
+    assert point_from_octets_var(hybrid, hybrid=True) == Q
     dsa.assert_as_valid_(msg_hash, b"\x04" + body, sig)
 
     for key in (hybrid, hybrid.hex()):

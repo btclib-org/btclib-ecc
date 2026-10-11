@@ -35,7 +35,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from btclib_ecc.curves import mult, secp256k1
-from btclib_ecc.curves.sec_point import bytes_from_point, point_from_octets
+from btclib_ecc.curves.sec_point import bytes_from_point, point_from_octets_var
 from btclib_ecc.ecc import (
     dleq,
     dsa,
@@ -85,8 +85,8 @@ BINARY_PARSERS: dict[str, Callable[[bytes], Any]] = {
     # does not hold
     "RangeProof.parse": RangeProof.parse,
     "ecies.Envelope.parse": ecies.Envelope.parse,
-    "point_from_octets": point_from_octets,
-    "ssa.point_from_bip340pub_key": ssa.point_from_bip340pub_key,
+    "point_from_octets_var": point_from_octets_var,
+    "ssa.point_from_bip340pub_key_var": ssa.point_from_bip340pub_key_var,
     "ellswift.decode_var": ellswift.decode_var,
     "pedersen.commitment_from_octets": pedersen.commitment_from_octets,
     "pedersen.generator_from_octets": pedersen.generator_from_octets,

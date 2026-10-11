@@ -84,7 +84,7 @@ import pytest
 
 from btclib_ecc import kdf
 from btclib_ecc.alias import HashF, HashObject, Point
-from btclib_ecc.curves import mult, point_from_octets, secp256k1
+from btclib_ecc.curves import mult, point_from_octets_var, secp256k1
 from btclib_ecc.ecc import dh, dsa
 from btclib_ecc.exceptions import (
     BTClibEccRuntimeError,
@@ -167,7 +167,7 @@ def _point_from_spki(der: bytes) -> Point:
     worth stating: the structure, the two OIDs and the unused-bit count
     are refused here, while the point itself -- off the curve, at
     infinity, of a length no SEC 1 encoding has -- is refused by
-    `point_from_octets`, which is the check the vectors are aimed at.
+    `point_from_octets_var`, which is the check the vectors are aimed at.
 
     That the curve OID is read at all is what makes the `WrongCurve`
     group a rejection for the right reason. Those points are on other
@@ -201,7 +201,7 @@ def _point_from_spki(der: bytes) -> Point:
     # zero there is a key this is not reading
     if not key or key[0]:
         raise BTClibEccValueError("invalid unused bit count")
-    return point_from_octets(key[1:], secp256k1)
+    return point_from_octets_var(key[1:], secp256k1)
 
 
 def _b64url(field: str) -> bytes:
@@ -230,7 +230,7 @@ def _point_from_jwk(jwk: dict[str, Any]) -> Point:
         raise BTClibEccValueError("not a secp256k1 EC JWK")
     x = _b64url(jwk["x"])
     y = _b64url(jwk["y"])
-    return point_from_octets(b"\x04" + x + y, secp256k1)
+    return point_from_octets_var(b"\x04" + x + y, secp256k1)
 
 
 def _digest(hf: HashF, data: bytes) -> bytes:
