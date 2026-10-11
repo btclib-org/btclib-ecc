@@ -33,8 +33,9 @@ secp256k1 arithmetic is delegated to the bindings conditionally, which is
 the single most important thing to know before touching `curves/` or
 `ecc/`. One predicate, `curves.curve._libsecp256k1_serves`, asks for a
 process-wide switch, secp256k1 as the curve and sha256 or no hash
-function; each call site ands its own conditions onto it, and
-`SECURITY.md`'s "Limitations, not vulnerabilities" states them. What the
+function; a caller's choice that the bindings do not take goes to it as a
+keyword, only a condition on an input's value is and-ed on by the call site,
+and `SECURITY.md`'s "Limitations, not vulnerabilities" states them. What the
 predicate declines runs the Python arithmetic of `curves/curve_group.py`,
 which is not dead code and not constant-time: it serves every other
 curve, other hash functions and caller-supplied nonces, and the suite

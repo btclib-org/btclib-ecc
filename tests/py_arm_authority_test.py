@@ -73,6 +73,7 @@ comment above it says what would close each.
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 from pathlib import Path
 
 _LIBRARY = Path(__file__).parents[1] / "src" / "btclib_ecc"
@@ -125,7 +126,7 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
 # empty tuple is an arm no third-party vector reaches, and the comment
 # above `_WITHOUT_AN_AUTHORITY` says what would
 _AUTHORITY: dict[str, tuple[str, ...]] = {
-    "curves.curve.__init__": ("curves/curve_test.py",),
+    "curves.curve.TweakChain.__init__": ("curves/curve_test.py",),
     "curves.curve._add": ("curves/curve_test.py",),
     "curves.curve._jac_double_mult_var": (
         "ecc/der_test.py",
@@ -191,7 +192,8 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.sec_point.bytes_from_prv_key_int": ("ecc/musig2_test.py",),
     "ecc.commit_nonce.commit_nonce_": ("ecc/ssa_test.py",),
     "ecc.dh.diffie_hellman": ("ecc/wycheproof_test.py",),
-    "ecc.dsa.__init__": (),
+    "ecc.dsa.Signer.__init__": (),
+    "ecc.dsa.Signer.sign_": (),
     "ecc.dsa.assert_as_valid_": (
         "ecc/ecdsa_adaptor_test.py",
         "ecc/rfc6979_test.py",
@@ -209,14 +211,15 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "ecc.ellswift.decode_var": ("ecc/ellswift_test.py",),
     "ecc.ellswift.encode_var": ("ecc/ellswift_test.py",),
     "ecc.musig2.partial_sig_verify_": ("ecc/musig2_test.py",),
-    "ecc.ssa.__init__": ("ecc/ssa_test.py",),
+    "ecc.ssa.Signer.__init__": ("ecc/ssa_test.py",),
+    "ecc.ssa.Signer.sign_": ("ecc/ssa_test.py",),
     "ecc.ssa.assert_as_valid_": (
         "ecc/dlc_oracle_test.py",
         "ecc/frost_test.py",
         "ecc/musig2_test.py",
         "ecc/ssa_test.py",
     ),
-    "ecc.ssa.assert_batch_as_valid_": (),
+    "ecc.ssa.assert_batch_as_valid_": ("ecc/ssa_test.py",),
     "ecc.ssa.sign_": ("ecc/ssa_test.py",),
 }
 
@@ -227,7 +230,8 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 # - `curves.sec_point._mult_sec`, a point multiplied from its SEC octets.
 #   No vendored vector here hands the package octets to multiply; a set
 #   that does, an ECDH one taking the peer's key as octets, would.
-# - `ecc.dsa.__init__`, `Signer`'s constructor. Every third-party vector
+# - `ecc.dsa.Signer.__init__` and `ecc.dsa.Signer.sign_`, `Signer`'s
+#   constructor and signing. Every third-party vector
 #   reaches `dsa.sign_` or `dsa.assert_as_valid_` through the free
 #   functions; pointing one of those modules at the class is a test to
 #   write rather than a vector to find.
@@ -238,18 +242,15 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 #   its vectors belong to the package that implements it. A recovery
 #   vector set, or recoveries built against those, is what would close
 #   these.
-# - `ecc.ssa.assert_batch_as_valid_`, BIP340 batch verification, which asks
-#   the predicate only to refuse a declined `hf` where the bindings are
-#   required. No vendored vector set is a batch; one would close it.
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
-        "ecc.dsa.__init__",
+        "ecc.dsa.Signer.__init__",
+        "ecc.dsa.Signer.sign_",
         "ecc.dsa.recover_pub_key_",
         "ecc.dsa.recover_pub_keys_",
         "ecc.dsa.recover_sec_",
         "ecc.dsa.sign_recoverable_",
-        "ecc.ssa.assert_batch_as_valid_",
     }
 )
 
@@ -275,11 +276,9 @@ def _arm_locations() -> dict[str, tuple[Path, int, int]]:
     - `AsyncFunctionDef` is walked as well as `FunctionDef`. The tree has
       no async in it; one holding a dispatch would otherwise be invisible
       rather than reported, and invisible is the direction that costs.
-    - the key is `module.funcname`, so two same-named methods of two
-      classes in one module would collide into one entry and leave one
-      arm unexamined. `curves.curve.__init__` and `ecc.ssa.__init__` are
-      already that shape, in two modules; a third in either would be the
-      case to watch.
+    - the key is `module.funcname`, or `module.Class.funcname` for a
+      method, so a method and a function of one name, `sign_` and
+      `Signer.sign_`, are two arms and neither hides the other.
 
     The range is the function's own body -- `node.body[0].lineno` through
     `node.end_lineno`, the `def` line itself excluded on purpose, since it
@@ -293,20 +292,35 @@ def _arm_locations() -> dict[str, tuple[Path, int, int]]:
     for path in sorted(_LIBRARY.rglob("*.py")):
         source = path.read_text(encoding="utf-8")
         module = ".".join(path.relative_to(_LIBRARY).with_suffix("").parts)
-        for node in ast.walk(ast.parse(source)):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
+        for node, owner in _functions(ast.parse(source)):
             if node.name == "_libsecp256k1_serves":
                 continue
             segment = ast.get_source_segment(source, node) or ""
             if "_libsecp256k1_serves(" in segment:
                 assert node.end_lineno is not None  # set by ast.parse always
-                found[f"{module}.{node.name}"] = (
+                found[f"{module}.{owner}{node.name}"] = (
                     path,
                     node.body[0].lineno,
                     node.end_lineno,
                 )
     return found
+
+
+def _functions(
+    tree: ast.AST, owner: str = ""
+) -> Iterator[tuple[ast.FunctionDef | ast.AsyncFunctionDef, str]]:
+    """Yield each function with the `Class.` that defines it, or "".
+
+    Only the class a method is defined in: a function nested in a function
+    is still attributed to its enclosing function as well as to itself.
+    """
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.ClassDef):
+            yield from _functions(node, f"{node.name}.")
+        else:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                yield node, owner
+            yield from _functions(node, owner)
 
 
 def _py_arms() -> set[str]:
