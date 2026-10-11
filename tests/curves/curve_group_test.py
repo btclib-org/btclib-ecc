@@ -489,24 +489,25 @@ class _CountingGroup(CurveGroup):
         self.additions = 0
         self.doublings = 0
 
+    # the private twins, being what the multiplications call
     @override
-    def add_jac(self, Q: JacPoint, R: JacPoint) -> JacPoint:
+    def _add_jac(self, Q: JacPoint, R: JacPoint) -> JacPoint:
         self.additions += 1
-        return super().add_jac(Q, R)
+        return super()._add_jac(Q, R)
 
     @override
-    def add_jac_aff(self, Q: JacPoint, R: Point) -> JacPoint:
+    def _add_jac_aff(self, Q: JacPoint, R: Point) -> JacPoint:
         # counted beside add_jac and not apart from it: what the test
         # below is about is how many additions a scalar costs, and the
         # regular window indexes an affine table where the fixed one it is
         # measured against indexes a Jacobian one
         self.additions += 1
-        return super().add_jac_aff(Q, R)
+        return super()._add_jac_aff(Q, R)
 
     @override
-    def double_jac(self, Q: JacPoint) -> JacPoint:
+    def _double_jac(self, Q: JacPoint) -> JacPoint:
         self.doublings += 1
-        return super().double_jac(Q)
+        return super()._double_jac(Q)
 
 
 def test_regular_window_addition_count_is_the_same_for_every_scalar() -> None:
@@ -1171,7 +1172,7 @@ def test_the_interleaved_loop_makes_the_operations_its_wnafs_name(
                 )
 
     operations: list[tuple[str, Point | None]] = []
-    real_double, real_add = ec.double_jac, ec.add_jac_aff
+    real_double, real_add = ec._double_jac, ec._add_jac_aff
 
     def double(R: JacPoint) -> JacPoint:
         operations.append(("double", None))
@@ -1181,8 +1182,8 @@ def test_the_interleaved_loop_makes_the_operations_its_wnafs_name(
         operations.append(("add", P))
         return real_add(R, P)
 
-    monkeypatch.setattr(ec, "double_jac", double)
-    monkeypatch.setattr(ec, "add_jac_aff", add)
+    monkeypatch.setattr(ec, "_double_jac", double)
+    monkeypatch.setattr(ec, "_add_jac_aff", add)
     got = _multi_mult_w_NAF_var(scalars, points, ec, w, frozenset())
     # the tail, because a table of odd multiples is built before the loop and
     # with the same doubling: one per point, its additions being Jacobian and

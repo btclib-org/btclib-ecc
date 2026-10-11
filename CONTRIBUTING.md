@@ -741,7 +741,8 @@ COVERAGE_FILE=coverage-data-bindings \
 ```
 
 `test.yml`, the `no-bindings` job — the suite in an environment without
-`btclib-secp256k1`, which asserts the absence first and collects coverage
+`btclib-secp256k1` and without gmpy2, the `harness` group carrying
+neither. It asserts the bindings' absence first and collects coverage
 without gating on it. `UV_PROJECT_ENVIRONMENT` keeps the run out of
 `.venv`, which `uv run` would otherwise rebuild without the bindings:
 

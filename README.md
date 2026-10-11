@@ -124,6 +124,14 @@ The `secp256k1` extra installs the
 [libsecp256k1 bindings](https://github.com/btclib-org/btclib-secp256k1).
 The quotes are for zsh, which reads the brackets as a glob.
 
+The `gmpy2` extra installs [gmpy2](https://pypi.org/project/gmpy2/), and
+the Jacobian group law of the Python arithmetic then runs on GMP's
+integers. It changes nothing where the bindings serve:
+
+```shell
+python -m pip install --upgrade "btclib-ecc[secp256k1,gmpy2]"
+```
+
 ## First use
 
 An ECDSA signature, verified from the DER octets a peer would send, and

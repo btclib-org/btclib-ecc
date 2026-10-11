@@ -25,6 +25,7 @@ from btclib_ecc._utils import assert_type, hex_string, int_from_integer, is_inte
 from btclib_ecc.alias import INF, INFJ, Integer, JacPoint, Point
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
 from btclib_ecc.number_theory import (
+    _field_element,
     _is_prime,
     mod_inv_batch_var,
     mod_inv_var,
@@ -40,6 +41,20 @@ __all__ = [
 ]
 
 HEX_THRESHOLD = 0xFFFFFFFF
+
+
+def _int_point(Q: Point) -> Point:
+    """Return the affine point with int coordinates.
+
+    The group law computes in the type of the curve's `_modulus`, which may
+    be gmpy2's mpz, and a point leaves the package as int.
+    """
+    return int(Q[0]), int(Q[1])
+
+
+def _int_jac(Q: JacPoint) -> JacPoint:
+    """Return the Jacobian point with int coordinates, as `_int_point`."""
+    return int(Q[0]), int(Q[1]), int(Q[2])
 
 
 def _jac_from_aff(Q: Point) -> JacPoint:
@@ -126,6 +141,9 @@ class CurveGroup:
         # must be true to break symmetry using quadratic residue
         self.p_is_3_mod_4 = p % 4 == 3
         self.p = p
+        # what the Jacobian group law reduces by: p as gmpy2's mpz where the
+        # `gmpy2` extra is installed, so that its products are GMP's
+        self._modulus = _field_element(p)
 
         # how many bits a scalar of this group has, which is what fixes
         # the digit count of _mult_regular_window below -- the quantity a
@@ -289,7 +307,7 @@ class CurveGroup:
         if Q[2] == 0:  # Infinity point in Jacobian coordinates
             return INF
 
-        return self._aff_from_z_inv(Q, mod_inv_var(Q[2], self.p))
+        return _int_point(self._aff_from_z_inv(Q, mod_inv_var(Q[2], self._modulus)))
 
     def aff_from_jac_batch_var(self, Qs: Sequence[JacPoint]) -> list[Point]:
         """Return the affine points: one modular inversion for all of them.
@@ -303,7 +321,12 @@ class CurveGroup:
         in the batch, having no Z to invert, and comes back as INF where
         it stood.
         """
-        inverses = iter(mod_inv_batch_var([Q[2] for Q in Qs if Q[2]], self.p))
+        return [_int_point(Q) for Q in self._aff_from_jac_batch_var(Qs)]
+
+    def _aff_from_jac_batch_var(self, Qs: Sequence[JacPoint]) -> list[Point]:
+        # in the type of self._modulus: the tables of the multiplications
+        # are built here, and stay in the type their arithmetic runs on
+        inverses = iter(mod_inv_batch_var([Q[2] for Q in Qs if Q[2]], self._modulus))
         return [
             INF if Q[2] == 0 else self._aff_from_z_inv(Q, next(inverses)) for Q in Qs
         ]
@@ -315,7 +338,7 @@ class CurveGroup:
         # this is one and two multiplications, and an inverse costs what
         # a hundred products cost -- which is also why the inverse itself
         # is the caller's, one of them being what the batch above shares
-        p = self.p
+        p = self._modulus
         z_inv2 = z_inv * z_inv % p
         return Q[0] * z_inv2 % p, Q[1] * z_inv2 % p * z_inv % p
 
@@ -330,8 +353,9 @@ class CurveGroup:
         if Q[2] == 0:  # Infinity point in Jacobian coordinates
             raise BTClibEccValueError("INF has no x-coordinate")
 
+        p = self._modulus
         Z2 = Q[2] * Q[2]
-        return (Q[0] * mod_inv_var(Z2, self.p)) % self.p
+        return int(Q[0] * mod_inv_var(Z2, p) % p)
 
     def y_aff_from_jac_var(self, Q: JacPoint) -> int:
         """Return the affine y alone, without the product x costs.
@@ -344,8 +368,9 @@ class CurveGroup:
         if Q[2] == 0:  # Infinity point in Jacobian coordinates
             raise BTClibEccValueError("INF has no y-coordinate")
 
+        p = self._modulus
         Z2 = Q[2] * Q[2]
-        return (Q[1] * mod_inv_var(Z2 * Q[2], self.p)) % self.p
+        return int(Q[1] * mod_inv_var(Z2 * Q[2], p) % p)
 
     def is_jac_equal(self, QJ: JacPoint, PJ: JacPoint) -> bool:
         """Return True if Jacobian points are equal in affine coordinates.
@@ -381,8 +406,16 @@ class CurveGroup:
 
         The input points are assumed to be on the curve. One sequence
         of operations whatever the operands -- infinity and doubling
-        included, the comment below saying why that is load-bearing.
+        included, the comment of `_add_jac` saying why that is
+        load-bearing.
         """
+        return _int_jac(self._add_jac(Q, R))
+
+    def _add_jac(self, Q: JacPoint, R: JacPoint) -> JacPoint:
+        # `add_jac` in the type of self._modulus, which is what the
+        # multiplications call: a point is converted to int once, where it
+        # leaves the package.
+        #
         # the group law has four special cases, and they are of two kinds
         # that want opposite treatment. An operand at infinity is
         # bookkeeping rather than geometry: infinity is the identity, so
@@ -414,7 +447,7 @@ class CurveGroup:
         QS = (Q, self._stand_in_q)[Q[2] == 0]
         RS = (R, self._stand_in_r)[R[2] == 0]
 
-        p = self.p
+        p = self._modulus
         # every intermediate reduced as it is formed, which is what makes
         # this the fast path rather than a transcription of the formula:
         # left to grow, V3 and M*V2 reach p^9 and the products that close
@@ -505,10 +538,14 @@ class CurveGroup:
         infinity is in affine coordinates, and the doubling and the sum
         that is infinity through the one branch on V.
         """
+        return _int_jac(self._add_jac_aff(Q, R))
+
+    def _add_jac_aff(self, Q: JacPoint, R: Point) -> JacPoint:
+        # `add_jac_aff` in the type of self._modulus, as `_add_jac` is
         QS = (Q, self._stand_in_q)[Q[2] == 0]
         RS = (R, self._stand_in_r)[R[1] == 0]
 
-        p = self.p
+        p = self._modulus
         QZ2 = QS[2] * QS[2] % p
         QZ3 = QZ2 * QS[2] % p
 
@@ -534,10 +571,14 @@ class CurveGroup:
 
     def double_jac(self, Q: JacPoint) -> JacPoint:
         """Return twice the Jacobian point, assumed to be on the curve."""
+        return _int_jac(self._double_jac(Q))
+
+    def _double_jac(self, Q: JacPoint) -> JacPoint:
+        # `double_jac` in the type of self._modulus, as `_add_jac` is.
         # Z^2 is what the a*Z^4 term is built from and the only thing that
         # needs it, so a curve whose a is zero is handed a value the
         # helper never reads rather than a squaring and its reduction
-        QZ2 = 0 if self._a_is_zero else Q[2] * Q[2] % self.p
+        QZ2 = 0 if self._a_is_zero else Q[2] * Q[2] % self._modulus
         return self._double_jac_helper(Q, QZ2)
 
     def _double_jac_helper(self, Q: JacPoint, QZ2: int) -> JacPoint:
@@ -548,7 +589,7 @@ class CurveGroup:
         # it: no test on Q, one sequence of operations for every point of
         # the curve, and the same one for a secret point as for a public
         # one. Which is also what lets add_jac call it on every addition
-        p = self.p
+        p = self._modulus
         QY2 = Q[1] * Q[1] % p
         # the a*Z^4 term, in the spelling this curve's a allows: the tests
         # are on the curve and not on the point, so the operations a given
@@ -784,9 +825,9 @@ def _mult_recursive_jac_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
         return INFJ
 
     if m % 2 == 1:
-        return ec.add_jac(Q, _mult_recursive_jac_var((m - 1), Q, ec))
+        return ec._add_jac(Q, _mult_recursive_jac_var((m - 1), Q, ec))
 
-    return _mult_recursive_jac_var((m // 2), ec.double_jac(Q), ec)
+    return _mult_recursive_jac_var((m // 2), ec._double_jac(Q), ec)
 
 
 def _mult_aff_var(m: int, Q: Point, ec: CurveGroup) -> Point:
@@ -844,12 +885,12 @@ def _mult_jac_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     m >>= 1
     while m > 0:
         # the doubling part of 'double & add'
-        Q = ec.double_jac(Q)
+        Q = ec._double_jac(Q)
         # always perform the addition, even if useless, but use it as R[0]
         # only if the least significant bit of m is 1: one doubling and
         # one addition per bit, and with a branch-free add_jac under it
         # the loop costs the same for every scalar of a given length
-        R[not m & 1] = ec.add_jac(R[0], Q)
+        R[not m & 1] = ec._add_jac(R[0], Q)
         m >>= 1
     return R[0]
 
@@ -867,11 +908,11 @@ def _multiples(Q: JacPoint, size: int, ec: CurveGroup) -> list[JacPoint]:
         # T[-1] there would still be the previous iteration's, not the
         # double_jac just computed -- preview's FURB113 suggests it and
         # unsafe-fixes applies it without noticing
-        T.append(ec.double_jac(T[(i - 1) // 2]))
-        T.append(ec.add_jac(T[-1], Q))
+        T.append(ec._double_jac(T[(i - 1) // 2]))
+        T.append(ec._add_jac(T[-1], Q))
 
     if odd:
-        T.append(ec.double_jac(T[(size - 1) // 2]))
+        T.append(ec._double_jac(T[(size - 1) // 2]))
 
     return T
 
@@ -889,8 +930,8 @@ def _cached_multiples(Q: JacPoint, ec: CurveGroup) -> list[JacPoint]:
     T = [INFJ, Q]
     for i in range(3, 2**MAX_W, 2):
         # not extend(): _multiples() above has why
-        T.append(ec.double_jac(T[(i - 1) // 2]))
-        T.append(ec.add_jac(T[-1], Q))
+        T.append(ec._double_jac(T[(i - 1) // 2]))
+        T.append(ec._add_jac(T[-1], Q))
     return T
 
 
@@ -909,9 +950,9 @@ def _cached_multiples_fixwind(
         sublist = [INFJ, K]
         for j in range(3, 2**w, 2):
             # not extend(): _multiples() above has why
-            sublist.append(ec.double_jac(sublist[(j - 1) // 2]))
-            sublist.append(ec.add_jac(sublist[-1], K))
-        K = ec.double_jac(sublist[2 ** (w - 1)])
+            sublist.append(ec._double_jac(sublist[(j - 1) // 2]))
+            sublist.append(ec._add_jac(sublist[-1], K))
+        K = ec._double_jac(sublist[2 ** (w - 1)])
         T.append(sublist)
 
     return T
@@ -1036,9 +1077,9 @@ def _odd_multiples(Q: JacPoint, ec: CurveGroup, w: int) -> list[JacPoint]:
     """
     T = [Q]
     if w > 2:
-        Q2 = ec.double_jac(Q)
+        Q2 = ec._double_jac(Q)
         for _ in range(2 ** (w - 2) - 1):
-            T.append(ec.add_jac(T[-1], Q2))
+            T.append(ec._add_jac(T[-1], Q2))
     return T
 
 
@@ -1055,7 +1096,7 @@ def _odd_multiples_aff(Q: JacPoint, ec: CurveGroup, w: int) -> list[Point]:
     The inversion is a function of the point and not of the scalar, so a
     multiplication that is regular in its scalar stays regular in it.
     """
-    return ec.aff_from_jac_batch_var(_odd_multiples(Q, ec, w))
+    return ec._aff_from_jac_batch_var(_odd_multiples(Q, ec, w))
 
 
 # the width a point of ec._fixed_points has its table built at, against
@@ -1140,11 +1181,11 @@ def _cached_fixed_base_multiples(
     K = Q
     for _ in range(blocks * teeth):
         chain.append(K)
-        K = ec.double_jac(K)
+        K = ec._double_jac(K)
         chain.append(K)
         for _ in range(spacing - 1):
-            K = ec.double_jac(K)
-    aff = ec.aff_from_jac_batch_var(chain)
+            K = ec._double_jac(K)
+    aff = ec._aff_from_jac_batch_var(chain)
     powers, twice = aff[0::2], aff[1::2]
 
     jac: list[JacPoint] = []
@@ -1152,14 +1193,14 @@ def _cached_fixed_base_multiples(
         # the first entry whose top tooth is +: every other tooth is -
         entry = _jac_from_aff(powers[j + teeth - 1])
         for P in powers[j : j + teeth - 1]:
-            entry = ec.add_jac_aff(entry, ec.negate(P))
+            entry = ec._add_jac_aff(entry, ec.negate(P))
         block = [entry]
         for i in range(j, j + teeth - 1):
-            block += [ec.add_jac_aff(P, twice[i]) for P in block]
+            block += [ec._add_jac_aff(P, twice[i]) for P in block]
         jac += block
 
     half = 1 << (teeth - 1)
-    aff = ec.aff_from_jac_batch_var(jac)
+    aff = ec._aff_from_jac_batch_var(jac)
     tables: list[list[Point]] = []
     for at in range(0, len(aff), half):
         upper = aff[at : at + half]
@@ -1235,19 +1276,19 @@ def _mult_fixed_base(
         # tooth q % teeth of block q // teeth, at this offset
         column = int(bits[off::spacing], 2)
         if off:
-            R = ec.double_jac(R)
+            R = ec._double_jac(R)
             for Tj in T:
-                R = ec.add_jac_aff(R, Tj[column & mask])
+                R = ec._add_jac_aff(R, Tj[column & mask])
                 column >>= teeth
         else:
             # the accumulator starts at a table entry, rescaled
             R = _blinded_jac(_jac_from_aff(T[0][column & mask]), ec)
             for Tj in T[1:]:
                 column >>= teeth
-                R = ec.add_jac_aff(R, Tj[column & mask])
+                R = ec._add_jac_aff(R, Tj[column & mask])
     # the parity correction of _mult_regular_window, made whatever the
     # parity for the same reason, and what answers m == 0
-    return ec.add_jac(R, (INFJ, ec.negate_jac(Q))[not m & 1])
+    return ec._add_jac(R, (INFJ, ec.negate_jac(Q))[not m & 1])
 
 
 def _mult_mont_ladder_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
@@ -1278,8 +1319,8 @@ def _mult_mont_ladder_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     # R[0] is the running resultR[1] = R[0] + Q is an ancillary variable
     R = [INFJ, Q]
     for i in [int(i) for i in f"{m:b}"]:
-        R[not i] = ec.add_jac(R[i], R[not i])
-        R[i] = ec.double_jac(R[i])
+        R[not i] = ec._add_jac(R[i], R[not i])
+        R[i] = ec._double_jac(R[i])
     return R[0]
 
 
@@ -1297,17 +1338,17 @@ def _mult_base_3_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
         raise BTClibEccValueError("negative m")
 
     # at each step one of the points in T will be added
-    T = [INFJ, Q, ec.double_jac(Q)]
+    T = [INFJ, Q, ec._double_jac(Q)]
 
     digits = _convert_number_to_base_var(m, 3)
 
     R = T[digits[0]]
     for i in digits[1:]:
         # 'triple'
-        R2 = ec.double_jac(R)
-        R3 = ec.add_jac(R2, R)
+        R2 = ec._double_jac(R)
+        R3 = ec._add_jac(R2, R)
         # and 'add'
-        R = ec.add_jac(R3, T[i])
+        R = ec._add_jac(R3, T[i])
     return R
 
 
@@ -1341,9 +1382,9 @@ def _mult_fixed_window_var(
     for i in digits[1:]:
         # multiple 'double'
         for _ in range(w):
-            R = ec.double_jac(R)
+            R = ec._double_jac(R)
         # and 'add'
-        R = ec.add_jac(R, T[i])
+        R = ec._add_jac(R, T[i])
     return R
 
 
@@ -1380,7 +1421,7 @@ def _mult_fixed_window_cached_var(
     for i in range(1, len(digits)):
         k -= 1
         # only 'add'
-        R = ec.add_jac(R, T[k][digits[i]])
+        R = ec._add_jac(R, T[k][digits[i]])
     return R
 
 
@@ -1451,14 +1492,14 @@ def _mult_regular_window(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoin
     for digit in digits[-2::-1]:
         # multiple 'double'
         for _ in range(w):
-            R = ec.double_jac(R)
+            R = ec._double_jac(R)
         # and 'add', on every digit: there is no zero one to skip
-        R = ec.add_jac_aff(R, T[(digit + offset) // 2])
+        R = ec._add_jac_aff(R, T[(digit + offset) // 2])
     # the parity correction, made whatever the parity so that it cannot be
     # read off the clock: one addition of infinity, which by the same
     # property costs what the addition of -Q costs. It is also what
     # answers m == 0, whose recoding is that of 1
-    return ec.add_jac(R, (INFJ, ec.negate_jac(Q))[not m & 1])
+    return ec._add_jac(R, (INFJ, ec.negate_jac(Q))[not m & 1])
 
 
 # the width _mult hands the regular window; the measurement behind it is
@@ -1509,7 +1550,7 @@ def _double_mult_var(
         raise BTClibEccValueError("negative second coefficient")
 
     # at each step one of the following points will be added
-    T = [INFJ, HJ, QJ, ec.add_jac(HJ, QJ)]
+    T = [INFJ, HJ, QJ, ec._add_jac(HJ, QJ)]
     # which one depends on binary digit for that step
     ui = f"{u:b}"
     vi = f"{v:b}".zfill(len(ui))
@@ -1519,7 +1560,7 @@ def _double_mult_var(
     R = T[digits[0]]
     for i in digits[1:]:
         # the doubling part of 'double & add'
-        R = ec.double_jac(R)
+        R = ec._double_jac(R)
         # always perform the 'add', even if the digit pair is 0 and the
         # entry it names is infinity: one addition per step, whatever the
         # coefficients. Which is where an add_jac that does not shortcut
@@ -1527,7 +1568,7 @@ def _double_mult_var(
         # each an addition a shortcut would answer for free -- and it is
         # the one place in the package that measures 22% slower for it,
         # against the 2% to 3% everywhere else
-        R = ec.add_jac(R, T[i])
+        R = ec._add_jac(R, T[i])
     return R
 
 
@@ -1722,7 +1763,7 @@ def _multi_mult_w_NAF_var(
     # `secp256k1_ge_table_set_globalz` instead. An empty concatenation is
     # not a case to test for: every point being memoized leaves nothing to
     # convert and nothing to do
-    aff = ec.aff_from_jac_batch_var([P for _, jac in pending for P in jac])
+    aff = ec._aff_from_jac_batch_var([P for _, jac in pending for P in jac])
     at = 0
     for i, jac in pending:
         tables[i] = aff[at : at + len(jac)]
@@ -1734,9 +1775,9 @@ def _multi_mult_w_NAF_var(
     # digit becomes the point it names
     R = INFJ
     for additions in reversed(_additions_by_position(nafs, tables, ec)):
-        R = ec.double_jac(R)
+        R = ec._double_jac(R)
         for P in additions:
-            R = ec.add_jac_aff(R, P)
+            R = ec._add_jac_aff(R, P)
     return R
 
 
@@ -1800,7 +1841,7 @@ def _multi_mult_bos_coster_var(
         # measured, spelling that case out as a branch buys nothing, and
         # subtracting for q up to 4 or up to 16 costs 3% and 11%.
         q, n_1 = divmod(n_1, n_2)
-        p_2 = ec.add_jac(_mult_jac_var(q, p_1, ec), p_2)
+        p_2 = ec._add_jac(_mult_jac_var(q, p_1, ec), p_2)
         if n_1 > 0:
             heapq.heappush(x, (-n_1, p_1))
         heapq.heappush(x, (-n_2, p_2))

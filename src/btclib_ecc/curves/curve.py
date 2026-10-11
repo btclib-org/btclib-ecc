@@ -1389,7 +1389,7 @@ def _add(P: Point, Q: Point, ec: Curve) -> Point:
 
     PJ = _blinded_jac(_jac_from_aff(P), ec)
     QJ = _blinded_jac(_jac_from_aff(Q), ec)
-    return ec.aff_from_jac_var(ec.add_jac(PJ, QJ))
+    return ec.aff_from_jac_var(ec._add_jac(PJ, QJ))
 
 
 def _tweak_add_var(P: Point, t: int, ec: Curve) -> Point:

@@ -11,7 +11,7 @@ before it have already pulled in, so a cycle that only bites the caller
 who happens to arrive from the other side stays invisible.
 
 What a module may import is the standard library, `typing_extensions`,
-the bindings and this package: each module is asked in an interpreter of
+the bindings, gmpy2 and this package: each module is asked in an interpreter of
 its own at run time, and each file's import statements are read
 statically, which is what a module the suite never imports is checked
 by.
@@ -186,9 +186,10 @@ def test_ecc_loads_every_scheme() -> None:
 
 # the distributions a module of the package may import at the top level,
 # beside the standard library: the typing backport, the bindings, whose
-# absence `_libsecp256k1` answers for, and the package itself
+# absence `_libsecp256k1` answers for, gmpy2, whose absence
+# `number_theory` answers for, and the package itself
 _ALLOWED_THIRD_PARTY = frozenset(
-    {"typing_extensions", "btclib_secp256k1", "btclib_ecc"}
+    {"typing_extensions", "btclib_secp256k1", "gmpy2", "btclib_ecc"}
 )
 
 
@@ -228,7 +229,7 @@ def test_the_import_scan_finds_a_planted_import() -> None:
     assert _outside(names) == ["btclib", "btclib_wallet"]
 
 
-def test_no_module_imports_outside_the_stdlib_and_the_bindings() -> None:
+def test_no_module_imports_outside_the_stdlib_and_the_extras() -> None:
     """Every file of the package, read rather than imported.
 
     The static half of `test_no_module_reaches_above_the_package`: an
