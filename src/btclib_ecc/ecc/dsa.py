@@ -57,6 +57,7 @@ from btclib_ecc.curves import (
     PreparedPoint,
     PubKey,
     bytes_from_point,
+    curve,
     mult,
     point_from_pub_key,
     scalar_from_prv_key,
@@ -1429,9 +1430,9 @@ class Signer:
     precisely so that nothing a caller passes afterwards could move an
     instance from one arm to the other -- `wipe`'s promise would
     otherwise depend on an argument to a later call rather than on the
-    object itself. An instance built on the Python arm asks again at each
-    signature, as `ssa.Signer` does: it delegates once the bindings serve,
-    and raises where they are required and decline its `hf`.
+    object itself. The one exception is `required`: an instance built on the
+    Python arm raises at a signature where the bindings are required and
+    would now serve its `ec` and `hf`, or decline its `hf`.
 
     No `pub_key` argument either, matching `ssa.Signer`: the point of
     holding one is that every signature checks under it, so there is
@@ -1460,8 +1461,8 @@ class Signer:
         # otherwise re-derive it per call: `None` doubles as "this
         # instance signs on the Python arm", the same role `ssa.Signer`
         # gives `self._signer`, and is what `wipe` and `sign_` both read.
-        # An instance holding None asks `_libsecp256k1_serves` again at
-        # each signature, as `ssa.Signer` does
+        # Under `required`, an instance holding None asks
+        # `_libsecp256k1_serves` again at each signature
         self._pub_key_sec: bytes | None = (
             _sec_from_pub_key(Q, ec) if _libsecp256k1_serves(ec, hf) else None
         )
@@ -1562,17 +1563,15 @@ class Signer:
             # is: these are the bindings' own computed scalars
             return sig.serialize(check_validity=False)
 
-        # the free function asks the predicate, and so raises where the
-        # bindings are required and decline, or delegates where they now serve
-        if _libsecp256k1_serves(self._ec, self._hf):
-            return sign_(
-                msg_hash,
-                self._q,
-                ec=self._ec,
-                hf=self._hf,
-                grind=grind,
-                verify=verify,
-            ).serialize()
+        # the arm is the one decided at construction, unless the bindings
+        # are required: then this signer, built without them, is refused
+        # where they would serve it, and the predicate raises where they
+        # decline its hf
+        if curve._libsecp256k1_required and _libsecp256k1_serves(self._ec, self._hf):
+            raise _BindingsRequiredError(
+                "this signer was built on the Python arithmetic;"
+                " libsecp256k1 was required"
+            )
 
         # the challenge
         c = challenge_(msg_hash, self._ec, self._hf)

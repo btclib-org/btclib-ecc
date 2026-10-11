@@ -205,10 +205,20 @@ def test_required_is_a_bool() -> None:
         set_libsecp256k1_serving(serving=True, required=1)  # type: ignore[arg-type]
 
 
-def test_a_signer_built_with_the_bindings_off_delegates_once_they_serve() -> None:
-    """`dsa.Signer` asks again at each signature, as `ssa.Signer` does."""
+def test_a_signer_built_with_the_bindings_off_keeps_the_python_arm() -> None:
+    """Without `required` it stays there once the bindings serve."""
+    set_libsecp256k1_serving(serving=False)
+    signer = dsa.Signer(_PRV_KEY)
+    set_libsecp256k1_serving(serving=True)
+    # `None` is how the signer records the Python arm
+    assert signer._pub_key_sec is None
+    assert dsa.verify_(_MSG_HASH, _PUB_KEY, signer.sign_(_MSG_HASH))
+
+
+def test_a_signer_built_with_the_bindings_off_is_refused_when_required() -> None:
+    """Under `required` it raises where the bindings would serve it."""
     set_libsecp256k1_serving(serving=False)
     signer = dsa.Signer(_PRV_KEY)
     set_libsecp256k1_serving(serving=True, required=True)
-    sig = signer.sign_(_MSG_HASH)
-    dsa.verify_(_MSG_HASH, _PUB_KEY, sig)
+    with pytest.raises(BTClibEccRuntimeError, match="built on the Python"):
+        signer.sign_(_MSG_HASH)

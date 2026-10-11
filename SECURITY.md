@@ -131,7 +131,7 @@ package is used to teach and to prototype as much as to build:
     this package no longer holding a private key as a Python `int`, which
     is a change to that representation and not to a call site.
     `dsa.Signer.__init__` at `self._q.to_bytes(32, "big")`
-    (`src/btclib_ecc/ecc/dsa.py:1476`) crosses the same boundary the
+    (`src/btclib_ecc/ecc/dsa.py:1477`) crosses the same boundary the
     other way, once, at construction: the plain `int`
     `scalar_from_prv_key` already produced becomes a transient `bytes` on
     the way into the owned buffer `wipe` overwrites afterwards. That
@@ -167,7 +167,9 @@ package is used to teach and to prototype as much as to build:
     still runs the Python arithmetic: another curve, the point at
     infinity, a message length the bindings have no call for. `required`
     needs `serving=True`, and each call of the setter sets it afresh, so it
-    is False unless passed
+    is False unless passed. A `dsa.Signer` built while the bindings were
+    off signs on the Python arithmetic, but raises under `required` once
+    they would serve it
 - not every operation crosses that boundary, and one predicate decides
     whether it can: `curve._libsecp256k1_serves` asks for the switch
     above, then for secp256k1 as the curve, then for a hash function
@@ -202,8 +204,7 @@ package is used to teach and to prototype as much as to build:
     multiplications. `musig2.partial_sig_verify_` is a narrower
     delegation again, of one MuSig2 round-two check rather than of every
     operation the module offers (btclib-org/btclib#1049): for secp256k1,
-    sha256, a 32-byte message and a session with no adaptor, which with
-    the bindings required raises instead (above).
+    sha256, a 32-byte message and a session with no adaptor.
     `musig_nonce_process` takes a fixed 32-byte `msg32` with no length
     parameter, so a message of any other size runs the Python equation
     below regardless of the bindings, as does a session carrying the
