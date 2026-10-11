@@ -593,18 +593,21 @@ rule. They loop again only for `r < p - n`: a negligible share of
 signatures on every prime-order curve, and almost every `r` on the insecure
 cofactor-4 curves `secp112r2` and `secp128r2`.
 
-These public functions keep their names, each for its reason:
-`ssa.Sig.assert_valid`, a method name every `Sig` class shares;
-`apply_tweak` and `nonce_agg` of `musig2` and `frost`, the names of BIP327
-and BIP445; `curve.TweakChain.point`, which runs the bindings' chain where
-they serve and `_tweak_add_var` where they do not or the chain declines;
+These keep their names, each for its reason: `ssa.Sig.assert_valid`, a
+method name every `Sig` class shares; `apply_tweak` and `nonce_agg` of
+`musig2` and `frost`, the names of BIP327 and BIP445;
+`curve.TweakChain.point`, which runs the bindings' chain where they serve
+and `_tweak_add_var` where they do not or the chain declines;
 `ssa_adaptor.adapt` and `extract_adaptor`, secp256k1-zkp#299's names,
 `adapt` also taking the adaptor secret, which a `_var` name would forbid;
-and `pedersen.commitment_from_octets`, `generator_from_octets`,
+`rangeproof._recover_x`, which is handed a secret nonce and whose one
+variable-time step, the inverse, is on the public `e`; and
+`pedersen.commitment_from_octets`, `generator_from_octets`,
 `bytes_from_commitment`, `bytes_from_generator` and `frost.tweak_ctx_init`,
-which are public, and a public name is not broken for a private `_var`
-function it wraps. A named exception stops the carry, so
-its callers are not reached.
+since a public name is not broken for a private `_var` function it wraps.
+A named exception stops the carry, so its callers are not reached.
+`rangeproof._value_encoding_var` reads a value recovered with a secret nonce
+and keeps its `_var` name; SECURITY.md's limitations state it.
 
 `ellswift._xswiftec_inv_var` has no loop of its own: it returns early, on
 whether its operands are squares, before the inverse and the square roots

@@ -1451,7 +1451,7 @@ def verify(
     return True
 
 
-def _recover_x_var(k: int, e: int, s: int) -> int:
+def _recover_x(k: int, e: int, s: int) -> int:
     """Return the scalar a real signature was written under.
 
     `secp256k1_rangeproof_recover_x`. `_borromean_sign` answers `k - e*x`
@@ -1467,7 +1467,7 @@ def _recover_k(x: int, e: int, s: int) -> int:
     """Return the nonce a real signature was closed with.
 
     `secp256k1_rangeproof_recover_k`, the same equation read the other
-    way: `s + x*e`. A rewind takes this rather than `_recover_x_var` at
+    way: `s + x*e`. A rewind takes this rather than `_recover_x` at
     every ring but the last, where what it wants is the nonce itself --
     the message is xored into it, and no inversion is needed to get it
     back.
@@ -1563,7 +1563,7 @@ def rewind(
     written for. And a digit above the last ring's own size names no
     key of it, which is where an odd mantissa leaves a ring of two.
 
-    The blinding factor is then `_recover_x_var` at the last ring's digit,
+    The blinding factor is then `_recover_x` at the last ring's digit,
     less the chain's own factor for that ring: what the ring was signed
     under is the sum of the two, which is what lets a verifier recover
     the ring commitment the proof leaves out.
@@ -1602,7 +1602,7 @@ def rewind(
 
     last = len(rsizes) - 1
     if rsizes == (1,):
-        blind = _recover_x_var(chain.draws[0][0], ev[0][0], s[0][0])
+        blind = _recover_x(chain.draws[0][0], ev[0][0], s[0][0])
         value, message = proof.min_value or 0, b""
     else:
         found = _value_encoding_var(rsizes, s[last], chain.draws[last])
@@ -1620,7 +1620,7 @@ def rewind(
             )
         value = v * 10**proof.exp + (proof.min_value or 0)
         blind = (
-            _recover_x_var(chain.draws[last][skip2], ev[last][skip2], s[last][skip2])
+            _recover_x(chain.draws[last][skip2], ev[last][skip2], s[last][skip2])
             - chain.blinding_factors[last]
         ) % secp256k1.n
         message = b"".join(

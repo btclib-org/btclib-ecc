@@ -336,6 +336,11 @@ package is used to teach and to prototype as much as to build:
     two and `secp256k1_ecdh` are among the entry points libsecp256k1's
     own `src/ctime_tests.c` declassifies a secret for, and
     `secp256k1_ec_pubkey_tweak_mul` is named nowhere in that file
+- `rangeproof.rewind` on the Python arm takes time that depends on the value
+    it recovers: `rangeproof._value_encoding_var` at
+    `return position, int.from_bytes(tmp[24:32], "big")`
+    (`src/btclib_ecc/ecc/rangeproof.py:1508`) returns early, at a position
+    set by a digit of that value, which its `_var` suffix says
 - a sign-to-contract commitment is the signer's to open, and opening it
     twice over one message is safe only because the committed value
     reaches the nonce derivation: that is what keeps two such signatures
