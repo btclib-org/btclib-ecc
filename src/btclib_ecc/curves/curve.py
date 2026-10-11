@@ -77,7 +77,11 @@ from btclib_ecc.curves.curve_group_2 import (
     _double_mult_w_NAF_var,
     _mult_endomorphism_secp256k1,
 )
-from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
+from btclib_ecc.exceptions import (
+    BTClibEccRuntimeError,
+    BTClibEccTypeError,
+    BTClibEccValueError,
+)
 from btclib_ecc.number_theory import _is_prime, legendre_symbol_var
 
 __all__ = [
@@ -187,6 +191,15 @@ def _assert_mov_resistant(p: int, n: int) -> None:
             err_msg = "weak curve: the embedding degree is "
             err_msg += f"{i}, which is below 100"
             raise BTClibEccValueError(err_msg)
+
+
+class _BindingsRequiredError(BTClibEccRuntimeError):
+    """A call the bindings decline where they were required.
+
+    A subclass only so that a boolean verification can let it through: its
+    `except (ValueError, BTClibEccRuntimeError)` answers False for a
+    signature that failed, and a call that was refused is not that.
+    """
 
 
 class Curve(CurveGroup):
@@ -586,6 +599,11 @@ secp256k1 = CURVES["secp256k1"]
 # serving
 _libsecp256k1_available = _bindings_enabled
 
+# whether a call the bindings decline raises instead of running the Python
+# arithmetic: `set_libsecp256k1_serving(required=True)`. Read only by
+# `_libsecp256k1_serves`, and True only while the bindings are serving
+_libsecp256k1_required = False
+
 
 def is_libsecp256k1_serving() -> bool:
     """Return True if the bindings are what this process delegates to.
@@ -605,7 +623,7 @@ def is_libsecp256k1_serving() -> bool:
     return _libsecp256k1_available
 
 
-def set_libsecp256k1_serving(*, serving: bool) -> None:
+def set_libsecp256k1_serving(*, serving: bool, required: bool = False) -> None:
     """Ask for the bindings, or for the Python arithmetic, from here on.
 
     Process-wide and immediate: every dispatch in the package asks
@@ -617,6 +635,17 @@ def set_libsecp256k1_serving(*, serving: bool) -> None:
     cannot be served, and is refused rather than silently ignored:
     a caller that asked for C and got Python would be timing Python and
     calling it C. `is_libsecp256k1_serving` is how the answer is read back.
+
+    `required=True` goes further: a call on secp256k1 that the bindings
+    decline raises `BTClibEccRuntimeError` instead of running the Python
+    arithmetic. The call declines when the caller chose something the
+    bindings do not take: a hash function that is not `hashlib.sha256`, a
+    nonce of its own, a commitment, `lower_s=False`, a MuSig2 session with
+    an adaptor. Another curve, a point at infinity, a hybrid SEC prefix and
+    a message length the bindings have no call for are not choices of that
+    kind, and run the Python arithmetic as before. `required` needs
+    `serving=True`, and is refused with `serving=False`. Every call of this
+    function sets both, so `required` is False again unless it is passed.
 
     The environment variable is the other way in, and the earlier one:
     `BTCLIB_ECC_NO_LIBSECP256K1` set to a non-empty value makes the initial
@@ -631,6 +660,9 @@ def set_libsecp256k1_serving(*, serving: bool) -> None:
     `BTClibEccRuntimeError` and the state is as it was.
     """
     assert_type(serving, bool, "serving")
+    assert_type(required, bool, "required")
+    if required and not serving:
+        raise BTClibEccValueError("required needs serving: the bindings are off")
     if serving and not _bindings_installed:
         raise BTClibEccValueError(
             "btclib_secp256k1 is not installed: the bindings cannot serve"
@@ -638,17 +670,24 @@ def set_libsecp256k1_serving(*, serving: bool) -> None:
     if serving:
         _check_bindings_once(setter=True)
 
-    global _libsecp256k1_available  # noqa: PLW0603
+    global _libsecp256k1_available, _libsecp256k1_required  # noqa: PLW0603
     _libsecp256k1_available = serving
+    _libsecp256k1_required = required
 
 
-def _libsecp256k1_serves(ec: Curve, hf: HashF | None) -> bool:
+def _libsecp256k1_serves(ec: Curve, hf: HashF | None, **declined: bool) -> bool:
     """Return True if the libsecp256k1 bindings serve this ec and hf.
 
     Every dispatch to the bindings asks here, so that the predicates
-    cannot drift apart the way hand-written copies would; a caller
-    with a further condition of its own -- mult, whose bindings take
-    no point at infinity -- ands it on top.
+    cannot drift apart the way hand-written copies would. A caller
+    whose own options the bindings do not take passes each as a keyword,
+    named for the option and True when the option declines (`nonce=True`
+    for a caller's nonce): that is the only place a call's choice is
+    allowed to send it to the Python arithmetic, and the place
+    `set_libsecp256k1_serving(required=True)` turns into a raise. A
+    condition on the value of an input -- the point at infinity, which the
+    bindings take no public key for -- is a further `and` of the caller's
+    instead, and is not a choice.
 
     hf is compared by identity, deliberately: nothing short of running
     the two functions tells sha256 from a look-alike, so a wrapper such
@@ -659,7 +698,17 @@ def _libsecp256k1_serves(ec: Curve, hf: HashF | None) -> bool:
         return False
     if ec != secp256k1:
         return False
-    return hf is None or hf is sha256
+    names = [name for name, declines in declined.items() if declines]
+    if hf is not None and hf is not sha256:
+        names.append("hf")
+    if not names:
+        return True
+    if _libsecp256k1_required:
+        raise _BindingsRequiredError(
+            f"the bindings do not serve this call ({', '.join(names)});"
+            " libsecp256k1 was required"
+        )
+    return False
 
 
 def _x_octets(x: int, ec: Curve) -> bytes | None:

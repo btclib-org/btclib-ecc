@@ -131,7 +131,7 @@ package is used to teach and to prototype as much as to build:
     this package no longer holding a private key as a Python `int`, which
     is a change to that representation and not to a call site.
     `dsa.Signer.__init__` at `self._q.to_bytes(32, "big")`
-    (`src/btclib_ecc/ecc/dsa.py:1473`) crosses the same boundary the
+    (`src/btclib_ecc/ecc/dsa.py:1475`) crosses the same boundary the
     other way, once, at construction: the plain `int`
     `scalar_from_prv_key` already produced becomes a transient `bytes` on
     the way into the owned buffer `wipe` overwrites afterwards. That
@@ -157,12 +157,24 @@ package is used to teach and to prototype as much as to build:
     `curves.is_libsecp256k1_serving()` itself. With the
     dispatch off, every operation named below is the Python arithmetic,
     whichever way the package was installed
+- a call the bindings decline runs the Python arithmetic and says
+    nothing, unless the caller asks to be refused instead:
+    `curves.set_libsecp256k1_serving(serving=True, required=True)`. A call
+    on secp256k1 that the bindings decline for something the caller chose
+    -- a hash function that is not `hashlib.sha256` itself, a nonce of
+    its own, a commitment, `lower_s=False`, a MuSig2 session with an
+    adaptor -- then raises `BTClibEccRuntimeError`. What is not a choice
+    still runs the Python arithmetic: another curve, the point at
+    infinity, a hybrid SEC prefix, a message length the bindings have no
+    call for. `required` needs `serving=True`, and each call of the
+    setter sets it afresh, so it is False unless passed
 - not every operation crosses that boundary, and one predicate decides
     whether it can: `curve._libsecp256k1_serves` asks for the switch
     above, then for secp256k1 as the curve, then for a hash function
-    that is sha256 or absent -- `hf is None or hf is sha256`
-    (`src/btclib_ecc/curves/curve.py:662`) -- with whatever further
-    conditions the call site ands onto it. The hash function is matched
+    that is sha256 or absent -- it declines
+    `hf is not None and hf is not sha256`
+    (`src/btclib_ecc/curves/curve.py:702`) -- with whatever further
+    options the call site passes it. The hash function is matched
     by identity rather than by what it computes, so
     `functools.partial(sha256)`, or any other wrapper a caller writes to
     fit an interface, is one the predicate declines, and the call it is
@@ -275,7 +287,7 @@ package is used to teach and to prototype as much as to build:
     that arm and infinity is not delegated at all --
     `curve._libsecp256k1_mult` at
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
-    (`src/btclib_ecc/curves/curve.py:925`). `dh.diffie_hellman` at
+    (`src/btclib_ecc/curves/curve.py:974`). `dh.diffie_hellman` at
     `sec = libsecp256k1_shared_point(`
     (`src/btclib_ecc/ecc/dh.py:119`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
@@ -296,7 +308,7 @@ package is used to teach and to prototype as much as to build:
     (`src/btclib_ecc/ecc/pedersen.py:382`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/btclib_ecc/curves/curve.py:1386`):
+    (`src/btclib_ecc/curves/curve.py:1435`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at

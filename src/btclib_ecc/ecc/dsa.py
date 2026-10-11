@@ -64,6 +64,7 @@ from btclib_ecc.curves import (
 )
 from btclib_ecc.curves.curve import (
     _assert_valid_ec,
+    _BindingsRequiredError,
     _is_x_coordinate_var,
     _jac_double_mult_var,
     _libsecp256k1_serves,
@@ -1056,11 +1057,12 @@ def sign_(
     # libsecp256k1 derives its nonce inside the call and hands back
     # neither the point nor a way to tweak it, so it is the Python path
     # that commits
-    if (
-        _libsecp256k1_serves(ec, hf)
-        and nonce is None
-        and lower_s
-        and commit_hash is None
+    if _libsecp256k1_serves(
+        ec,
+        hf,
+        nonce=nonce is not None,
+        lower_s=not lower_s,
+        commit_hash=commit_hash is not None,
     ):
         return _libsecp256k1_sign_(
             msg_hash, q, grind, ec, verify=verify, pub_key=pub_key
@@ -1273,7 +1275,7 @@ def sign_recoverable_(
     # themselves, so a requested nonce is for the Python path below. The
     # recoverable signing they offer is lower-s like the plain one, and
     # lower_s=False is the caller asking for the s that was computed
-    if _libsecp256k1_serves(ec, hf) and nonce is None and lower_s:
+    if _libsecp256k1_serves(ec, hf, nonce=nonce is not None, lower_s=not lower_s):
         # the compact form, r || s, and the recid beside it: the DER
         # encoding sign_ parses would have to be taken apart again, the
         # key_id being what this call is made for
@@ -1927,6 +1929,8 @@ def verify_(
         assert_as_valid_(
             msg_hash, key, sig, hf, commit_hash=commit_hash, receipt=receipt
         )
+    except _BindingsRequiredError:
+        raise
     except (ValueError, BTClibEccRuntimeError):
         return False
 
@@ -1959,6 +1963,8 @@ def verify(
     # message rather than a digest of a stated size
     try:
         assert_as_valid(msg, key, sig, hf, commit=commit, receipt=receipt)
+    except _BindingsRequiredError:
+        raise
     except (ValueError, BTClibEccRuntimeError):
         return False
 

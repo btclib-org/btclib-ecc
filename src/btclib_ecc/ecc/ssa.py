@@ -89,6 +89,7 @@ from btclib_ecc.curves import (
 from btclib_ecc.curves.curve import (
     _assert_in_subgroup,
     _assert_valid_ec,
+    _BindingsRequiredError,
     _is_x_coordinate_var,
     _jac_double_mult_var,
     _libsecp256k1_serves,
@@ -666,7 +667,7 @@ def sign_(
     #
     # A commitment stays with the Python path: it tweaks the nonce, and
     # the nonce is the bindings' own to derive
-    if _libsecp256k1_serves(ec, hf) and commit_hash is None:
+    if _libsecp256k1_serves(ec, hf, commit_hash=commit_hash is not None):
         # the bindings take a scalar, and so does this module: what the
         # call buys is the range check and the octets
         q = scalar_from_prv_key(prv_key, ec)
@@ -1217,6 +1218,8 @@ def verify_(
         assert_as_valid_(
             msg, Q, parsed_sig, hf, commit_hash=commit_hash, receipt=receipt
         )
+    except _BindingsRequiredError:
+        raise
     except (ValueError, BTClibEccRuntimeError):
         return False
 
@@ -1247,6 +1250,8 @@ def verify(
     # way, since it does not touch msg
     try:
         assert_as_valid(msg, Q, parsed_sig, hf, commit=commit, receipt=receipt)
+    except _BindingsRequiredError:
+        raise
     except (ValueError, BTClibEccRuntimeError):
         return False
 

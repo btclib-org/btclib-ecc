@@ -1252,19 +1252,20 @@ def test_libsecp256k1() -> None:
 def test_a_plain_sign_reaches_the_bindings(monkeypatch: pytest.MonkeyPatch) -> None:
     """The default call signs a secret key through libsecp256k1, not Python.
 
-    `sign_`'s guard -- `_libsecp256k1_serves(ec, hf) and commit_hash is None` --
-    is what every caller with no commitment keeps by default, and both arms it
-    chooses between reach the same signature from the same secret key: nothing
-    about the result says which one produced it (issue btclib-org/btclib#975,
-    asked in general of every guard a computed value could disable rather than
-    of this one, which has none). `ssa.sign` for secp256k1 with sha256, any
-    message size and no commitment is one call SECURITY.md names as crossing the
-    boundary whole; the Python arm below composes the same signature from
-    `bip340_nonce_` and a linear combination instead, its own two point
-    multiplications still reaching libsecp256k1 while it serves. This records
-    the call into `libsecp256k1_ssa.sign_custom` instead of the answer it
-    returns, so a change that silently stopped taking it would fail here rather
-    than reproduce the same signature from the arm it stands in for.
+    `sign_`'s guard -- `_libsecp256k1_serves` given `commit_hash` as the option
+    that declines -- is what every caller with no commitment keeps by default,
+    and both arms it chooses between reach the same signature from the same
+    secret key: nothing about the result says which one produced it (issue
+    btclib-org/btclib#975, asked in general of every guard a computed value
+    could disable rather than of this one, which has none). `ssa.sign` for
+    secp256k1 with sha256, any message size and no commitment is one call
+    SECURITY.md names as crossing the boundary whole; the Python arm below
+    composes the same signature from `bip340_nonce_` and a linear combination
+    instead, its own two point multiplications still reaching libsecp256k1
+    while it serves. This records the call into `libsecp256k1_ssa.sign_custom`
+    instead of the answer it returns, so a change that silently stopped taking
+    it would fail here rather than reproduce the same signature from the arm it
+    stands in for.
     """
     calls: list[int] = []
     real_sign_custom = libsecp256k1_ssa.sign_custom
@@ -1728,7 +1729,7 @@ def test_the_py_arm_refuses_a_signature_that_does_not_verify() -> None:
     aux = bytes(32)
 
     with pytest.MonkeyPatch.context() as patched:
-        patched.setattr(ssa, "_libsecp256k1_serves", lambda *_: False)
+        patched.setattr(ssa, "_libsecp256k1_serves", lambda *_, **__: False)
         unchecked = ssa.sign(msg, prv_key, aux, verify=False)
         patched.setattr(ssa, "_assert_as_valid_", refuse)
         with pytest.raises(BTClibEccRuntimeError, match="does not verify") as plain:
@@ -1802,7 +1803,7 @@ def test_the_two_arms_answer_the_same_signature_and_the_same_refusal(
 
     signed = ssa._sign_
     with monkeypatch.context() as python:
-        python.setattr(ssa, "_libsecp256k1_serves", lambda *_: False)
+        python.setattr(ssa, "_libsecp256k1_serves", lambda *_, **__: False)
         assert signatures() == delegated
 
         def a_signature_that_cannot_verify(*args: Any) -> ssa.Sig:

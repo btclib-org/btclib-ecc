@@ -847,7 +847,7 @@ def test_the_two_secret_multiplications_answer_the_python_point(
         sig = dsa._sign_(0x1234, q, nonce, True, ec)
 
         with monkeypatch.context() as no_bindings:
-            no_bindings.setattr(curve, "_libsecp256k1_serves", lambda *_: False)
+            no_bindings.setattr(curve, "_libsecp256k1_serves", lambda *_, **__: False)
             assert dsa.gen_keys(q)[1] == Q
             assert dsa._sign_(0x1234, q, nonce, True, ec) == sig
 
@@ -879,19 +879,20 @@ def test_libsecp256k1() -> None:
 def test_a_plain_sign_reaches_the_bindings(monkeypatch: pytest.MonkeyPatch) -> None:
     """The default call signs a secret key through libsecp256k1, not Python.
 
-    `sign_`'s guard -- `_libsecp256k1_serves(ec, hf) and nonce is None and
-    lower_s and commit_hash is None` -- is every default a caller who passes
-    none of the three keeps, and both arms it chooses between reach the same
-    signature from the same secret key: nothing about the result says which one
-    produced it (issue btclib-org/btclib#975, asked in general of every guard a
-    computed value could disable rather than of this one, which has none). What
-    differs is not the nonce's own point -- `mult(k, ec.G, ec)` reaches
-    libsecp256k1 either way while it serves, SECURITY.md's own accounting of it
-    -- but its modular inverse, which this call does inside libsecp256k1's own
-    constant time and the Python arm below draws as a blinded Python integer
-    instead. This records the call into `libsecp256k1_dsa.sign` instead of the
-    answer it returns, so a change that silently stopped taking it would fail
-    here rather than reproduce the same signature from the arm it stands in for.
+    `sign_`'s guard -- `_libsecp256k1_serves` given `nonce`, `lower_s` and
+    `commit_hash` as the options that decline -- is every default a caller who
+    passes none of the three keeps, and both arms it chooses between reach the
+    same signature from the same secret key: nothing about the result says
+    which one produced it (issue btclib-org/btclib#975, asked in general of
+    every guard a computed value could disable rather than of this one, which
+    has none). What differs is not the nonce's own point -- `mult(k, ec.G, ec)`
+    reaches libsecp256k1 either way while it serves, SECURITY.md's own
+    accounting of it -- but its modular inverse, which this call does inside
+    libsecp256k1's own constant time and the Python arm below draws as a
+    blinded Python integer instead. This records the call into
+    `libsecp256k1_dsa.sign` instead of the answer it returns, so a change that
+    silently stopped taking it would fail here rather than reproduce the same
+    signature from the arm it stands in for.
     """
     calls: list[int] = []
     real_sign = libsecp256k1_dsa.sign
@@ -1002,7 +1003,7 @@ def test_grinding_agrees_on_both_arithmetics(monkeypatch: pytest.MonkeyPatch) ->
         msg = f"btclib grind {i}".encode()
         delegated = dsa.sign(msg, q, grind=True)
         with monkeypatch.context() as no_dsa_bindings:
-            no_dsa_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+            no_dsa_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
             python = dsa.sign(msg, q, grind=True)
         assert delegated == python
         assert delegated.r < _LOW_R
@@ -1243,7 +1244,7 @@ def test_libsecp256k1_recovery(monkeypatch: pytest.MonkeyPatch) -> None:
         for key_id in range(2 * (secp256k1.cofactor + 1)):
             delegated = _recovered(key_id, msg, sig)
             with monkeypatch.context() as no_bindings:
-                no_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+                no_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
                 python = _recovered(key_id, msg, sig)
             assert delegated == python
             if delegated is not None:
@@ -1264,7 +1265,7 @@ def test_libsecp256k1_recovery(monkeypatch: pytest.MonkeyPatch) -> None:
         malleated = dsa.Sig(sig.r, secp256k1.n - sig.s)
         assert _recovered(key_id ^ 1, msg, malleated) == Q
         with monkeypatch.context() as no_bindings:
-            no_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+            no_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
             assert _recovered(key_id ^ 1, msg, malleated) == Q
 
 
@@ -1333,7 +1334,7 @@ def test_the_low_s_rule_is_asked_for_and_not_assumed(
     )
     assert dsa._libsecp256k1_recover_point_(key_id, msg_hash, sig, lower_s=True) == Q
     with monkeypatch.context() as no_bindings:
-        no_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+        no_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
         assert dsa.recover_pub_key(key_id, msg, sig) == Q
 
 
@@ -1414,7 +1415,7 @@ def test_recovery_multiplies_in_libsecp256k1(
 
         with monkeypatch.context() as patch:
             # the Python enumeration, its double_mult_var still delegated
-            patch.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+            patch.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
             assert dsa.recover_pub_keys(msg, sig) == keys
             assert [_recovered(key_id, msg, sig) for key_id in key_ids] == recovered
 
@@ -1465,7 +1466,7 @@ def test_the_enumeration_asks_for_the_j_one_candidates(
     assert [key for key in candidates if key is not None] == keys
 
     with monkeypatch.context() as patch:
-        patch.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+        patch.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
         assert dsa.recover_pub_keys_(msg_hash, sig) == keys
         no_bindings(patch)
         assert dsa.recover_pub_keys_(msg_hash, sig) == keys
@@ -1585,7 +1586,7 @@ def test_sign_recoverable_is_sign_plus_the_key_id_a_search_would_find(
         assert key_id == recid
 
         with monkeypatch.context() as no_bindings:
-            no_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+            no_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
             assert dsa.sign_recoverable(msg, prv_key) == (sig, key_id)
 
 
@@ -1616,7 +1617,7 @@ def test_the_key_id_survives_what_the_bindings_decline(
         hf = kwargs.get("hf", sha256)
         assert dsa.recover_pub_key(key_id, msg, sig, hf) == Q
         with monkeypatch.context() as no_bindings:
-            no_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+            no_bindings.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
             assert dsa.sign_recoverable(msg, prv_key, **kwargs) == (sig, key_id)
 
     ec = CURVES["secp112r2"]
@@ -1898,7 +1899,7 @@ def test_verify_refuses_r_plus_n_overflowing_p(
 
     checks()
     with monkeypatch.context() as python:
-        python.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+        python.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
         checks()
 
 
@@ -2228,7 +2229,7 @@ def test_the_two_arms_answer_the_same_refusals(monkeypatch: pytest.MonkeyPatch) 
 
     delegated = answers()
     with monkeypatch.context() as python:
-        python.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+        python.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
         assert answers() == delegated
 
 
@@ -2380,7 +2381,7 @@ def test_the_delegated_grind_is_the_sequence_the_py_arm_walks() -> None:
         # and it is the signature this package's own loop reaches, which is the
         # half that says the delegation changed no answer
         with pytest.MonkeyPatch.context() as python:
-            python.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+            python.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
             assert dsa.sign_(msg_hash, q, grind=True, verify=False) == delegated
 
         # the point of grinding at all, and cheap to say here
@@ -3014,7 +3015,7 @@ def test_recover_sec_is_the_recovered_key_as_octets(
         )
         assert dsa.recover_sec(key_id, msg, sig, compressed=compressed) == expected
         with monkeypatch.context() as python:
-            python.setattr(dsa, "_libsecp256k1_serves", lambda *_: False)
+            python.setattr(dsa, "_libsecp256k1_serves", lambda *_, **__: False)
             assert dsa.recover_sec_(key_id, msg_hash, sig, compressed=compressed) == (
                 expected
             )
@@ -3022,7 +3023,7 @@ def test_recover_sec_is_the_recovered_key_as_octets(
         # bindings' being reachable only where they are installed
         for arm in (True, False) if INSTALLED else (False,):
             with monkeypatch.context() as served:
-                served.setattr(dsa, "_libsecp256k1_serves", lambda *_, a=arm: a)
+                served.setattr(dsa, "_libsecp256k1_serves", lambda *_, a=arm, **__: a)
                 for beyond_n in (2, 3):
                     with pytest.raises(BTClibEccValueError):
                         dsa.recover_sec_(beyond_n, msg_hash, sig, compressed=compressed)

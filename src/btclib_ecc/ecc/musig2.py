@@ -1011,9 +1011,8 @@ def partial_sig_verify_(
     # no vector pins which one a caller sees
     pub_key = bytes_from_octets(pub_key, _PK_SIZE)
     if (
-        _libsecp256k1_serves(secp256k1, sha256)
+        _libsecp256k1_serves(secp256k1, sha256, adaptor=session_ctx.adaptor is not None)
         and len(session_ctx.msg) == _SCALAR_SIZE
-        and session_ctx.adaptor is None
     ):
         cache, bindings_session = _bindings_session(session_ctx)
         try:
