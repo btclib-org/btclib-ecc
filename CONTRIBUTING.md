@@ -738,8 +738,9 @@ read by every checkout of this repository.
 
 ### Reproducing what CI runs
 
-Each command below is the one a CI job runs. Keep this section true when a
-workflow changes.
+Each command below is the one a CI job runs, but for `UV_PROJECT_ENVIRONMENT`
+and `--exact`, which the `no-bindings` block explains. Keep this section true
+when a workflow changes.
 
 `os-ubuntu.yml`, `os-macos.yml`, `os-windows.yml` and `deps-oldest.yml`,
 the suite job of each — the suite, on one cell of a matrix. `--no-cov`
@@ -770,7 +771,10 @@ that environment, the bindings or gmpy2; CI's starts empty:
 ```shell
 UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
     uv run --exact --locked --no-default-groups --group harness \
-    python -c "from btclib_ecc._libsecp256k1 import INSTALLED; assert not INSTALLED"
+    python -c "from btclib_ecc._libsecp256k1 import INSTALLED;
+assert not INSTALLED, 'btclib_secp256k1 is installed';
+from btclib_ecc.curves import is_libsecp256k1_serving;
+assert not is_libsecp256k1_serving()"
 UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
     COVERAGE_FILE=coverage-data-no-bindings \
     uv run --exact --locked --no-default-groups --group harness pytest --cov-fail-under=0
