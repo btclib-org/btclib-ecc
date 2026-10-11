@@ -185,15 +185,14 @@ it is.
 
 1. **gmpy2's `mpz` for the coordinates.** `a * b % p` costs 253 ns on
     `int` and 83 ns on `mpz` (107 ns if `p` stays an `int`, so the
-    modulus converts too). The left-to-right double-and-add over
-    `add_jac` and `double_jac` runs in 416 µs with `mpz` coordinates
-    against 840 µs, 2.0x, and the inversion 15x. The `gmpy2` extra
-    takes this lever: each curve converts its modulus to an `mpz` once,
-    and what leaves the package is converted back to `int`. A comment
-    on issue btclib-org/btclib-ecc#213 measures `mult(m, P)` with the
-    extra against without, with its script and conditions.
-1. **PyPy.** On PyPy 3.11.15 the same double-and-add runs in 497 µs,
-    1.7x, and `mult(m, P)` in 333 µs, 1.5x, with no change to the code.
+    modulus converts too). The `gmpy2` extra takes this lever: each
+    curve converts its modulus to an `mpz` once, and what leaves the
+    package is converted back to `int`. A comment on issue
+    btclib-org/btclib-ecc#213 measures `mult(m, P)` with the extra
+    against without, with its script and conditions.
+1. **PyPy.** On PyPy 3.11.15 the left-to-right double-and-add runs in
+    497 µs, 1.7x, and `mult(m, P)` in 333 µs, 1.5x, with no change to
+    the code.
     Threads gain nothing there, PyPy keeping the GIL: sixty-four
     `ssa.verify` calls take 25.8 ms one after another, 32.6 ms on four
     threads and 29.5 ms on eight.
