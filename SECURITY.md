@@ -131,7 +131,7 @@ package is used to teach and to prototype as much as to build:
     this package no longer holding a private key as a Python `int`, which
     is a change to that representation and not to a call site.
     `dsa.Signer.__init__` at `self._q.to_bytes(32, "big")`
-    (`src/btclib_ecc/ecc/dsa.py:1475`) crosses the same boundary the
+    (`src/btclib_ecc/ecc/dsa.py:1476`) crosses the same boundary the
     other way, once, at construction: the plain `int`
     `scalar_from_prv_key` already produced becomes a transient `bytes` on
     the way into the owned buffer `wipe` overwrites afterwards. That
@@ -165,9 +165,9 @@ package is used to teach and to prototype as much as to build:
     its own, a commitment, `lower_s=False`, a MuSig2 session with an
     adaptor -- then raises `BTClibEccRuntimeError`. What is not a choice
     still runs the Python arithmetic: another curve, the point at
-    infinity, a hybrid SEC prefix, a message length the bindings have no
-    call for. `required` needs `serving=True`, and each call of the
-    setter sets it afresh, so it is False unless passed
+    infinity, a message length the bindings have no call for. `required`
+    needs `serving=True`, and each call of the setter sets it afresh, so it
+    is False unless passed
 - not every operation crosses that boundary, and one predicate decides
     whether it can: `curve._libsecp256k1_serves` asks for the switch
     above, then for secp256k1 as the curve, then for a hash function
@@ -179,7 +179,8 @@ package is used to teach and to prototype as much as to build:
     `functools.partial(sha256)`, or any other wrapper a caller writes to
     fit an interface, is one the predicate declines, and the call it is
     passed to runs the Python arithmetic -- conservative for the
-    arithmetic, silent for the caller. The condition each operation below
+    arithmetic, silent for the caller unless the bindings are required
+    (above). The condition each operation below
     states as sha256 is that identity.
     `mult`, `double_mult_var` and `multi_mult_var` reach the bindings for
     secp256k1 and any point of it, the point at infinity excepted --
@@ -201,12 +202,14 @@ package is used to teach and to prototype as much as to build:
     multiplications. `musig2.partial_sig_verify_` is a narrower
     delegation again, of one MuSig2 round-two check rather than of every
     operation the module offers (btclib-org/btclib#1049): for secp256k1,
-    sha256, a 32-byte message and a session with no adaptor.
+    sha256, a 32-byte message and a session with no adaptor, which with
+    the bindings required raises instead (above).
     `musig_nonce_process` takes a fixed 32-byte `msg32` with no length
     parameter, so a message of any other size runs the Python equation
     below regardless of the bindings, as does a session carrying the
     adaptor extension `btclib_ecc.ecc.musig2` implements and the
-    bindings do not. `key_agg`, `key_sort` and `nonce_agg` stay Python's
+    bindings do not, unless the bindings are required (above), which
+    raises for the session. `key_agg`, `key_sort` and `nonce_agg` stay Python's
     alone either way: measured too close to the delegated arithmetic they
     already call, or run once per session rather than once per signer,
     to earn a second code path. This paragraph is about a secret meeting

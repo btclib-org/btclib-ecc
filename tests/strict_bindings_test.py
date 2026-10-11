@@ -23,7 +23,6 @@ from btclib_ecc.curves import (
     bytes_from_point,
     is_libsecp256k1_serving,
     mult,
-    point_from_octets,
     secp256k1,
     set_libsecp256k1_serving,
 )
@@ -66,6 +65,10 @@ _PUB_KEY = mult(_PRV_KEY)
 _SSA_SIG = ssa.sign_(_MSG_HASH, _PRV_KEY)
 _SSA_PUB_KEY = bytes_from_point(_PUB_KEY, secp256k1)[1:]
 
+# built here, while the mode is off, to be used where it is on
+_DSA_SIGNER = dsa.Signer(_PRV_KEY, hf=_wrapped_sha256())
+_SSA_SIGNER = ssa.Signer(_PRV_KEY, hf=_wrapped_sha256())
+
 # name -> a call the bindings decline for the caller's choice. The first
 # three are the cases of the issue this mode answers (btclib-org/btclib-ecc#224)
 _DECLINED: dict[str, Callable[[], Any]] = {
@@ -74,6 +77,23 @@ _DECLINED: dict[str, Callable[[], Any]] = {
         _MSG_HASH, _PRV_KEY, nonce=_NONCE, grind=False
     ),
     "dsa.sign wrapped hf": lambda: dsa.sign(_MSG_HASH, _PRV_KEY, hf=_wrapped_sha256()),
+    "dsa.Signer.sign_ built before": lambda: _DSA_SIGNER.sign_(_MSG_HASH),
+    "ssa.Signer.sign_ built before": lambda: _SSA_SIGNER.sign_(_MSG_HASH),
+    "dsa.recover_sec_ wrapped hf": lambda: dsa.recover_sec_(
+        0, _MSG_HASH, _SIG, hf=_wrapped_sha256()
+    ),
+    "ssa.batch_verify_ one, wrapped hf": lambda: ssa.batch_verify_(
+        [_MSG_HASH], [_SSA_PUB_KEY], [_SSA_SIG], hf=_wrapped_sha256()
+    ),
+    "ssa.batch_verify_ two, wrapped hf": lambda: ssa.batch_verify_(
+        [_MSG_HASH] * 2, [_SSA_PUB_KEY] * 2, [_SSA_SIG] * 2, hf=_wrapped_sha256()
+    ),
+    "ssa.batch_verify one, wrapped hf": lambda: ssa.batch_verify(
+        [b"strict"], [_SSA_PUB_KEY], [_SSA_SIG], hf=_wrapped_sha256()
+    ),
+    "ssa.batch_verify two, wrapped hf": lambda: ssa.batch_verify(
+        [b"strict"] * 2, [_SSA_PUB_KEY] * 2, [_SSA_SIG] * 2, hf=_wrapped_sha256()
+    ),
     "dsa.sign commit_hash": lambda: dsa.sign_(
         _MSG_HASH, _PRV_KEY, commit_hash=_COMMIT_HASH, grind=False
     ),
@@ -156,13 +176,8 @@ def test_what_the_bindings_never_serve_runs_when_required() -> None:
     sig = dsa.sign(_MSG_HASH, _PRV_KEY, ec=ec)
     dsa.verify(_MSG_HASH, mult(_PRV_KEY, ec=ec), sig)
     dsa.sign(sha512(b"x").digest(), _PRV_KEY, ec=ec, hf=sha512)
-    # the point at infinity and a hybrid SEC prefix
-    assert mult(0) == INF
-    hybrid = (
-        bytes([6 + (_PUB_KEY[1] & 1)])
-        + bytes_from_point(_PUB_KEY, secp256k1, compressed=False)[1:]
-    )
-    assert point_from_octets(hybrid, hybrid=True) == _PUB_KEY
+    # the point at infinity, which the bindings have no public key for
+    assert mult(5, INF) == INF
 
 
 def test_required_needs_serving() -> None:
@@ -188,3 +203,12 @@ def test_required_is_a_bool() -> None:
     """A value read for its truth is refused, as `serving` is."""
     with pytest.raises(BTClibEccTypeError):
         set_libsecp256k1_serving(serving=True, required=1)  # type: ignore[arg-type]
+
+
+def test_a_signer_built_with_the_bindings_off_delegates_once_they_serve() -> None:
+    """`dsa.Signer` asks again at each signature, as `ssa.Signer` does."""
+    set_libsecp256k1_serving(serving=False)
+    signer = dsa.Signer(_PRV_KEY)
+    set_libsecp256k1_serving(serving=True, required=True)
+    sig = signer.sign_(_MSG_HASH)
+    dsa.verify_(_MSG_HASH, _PUB_KEY, sig)

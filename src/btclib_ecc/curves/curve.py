@@ -601,7 +601,7 @@ _libsecp256k1_available = _bindings_enabled
 
 # whether a call the bindings decline raises instead of running the Python
 # arithmetic: `set_libsecp256k1_serving(required=True)`. Read only by
-# `_libsecp256k1_serves`, and True only while the bindings are serving
+# `_libsecp256k1_serves`, after `_libsecp256k1_available`
 _libsecp256k1_required = False
 
 
@@ -641,9 +641,9 @@ def set_libsecp256k1_serving(*, serving: bool, required: bool = False) -> None:
     arithmetic. The call declines when the caller chose something the
     bindings do not take: a hash function that is not `hashlib.sha256`, a
     nonce of its own, a commitment, `lower_s=False`, a MuSig2 session with
-    an adaptor. Another curve, a point at infinity, a hybrid SEC prefix and
-    a message length the bindings have no call for are not choices of that
-    kind, and run the Python arithmetic as before. `required` needs
+    an adaptor. Another curve, a point at infinity and a message length the
+    bindings have no call for are not choices of that kind, and run the
+    Python arithmetic as before. `required` needs
     `serving=True`, and is refused with `serving=False`. Every call of this
     function sets both, so `required` is False again unless it is passed.
 

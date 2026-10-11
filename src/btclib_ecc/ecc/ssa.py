@@ -1206,6 +1206,10 @@ def verify_(
     merely not authentic: a scalar at or above the group order, a key
     that does not lift, an equation that does not hold. See
     `_assert_structurally_valid_`.
+
+    Where the bindings are required (`curves.set_libsecp256k1_serving` with
+    `required=True`) and decline `hf`, it raises `BTClibEccRuntimeError`
+    and does not answer False: nothing was checked.
     """
     ec = sig.ec if isinstance(sig, Sig) else secp256k1
     parsed_sig = _assert_structurally_valid_(Q, sig, ec)
@@ -1239,7 +1243,8 @@ def verify(
 
     commit is reduced by hf as msg is; `verify_` is the spelling that
     takes the two hashes. Raises and answers False for the same reasons
-    `verify_` does.
+    `verify_` does, and raises where the bindings are required and decline
+    `hf`.
     """
     ec = sig.ec if isinstance(sig, Sig) else secp256k1
     parsed_sig = _assert_structurally_valid_(Q, sig, ec)
@@ -1524,6 +1529,9 @@ def assert_batch_as_valid_(
         raise BTClibEccValueError(_err_msg(batch_size, "messages", msgs))
     if len(sigs) != batch_size:
         raise BTClibEccValueError(_err_msg(batch_size, "signatures", sigs))
+    # whatever its size, a batch whose hash function the bindings decline
+    # is refused where they are required; the answer is not used here
+    _libsecp256k1_serves(sigs[0].ec, hf)
     if batch_size == 1:
         assert_as_valid_(msgs[0], Qs[0], sigs[0], hf)
         return
@@ -1651,6 +1659,8 @@ def batch_verify_(
     # than excluded from the except
     try:
         assert_batch_as_valid_(msgs, Qs, sigs, hf)
+    except _BindingsRequiredError:
+        raise
     except (ValueError, BTClibEccRuntimeError):
         return False
 
@@ -1677,6 +1687,8 @@ def batch_verify(
     # way, since it does not touch a message
     try:
         assert_batch_as_valid(ms, Qs, sigs, hf)
+    except _BindingsRequiredError:
+        raise
     except (ValueError, BTClibEccRuntimeError):
         return False
 

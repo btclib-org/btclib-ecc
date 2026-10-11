@@ -216,6 +216,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/musig2_test.py",
         "ecc/ssa_test.py",
     ),
+    "ecc.ssa.assert_batch_as_valid_": (),
     "ecc.ssa.sign_": ("ecc/ssa_test.py",),
 }
 
@@ -237,6 +238,9 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 #   its vectors belong to the package that implements it. A recovery
 #   vector set, or recoveries built against those, is what would close
 #   these.
+# - `ecc.ssa.assert_batch_as_valid_`, BIP340 batch verification, which asks
+#   the predicate only to refuse a declined `hf` where the bindings are
+#   required. No vendored vector set is a batch; one would close it.
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
@@ -245,6 +249,7 @@ _WITHOUT_AN_AUTHORITY = frozenset(
         "ecc.dsa.recover_pub_keys_",
         "ecc.dsa.recover_sec_",
         "ecc.dsa.sign_recoverable_",
+        "ecc.ssa.assert_batch_as_valid_",
     }
 )
 

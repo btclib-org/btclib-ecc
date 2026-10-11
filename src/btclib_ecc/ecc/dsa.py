@@ -1429,7 +1429,9 @@ class Signer:
     precisely so that nothing a caller passes afterwards could move an
     instance from one arm to the other -- `wipe`'s promise would
     otherwise depend on an argument to a later call rather than on the
-    object itself.
+    object itself. An instance built on the Python arm asks again at each
+    signature, as `ssa.Signer` does: it delegates once the bindings serve,
+    and raises where they are required and decline its `hf`.
 
     No `pub_key` argument either, matching `ssa.Signer`: the point of
     holding one is that every signature checks under it, so there is
@@ -1457,10 +1459,9 @@ class Signer:
         # parsed once too, and only where the delegated arm would
         # otherwise re-derive it per call: `None` doubles as "this
         # instance signs on the Python arm", the same role `ssa.Signer`
-        # gives `self._signer`, and is what `wipe` and `sign_` both read
-        # rather than asking `_libsecp256k1_serves` again -- the
-        # dispatch is decided once, at construction, and not
-        # reconsidered against a switch that may have moved since
+        # gives `self._signer`, and is what `wipe` and `sign_` both read.
+        # An instance holding None asks `_libsecp256k1_serves` again at
+        # each signature, as `ssa.Signer` does
         self._pub_key_sec: bytes | None = (
             _sec_from_pub_key(Q, ec) if _libsecp256k1_serves(ec, hf) else None
         )
@@ -1560,6 +1561,18 @@ class Signer:
             # check_validity=False, as `_libsecp256k1_sign_`'s own answer
             # is: these are the bindings' own computed scalars
             return sig.serialize(check_validity=False)
+
+        # the free function asks the predicate, and so raises where the
+        # bindings are required and decline, or delegates where they now serve
+        if _libsecp256k1_serves(self._ec, self._hf):
+            return sign_(
+                msg_hash,
+                self._q,
+                ec=self._ec,
+                hf=self._hf,
+                grind=grind,
+                verify=verify,
+            ).serialize()
 
         # the challenge
         c = challenge_(msg_hash, self._ec, self._hf)
@@ -1899,6 +1912,10 @@ def verify_(
     of range, a key that does not lift, a malformed DER encoding, an
     equation that does not hold. See `_assert_structurally_valid_`, the
     comment every boolean verification in this library points at.
+
+    Where the bindings are required (`curves.set_libsecp256k1_serving` with
+    `required=True`) and decline `hf`, it raises `BTClibEccRuntimeError`
+    and does not answer False: nothing was checked.
     """
     ec = sig.ec if isinstance(sig, Sig) else secp256k1
     _assert_structurally_valid_(key, ec, msg_hash, hf)
@@ -1951,7 +1968,8 @@ def verify(
     commit is reduced by hf as msg is; `verify_` is the spelling that
     takes the two hashes. Raises and answers False for the same reasons
     `verify_` does, less the digest: msg is of any size here and is
-    reduced by hf, so there is no declared length for it to miss.
+    reduced by hf, so there is no declared length for it to miss. It raises
+    where the bindings are required and decline `hf`, as `verify_` does.
     """
     ec = sig.ec if isinstance(sig, Sig) else secp256k1
     _assert_structurally_valid_(key, ec, None, hf)
