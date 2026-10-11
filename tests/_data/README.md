@@ -1416,7 +1416,35 @@ bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
   brainpoolP224r1 to brainpoolP512r1. Here those brainpool curves are
   `bpp224r1` to `bpp512r1`, and secp192r1 to secp521r1 are also `nistp192`
   to `nistp521`. A curve of `CURVES` it does not print under either name
-  has no Wycheproof file, and no other source was searched for it.
+  has no Wycheproof file: secp112r1, secp112r2, secp128r1, secp128r2,
+  `bpp160r1` and `bpp192r1`, which the next bullet takes.
+- **ECDSA on secp112r1, secp112r2, secp128r1, secp128r2, `bpp160r1` and
+  `bpp192r1`**: no outside vector was found in Wycheproof, python-ecdsa or
+  the RFC. Wycheproof has no file for them, by the call above. The RFC has
+  no appendix for them: the first count this prints is zero, and the
+  second, a control for the fetch, is above zero:
+
+  ```shell
+  curl -s https://www.rfc-editor.org/rfc/rfc6979.txt \
+      | grep -ciE "secp112|secp128|brainpool"
+  curl -s https://www.rfc-editor.org/rfc/rfc6979.txt | grep -ci "nist"
+  ```
+
+  python-ecdsa defines all of them but secp128r2, by the call below on its
+  `curves.py`. Its test files name them in the lines this prints, which
+  were read: key generation and signing round trips, interoperability with
+  OpenSSL where OpenSSL has the curve, arithmetic on the generator, and the
+  point of the last bullet. None stores a signature to verify, so none is an
+  outside vector for ECDSA:
+
+  ```shell
+  git clone --quiet --filter=blob:none --no-checkout \
+      https://github.com/tlsfuzzer/python-ecdsa python-ecdsa
+  git -C python-ecdsa grep -n -iE \
+      "SECP112r[12]|SECP128r1|BRAINPOOLP(160|192)r1" \
+      bff40c6cf2340148d410d5b3def0e949c547caf1 -- 'src/ecdsa/test_*.py'
+  ```
+
 - **ECDH and point decoding**: Wycheproof has `ecdh_*` files for the
   names this prints, vendored only for secp256k1:
 
@@ -1467,11 +1495,25 @@ bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
 
   Its `src/ecdsa/test_ecdsa.py` (blob
   `c1e25829b8558876021f9cdf3401a95a4cd56075` at commit
-  `c98364927e406af037d8f9652ff18094f207dcec`) refuses a point of secp112r2
-  that is on the curve and outside the subgroup of the generator. The
-  point is checked with python-ecdsa's own code; this prints `True False
-  False`, that is on the curve, refused by `point_is_valid`, and the group
-  order times it is not the point at infinity:
+  `c98364927e406af037d8f9652ff18094f207dcec`) has a point of secp112r2
+  that is on the curve, and tests that expect `Public_key` and
+  `point_is_valid` to refuse it as outside the subgroup of the generator.
+  This prints them:
+
+  ```shell
+  blob=c1e25829b8558876021f9cdf3401a95a4cd56075
+  ```
+
+  ```shell
+  gh api -H 'Accept: application/vnd.github.raw' \
+      "repos/tlsfuzzer/python-ecdsa/git/blobs/${blob:?}" \
+      | grep -n -A12 "def test_.*not_scalar_multiple_of_base_point"
+  ```
+
+  The point is also checked with python-ecdsa's own code at the pinned
+  commit; this prints `True False False`, that is on the curve, refused by
+  `point_is_valid`, and the group order times it is not the point at
+  infinity:
 
   ```shell
   uv run --no-project \
