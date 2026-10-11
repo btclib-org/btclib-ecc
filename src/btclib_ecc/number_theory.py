@@ -144,10 +144,11 @@ def mod_inv_var(a: int, m: int) -> int:
 
     m does not have to be a prime.
 
-    `pow(a, -1, m)` is an Extended Euclidean Algorithm too -- CPython's
-    `long_invmod`, which is the loop `xgcd_var` runs with the second cofactor
-    dropped -- so this delegates the same algorithm to C rather than
-    interpreting it, and that is the whole of why it is called. It is not
+    `pow(a, -1, m)` is an Extended Euclidean Algorithm too: on an int,
+    CPython's `long_invmod`, which is the loop `xgcd_var` runs with the
+    second cofactor dropped; on gmpy2's mpz, GMP's `mpz_invert`. Either way
+    it delegates the algorithm to C rather than interpreting it, and that is
+    the whole of why it is called. It is not
     a constant-time inverse and neither was the bytecode one; SECURITY.md
     publishes the Python path as variable-time.
 
@@ -295,8 +296,8 @@ def mod_inv_batch_var(a: Sequence[int], m: int) -> list[int]:
     ..., a[0]*...*a[n-1] are formed, the last of them is inverted once,
     and the individual inverses are peeled back off it. So n inverses
     cost one inverse and 3(n-1) products, where n calls to `mod_inv_var`
-    are n extended Euclids -- an inverse modulo a 256-bit prime being
-    some thirty times a product.
+    are n extended Euclids -- an inverse modulo a 256-bit prime being,
+    on an int, some thirty times a product.
 
     An empty sequence has no inverses and is not an error: it is what a
     caller that filtered its own input is left with.
