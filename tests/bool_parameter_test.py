@@ -241,6 +241,17 @@ _KINDS = (
         {},
         valid=INSTALLED,
     ),
+    # `required` chooses between an answer and a raise for every call the
+    # bindings decline, so `required="no"` would turn the refusal on
+    # where `required=0` leaves it off. `valid=False`, so that the call
+    # this file makes leaves the state an installation is normally in
+    _Case(
+        "btclib_ecc.curves.curve.set_libsecp256k1_serving",
+        "required",
+        set_libsecp256k1_serving,
+        {"serving": INSTALLED},
+        valid=False,
+    ),
     # the one below decides no answer, which every kind above does, and
     # is here for the other half of the line: its `True` is the
     # permissive value, the refusal it was written to make, waived

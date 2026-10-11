@@ -58,7 +58,7 @@ from tests.all_test import library_modules
 # test_the_recorded_surface_is_the_whole_of_it asks for
 KEYWORD_ONLY: dict[str, list[str]] = {
     "btclib_ecc.curves:point_from_octets": ["hybrid"],
-    "btclib_ecc.curves:set_libsecp256k1_serving": ["serving"],
+    "btclib_ecc.curves:set_libsecp256k1_serving": ["serving", "required"],
     "btclib_ecc.ecc.borromean:BorromeanSig.__init__": ["check_validity"],
     "btclib_ecc.ecc.borromean:BorromeanSig.parse": ["check_validity"],
     "btclib_ecc.ecc.borromean:BorromeanSig.serialize": ["check_validity"],

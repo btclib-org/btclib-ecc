@@ -361,6 +361,14 @@ but a caller who built one by mistake learns nothing from True, and
 False would report a failed verification where there is no signature to
 fail (btclib-org/btclib-ecc#222).
 
+A verification also raises where the caller asked to be refused instead of
+served by the Python arithmetic: under
+`set_libsecp256k1_serving(serving=True, required=True)`, a verification the
+bindings decline for something the caller chose — an `hf`, a MuSig2 adaptor
+— raises `BTClibEccRuntimeError` and does not answer False, since False
+would report a signature that failed where none was checked
+(btclib-org/btclib-ecc#224).
+
 The line is the annotation, and deliberately not which built-in a helper
 happens to derive from: those two coincide only by accident
 (btclib-org/btclib#745). The `assert_*` twin beside each of these is the

@@ -976,9 +976,11 @@ def partial_sig_verify_(
     for a message of any size. The bindings have no adaptor extension at all
     (this module's own docstring's paragraph on cross-validating against zkp),
     so a session that carries one takes the Python arm regardless of the other
-    two conditions. Nothing else in this module is delegated -- `key_agg`,
-    `key_sort` and `nonce_agg` measured too close to their Python cost, or run
-    once per session already, to be worth a second code path.
+    two conditions, or raises where the bindings are required
+    (`curves.set_libsecp256k1_serving`). Nothing else in this module is
+    delegated -- `key_agg`, `key_sort` and `nonce_agg` measured too close to
+    their Python cost, or run once per session already, to be worth a second
+    code path.
 
     The signer's pubkey has to be one of the session's -- a membership test with
     no C equivalent, `musig_partial_sig_verify` answering a verdict for whatever
@@ -1011,9 +1013,8 @@ def partial_sig_verify_(
     # no vector pins which one a caller sees
     pub_key = bytes_from_octets(pub_key, _PK_SIZE)
     if (
-        _libsecp256k1_serves(secp256k1, sha256)
+        _libsecp256k1_serves(secp256k1, sha256, adaptor=session_ctx.adaptor is not None)
         and len(session_ctx.msg) == _SCALAR_SIZE
-        and session_ctx.adaptor is None
     ):
         cache, bindings_session = _bindings_session(session_ctx)
         try:

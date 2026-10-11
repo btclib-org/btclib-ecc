@@ -109,8 +109,9 @@ Python arithmetic, and SECURITY.md states which.
 
 **The package and the bindings.** Past this boundary is C code the
 package does not own. `btclib_ecc.curves.curve._libsecp256k1_serves`
-decides whether a call may cross, and each call site ands its own
-conditions onto it, so whether anything crosses is decided by one
+decides whether a call may cross. A caller's choice that the bindings do
+not take goes to it as a keyword, and only a condition on an input's value
+is and-ed on by the call site, so whether anything crosses is decided by one
 predicate and one switch, `btclib_ecc.curves.is_libsecp256k1_serving`
 being how a caller asks. The bindings are trusted for the answer, and the
 suite compares the Python arithmetic against them:

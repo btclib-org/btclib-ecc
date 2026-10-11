@@ -54,8 +54,9 @@ each defined by more than one of these modules.
 holds around it is conditional. What decides whether an operation here
 is one libsecp256k1 call is `curves.curve._libsecp256k1_serves` -- the
 process-wide dispatch switch, the curve and the hash function -- with
-the conditions of the call site anded onto it; whatever the conjunction
-declines runs the Python arithmetic, which the suite validates against
+a caller's choices that the bindings do not take passed to it as keywords,
+and a condition on an input's value and-ed on by the call site; whatever
+that declines runs the Python arithmetic, which the suite validates against
 the bindings but which is not constant-time. Nor is a Python object
 holding a secret zeroized, on either path. SECURITY.md's limitations
 section states each condition, argument by argument, and README.md

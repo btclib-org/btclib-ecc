@@ -89,6 +89,7 @@ from btclib_ecc.curves import (
 from btclib_ecc.curves.curve import (
     _assert_in_subgroup,
     _assert_valid_ec,
+    _BindingsRequiredError,
     _is_x_coordinate_var,
     _jac_double_mult_var,
     _libsecp256k1_serves,
@@ -666,7 +667,7 @@ def sign_(
     #
     # A commitment stays with the Python path: it tweaks the nonce, and
     # the nonce is the bindings' own to derive
-    if _libsecp256k1_serves(ec, hf) and commit_hash is None:
+    if _libsecp256k1_serves(ec, hf, commit_hash=commit_hash is not None):
         # the bindings take a scalar, and so does this module: what the
         # call buys is the range check and the octets
         q = scalar_from_prv_key(prv_key, ec)
@@ -1205,6 +1206,10 @@ def verify_(
     merely not authentic: a scalar at or above the group order, a key
     that does not lift, an equation that does not hold. See
     `_assert_structurally_valid_`.
+
+    Where the bindings are required (`curves.set_libsecp256k1_serving` with
+    `required=True`) and decline `hf`, it raises `BTClibEccRuntimeError`
+    and does not answer False: nothing was checked.
     """
     ec = sig.ec if isinstance(sig, Sig) else secp256k1
     parsed_sig = _assert_structurally_valid_(Q, sig, ec)
@@ -1217,6 +1222,8 @@ def verify_(
         assert_as_valid_(
             msg, Q, parsed_sig, hf, commit_hash=commit_hash, receipt=receipt
         )
+    except _BindingsRequiredError:
+        raise
     except (ValueError, BTClibEccRuntimeError):
         return False
 
@@ -1236,7 +1243,8 @@ def verify(
 
     commit is reduced by hf as msg is; `verify_` is the spelling that
     takes the two hashes. Raises and answers False for the same reasons
-    `verify_` does.
+    `verify_` does, and raises where the bindings are required and decline
+    `hf`.
     """
     ec = sig.ec if isinstance(sig, Sig) else secp256k1
     parsed_sig = _assert_structurally_valid_(Q, sig, ec)
@@ -1247,6 +1255,8 @@ def verify(
     # way, since it does not touch msg
     try:
         assert_as_valid(msg, Q, parsed_sig, hf, commit=commit, receipt=receipt)
+    except _BindingsRequiredError:
+        raise
     except (ValueError, BTClibEccRuntimeError):
         return False
 
@@ -1519,6 +1529,10 @@ def assert_batch_as_valid_(
         raise BTClibEccValueError(_err_msg(batch_size, "messages", msgs))
     if len(sigs) != batch_size:
         raise BTClibEccValueError(_err_msg(batch_size, "signatures", sigs))
+    # from two signatures up nothing hands hf to the bindings; this asks
+    # so that the batch answers as its batch of one does, which raises
+    # where the bindings are required and decline hf. The answer is unused
+    _libsecp256k1_serves(sigs[0].ec, hf)
     if batch_size == 1:
         assert_as_valid_(msgs[0], Qs[0], sigs[0], hf)
         return
@@ -1637,6 +1651,10 @@ def batch_verify_(
     has no reading for. It answers False otherwise: a
     failed verification and a well-formed key or scalar that is merely
     not authentic are both False, see `_assert_structurally_valid_`.
+
+    Where the bindings are required (`curves.set_libsecp256k1_serving` with
+    `required=True`) and decline `hf`, it raises `BTClibEccRuntimeError`
+    and does not answer False: nothing was checked.
     """
     _assert_batch_sequences(msgs, Qs, sigs)
     _assert_batch_not_empty(msgs, Qs, sigs)
@@ -1646,6 +1664,8 @@ def batch_verify_(
     # than excluded from the except
     try:
         assert_batch_as_valid_(msgs, Qs, sigs, hf)
+    except _BindingsRequiredError:
+        raise
     except (ValueError, BTClibEccRuntimeError):
         return False
 
@@ -1660,7 +1680,8 @@ def batch_verify(
 ) -> bool:
     """Batch verification of BIP340 signatures.
 
-    Raises and answers False for the same reasons `batch_verify_` does.
+    Raises and answers False for the same reasons `batch_verify_` does,
+    and raises where the bindings are required and decline `hf`.
     """
     _assert_batch_sequences(ms, Qs, sigs)
     _assert_batch_not_empty(ms, Qs, sigs)
@@ -1672,6 +1693,8 @@ def batch_verify(
     # way, since it does not touch a message
     try:
         assert_batch_as_valid(ms, Qs, sigs, hf)
+    except _BindingsRequiredError:
+        raise
     except (ValueError, BTClibEccRuntimeError):
         return False
 
