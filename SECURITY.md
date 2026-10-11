@@ -254,8 +254,13 @@ package is used to teach and to prototype as much as to build:
     that one on a Z coordinate `_blinded_jac` has randomized, which is
     why it is named here as a cost and not as a channel; and
     `multi_mult_var` is Bos-Coster, whose shape is the scalars
-    themselves. Using it on key material that matters is a choice, and
-    this is the notice of it
+    themselves. The `gmpy2` extra hands the Jacobian group law and its
+    inverses to GMP, and changes none of this: gmpy2 calls GMP's `mpz`
+    functions, and the GMP manual's [*Low-level functions for
+    cryptography*](https://gmplib.org/manual/Low_002dlevel-Functions)
+    names only its `mpn_sec_` and `mpn_cnd_` functions as written for
+    side-channel resistance. Using the Python arithmetic on key material
+    that matters is a choice, and this is the notice of it
 - **the delegated multiplication of a point that is not the generator is
     constant time in its scalar where the multiplication is `mult`'s, and
     variable time where it is a `_var` one's.** `mult` reaches
