@@ -114,7 +114,7 @@ bindings = ["btclib-secp256k1>=0.8.0.8"]
 # same test
 gmpy2 = ["gmpy2>=2.3.2"]
 # what runs the suite, without what the suite delegates to: `test` is the
-# harness with both extras, while `harness` alone is the environment a run
+# harness with the extras, while `harness` alone is the environment a run
 # without the bindings and without gmpy2 builds. uv's `--no-group`
 # suppresses a group that was selected, not one another group includes
 harness = [
