@@ -642,6 +642,16 @@ unresolved cross-reference into a warning for `-W` to fail on, and
 `conf.py`'s `intersphinx_mapping` is what resolves a reference into the
 standard library.
 
+One more check is not in the gate, because it takes minutes: the arm
+authority table's re-derivation, whose command is under *Reproducing what CI
+runs*. Run it when the diff touches `tests/py_arm_authority_test.py`,
+`.github/scripts/check_py_arm_authority.py` or
+`.github/workflows/py-arm-authority.yml`. Run it also when the diff changes
+a function that calls `_libsecp256k1_serves`, which can move the table. The
+workflow's `paths:` filter names only the three files above and not `src/`,
+so a pull request that changes such a function is not checked by it, and the
+failure shows on `main`.
+
 **Every job that installs from `uv.lock` passes `--locked`.** The jobs
 that do not are deliberate:
 
@@ -788,6 +798,25 @@ assert type(secp256k1._modulus) is int, 'gmpy2 is installed'"
 UV_PROJECT_ENVIRONMENT=.venv-int-arithmetic \
     uv run --locked --no-default-groups --group harness --group bindings \
     pytest --no-cov
+```
+
+`py-arm-authority.yml` — each third-party vector module run alone under
+coverage, with no bindings installed, and the result compared with the table
+in `tests/py_arm_authority_test.py`. It takes minutes. `--dry-run` is what the
+workflow passes on a pull request: it reports a disagreement and opens no
+issue. The environment assertion comes first, as above:
+
+```shell
+UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
+    uv run --locked --no-default-groups --group harness \
+    python -c "from btclib_ecc._libsecp256k1 import INSTALLED;
+assert not INSTALLED, 'btclib_secp256k1 is installed';
+from btclib_ecc.curves import is_libsecp256k1_serving;
+assert not is_libsecp256k1_serving()"
+UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
+    uv run --locked --no-default-groups --group harness \
+    python .github/scripts/check_py_arm_authority.py \
+    "Python arm authority table disagrees with a fresh measurement" --dry-run
 ```
 
 `test.yml`, the `dist` job — build the distribution files, check them and
