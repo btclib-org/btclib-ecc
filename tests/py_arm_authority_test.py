@@ -94,6 +94,10 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
         "test_vectors_verify_proof.csv",
     ),
     "ecc/dlc_oracle_test.py": ("dlc_schnorr_test.json",),
+    # what it checks is that the recovered key is the WIF's key, which no
+    # libsecp256k1 output supplies; `tests/_data/README.md` has the details in
+    # its entry for `bitcoin_core_compact_vectors.json`
+    "ecc/dsa_recovery_test.py": ("bitcoin_core_compact_vectors.json",),
     "ecc/ecdsa_adaptor_test.py": ("ecdsa_adaptor.json",),
     "ecc/ellswift_test.py": (
         "ellswift_decode_test_vectors.csv",
@@ -131,6 +135,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.curve._jac_double_mult_var": (
         "ecc/der_test.py",
         "ecc/dlc_oracle_test.py",
+        "ecc/dsa_recovery_test.py",
         "ecc/ecdsa_adaptor_test.py",
         "ecc/frost_test.py",
         "ecc/musig2_test.py",
@@ -143,6 +148,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/der_test.py",
         "ecc/dlc_oracle_test.py",
         "ecc/dleq_test.py",
+        "ecc/dsa_recovery_test.py",
         "ecc/ecdsa_adaptor_test.py",
         "ecc/ellswift_test.py",
         "ecc/frost_test.py",
@@ -167,6 +173,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/der_test.py",
         "ecc/dlc_oracle_test.py",
         "ecc/dleq_test.py",
+        "ecc/dsa_recovery_test.py",
         "ecc/ecdsa_adaptor_test.py",
         "ecc/ellswift_test.py",
         "ecc/frost_test.py",
@@ -199,9 +206,9 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/rfc6979_test.py",
         "ecc/wycheproof_test.py",
     ),
-    "ecc.dsa.recover_pub_key_": (),
-    "ecc.dsa.recover_pub_keys_": (),
-    "ecc.dsa.recover_sec_": (),
+    "ecc.dsa.recover_pub_key_": ("ecc/dsa_recovery_test.py",),
+    "ecc.dsa.recover_pub_keys_": ("ecc/dsa_recovery_test.py",),
+    "ecc.dsa.recover_sec_": ("ecc/dsa_recovery_test.py",),
     "ecc.dsa.sign_": (
         "ecc/der_test.py",
         "ecc/rfc6979_test.py",
@@ -235,21 +242,17 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 #   reaches `dsa.sign_` or `dsa.assert_as_valid_` through the free
 #   functions; pointing one of those modules at the class is a test to
 #   write rather than a vector to find.
-# - `ecc.dsa.recover_pub_key_`, `ecc.dsa.recover_pub_keys_`,
-#   `ecc.dsa.recover_sec_` and `ecc.dsa.sign_recoverable_`, key
-#   recovery. No vendored vector set recovers a key from an ECDSA
-#   signature: the bitcoin message signature is the scheme that does, and
-#   its vectors belong to the package that implements it. A recovery
-#   vector set, or recoveries built against those, is what would close
-#   these.
+# - `ecc.dsa.sign_recoverable_`, signing with the recovery id. The only
+#   vector that holds it is Bitcoin Core's, and
+#   `tests/ecc/dsa_sign_recoverable_test.py`, which checks it, is left out
+#   of `_THIRD_PARTY_VECTORS` for the reason `tests/_data/README.md` gives
+#   in its entry for `bitcoin_core_compact_vectors.json`.
+#   A recoverable signature made by another implementation would close it.
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
         "ecc.dsa.Signer.__init__",
         "ecc.dsa.Signer.sign_",
-        "ecc.dsa.recover_pub_key_",
-        "ecc.dsa.recover_pub_keys_",
-        "ecc.dsa.recover_sec_",
         "ecc.dsa.sign_recoverable_",
     }
 )
