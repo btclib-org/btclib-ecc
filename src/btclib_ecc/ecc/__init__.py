@@ -55,7 +55,7 @@ holds around it is conditional. What decides whether an operation here
 is one libsecp256k1 call is `curves.curve._libsecp256k1_serves` -- the
 process-wide dispatch switch, the curve and the hash function -- with
 a caller's choices that the bindings do not take passed to it as keywords,
-and a condition on an input's value anded on by the call site; whatever
+and a condition on an input's value and-ed on by the call site; whatever
 that declines runs the Python arithmetic, which the suite validates against
 the bindings but which is not constant-time. Nor is a Python object
 holding a secret zeroized, on either path. SECURITY.md's limitations

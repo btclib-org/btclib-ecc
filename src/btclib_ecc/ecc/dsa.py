@@ -1429,9 +1429,7 @@ class Signer:
     precisely so that nothing a caller passes afterwards could move an
     instance from one arm to the other -- `wipe`'s promise would
     otherwise depend on an argument to a later call rather than on the
-    object itself. The one exception is `required`: an instance built on the
-    Python arm raises at a signature where the bindings are required and
-    would now serve its `ec` and `hf`, or decline its `hf`.
+    object itself. `required` is the one exception: SECURITY.md says how.
 
     No `pub_key` argument either, matching `ssa.Signer`: the point of
     holding one is that every signature checks under it, so there is
@@ -1460,8 +1458,6 @@ class Signer:
         # otherwise re-derive it per call: `None` doubles as "this
         # instance signs on the Python arm", the same role `ssa.Signer`
         # gives `self._signer`, and is what `wipe` and `sign_` both read.
-        # Under `required`, an instance holding None asks
-        # `_libsecp256k1_serves` again at each signature
         self._pub_key_sec: bytes | None = (
             _sec_from_pub_key(Q, ec) if _libsecp256k1_serves(ec, hf) else None
         )
@@ -1562,9 +1558,7 @@ class Signer:
             # is: these are the bindings' own computed scalars
             return sig.serialize(check_validity=False)
 
-        # the arm is the one decided at construction; under `required` the
-        # predicate refuses a signer built without the bindings where they
-        # would serve it now, and refuses a hash function they decline
+        # raises under `required`; otherwise the arm stays as constructed
         _libsecp256k1_serves(self._ec, self._hf, held_python_arm=True)
 
         # the challenge

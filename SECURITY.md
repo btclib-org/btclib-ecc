@@ -24,12 +24,10 @@ follows within 90 days.
 secp256k1 arithmetic is delegated, where the optional bindings are
 installed, to [btclib-secp256k1](https://github.com/btclib-org/btclib-secp256k1)
 and through it to [libsecp256k1](https://github.com/bitcoin-core/secp256k1),
-each with its own security policy. Not every call: one predicate decides
--- a process-wide dispatch switch, the curve and the hash function --
-with a caller's choices that the bindings do not take passed to it as
-keywords and, at the call site, a condition on an input's value and-ed on,
-and
-*Limitations, not vulnerabilities* below states each of them. Report a
+each with its own security policy. Not every call: one predicate decides,
+from a process-wide dispatch switch, the curve, the hash function and the
+caller's other choices, and a call site may add a condition on an input's
+value. *Limitations, not vulnerabilities* below states each of them. Report a
 flaw wherever you found it,
 though: routing a report is the maintainers' job, not the reporter's,
 and a doubt about which project owns a flaw is not a reason to keep it to
@@ -133,7 +131,7 @@ package is used to teach and to prototype as much as to build:
     this package no longer holding a private key as a Python `int`, which
     is a change to that representation and not to a call site.
     `dsa.Signer.__init__` at `self._q.to_bytes(32, "big")`
-    (`src/btclib_ecc/ecc/dsa.py:1476`) crosses the same boundary the
+    (`src/btclib_ecc/ecc/dsa.py:1472`) crosses the same boundary the
     other way, once, at construction: the plain `int`
     `scalar_from_prv_key` already produced becomes a transient `bytes` on
     the way into the owned buffer `wipe` overwrites afterwards. That

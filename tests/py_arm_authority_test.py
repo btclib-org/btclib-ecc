@@ -309,10 +309,10 @@ def _arm_locations() -> dict[str, tuple[Path, int, int]]:
 def _functions(
     tree: ast.AST, owner: str = ""
 ) -> Iterator[tuple[ast.FunctionDef | ast.AsyncFunctionDef, str]]:
-    """Yield each function with the `Class.` that defines it, or "".
+    """Yield each function with `Class.` for the class it is defined in, or "".
 
-    Only the class a method is defined in: a function nested in a function
-    is still attributed to its enclosing function as well as to itself.
+    A nested function is yielded too; its enclosing function's source
+    contains it, so both count as arms.
     """
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.ClassDef):
@@ -326,8 +326,8 @@ def _functions(
 def _py_arms() -> set[str]:
     """Return every function of the package holding a dispatch to the bindings.
 
-    The keys of `_arm_locations()`, which is where the counting rule --
-    and the collision it can hit -- is written down.
+    The keys of `_arm_locations()`, which is where the counting rule is
+    written down.
     """
     return set(_arm_locations())
 
