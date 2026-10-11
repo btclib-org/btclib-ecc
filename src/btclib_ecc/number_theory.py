@@ -21,9 +21,24 @@ import math
 import secrets
 from collections.abc import Sequence
 from math import isqrt
+from typing import cast
 
 from btclib_ecc._utils import hex_string, is_integer
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
+
+# the `gmpy2` extra, which a plain install does not have. A gmpy2 that is
+# installed and fails to import is not absent, and raises
+try:
+    from gmpy2 import mpz  # type: ignore[import-untyped]
+
+    _FIELD_TYPES: tuple[type, ...] = (mpz,)
+except (
+    ModuleNotFoundError
+) as exc:  # pragma: no cover -- only an interpreter without gmpy2 reaches this
+    if exc.name != "gmpy2":
+        raise
+    mpz = None
+    _FIELD_TYPES = ()
 
 __all__ = [
     "legendre_symbol_var",
@@ -45,9 +60,26 @@ def _assert_valid_operand(a: int) -> None:
     signature that says `int`: `mod_inv_var(3.0, 7)` answers `5.0`, which is
     not a residue and not an error either. `is_integer` is the check, and
     its docstring says why a bool is excluded.
+
+    gmpy2's mpz is an integer too, where gmpy2 is installed: it is what
+    `_field_element` makes of a curve's modulus, and an operand of that
+    type comes back as one.
     """
-    if not is_integer(a):
+    if not (is_integer(a) or isinstance(a, _FIELD_TYPES)):
         raise BTClibEccTypeError(f"not an integer: {type(a).__name__}")
+
+
+def _field_element(i: int) -> int:
+    """Return i as gmpy2's mpz where the `gmpy2` extra is installed.
+
+    i itself where it is not. A curve converts its modulus once, and a
+    product reduced by an mpz is an mpz, so its group law then runs on GMP.
+
+    The annotation says int: the operators the group law applies, and `pow`,
+    answer an mpz as they answer an int. It is not an int subclass, so what
+    leaves the package is converted back with `int`.
+    """
+    return i if mpz is None else cast("int", mpz(i))
 
 
 def _assert_valid_modulus(m: int) -> None:
@@ -95,7 +127,7 @@ def _no_inverse(m: int) -> BTClibEccValueError:
     The operand is not named: it may be a secret.
     """
     err_msg = "no inverse mod "
-    err_msg += f"{hex_string(m)}" if m > 0xFFFFFFFF else f"{m}"
+    err_msg += f"{hex_string(int(m))}" if m > 0xFFFFFFFF else f"{m}"
     return BTClibEccValueError(err_msg)
 
 
@@ -112,10 +144,11 @@ def mod_inv_var(a: int, m: int) -> int:
 
     m does not have to be a prime.
 
-    `pow(a, -1, m)` is an Extended Euclidean Algorithm too -- CPython's
-    `long_invmod`, which is the loop `xgcd_var` runs with the second cofactor
-    dropped -- so this delegates the same algorithm to C rather than
-    interpreting it, and that is the whole of why it is called. It is not
+    `pow(a, -1, m)` is an Extended Euclidean Algorithm too: on an int,
+    CPython's `long_invmod`, which is the loop `xgcd_var` runs with the
+    second cofactor dropped; on gmpy2's mpz, GMP's `mpz_invert`. Either way
+    it delegates the algorithm to C rather than interpreting it, and that is
+    the whole of why it is called. It is not
     a constant-time inverse and neither was the bytecode one; SECURITY.md
     publishes the Python path as variable-time.
 
@@ -263,8 +296,8 @@ def mod_inv_batch_var(a: Sequence[int], m: int) -> list[int]:
     ..., a[0]*...*a[n-1] are formed, the last of them is inverted once,
     and the individual inverses are peeled back off it. So n inverses
     cost one inverse and 3(n-1) products, where n calls to `mod_inv_var`
-    are n extended Euclids -- an inverse modulo a 256-bit prime being
-    some thirty times a product.
+    are n extended Euclids -- an inverse modulo a 256-bit prime being,
+    on an int, some thirty times a product.
 
     An empty sequence has no inverses and is not an error: it is what a
     caller that filtered its own input is left with.
@@ -427,7 +460,7 @@ def mod_sqrt_var(a: int, p: int) -> int:
 
     if r * r % p != a:
         err_msg = "no root mod "
-        err_msg += f"'{hex_string(p)}'" if p > 0xFFFFFFFF else f"{p}"
+        err_msg += f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
         raise BTClibEccValueError(err_msg)
     return r
 
@@ -448,7 +481,7 @@ def tonelli_var(a: int, p: int) -> int:
     # Check solution existence for an odd prime p
     if legendre_symbol_var(a, p) != 1:
         err_msg = "no root mod "
-        err_msg += f"'{hex_string(p)}'" if p > 0xFFFFFFFF else f"{p}"
+        err_msg += f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
         raise BTClibEccValueError(err_msg)
 
     # Factor p-1 on the form q * 2^s (with q odd)
@@ -472,7 +505,7 @@ def tonelli_var(a: int, p: int) -> int:
         z += 1
         if z == p:
             err_msg = "p is not prime: "
-            err_msg += f"'{hex_string(p)}'" if p > 0xFFFFFFFF else f"{p}"
+            err_msg += f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
             raise BTClibEccValueError(err_msg)
     c = pow(z, q, p)
     r = pow(a, (q + 1) // 2, p)
@@ -502,7 +535,7 @@ def tonelli_var(a: int, p: int) -> int:
                 break
         else:
             err_msg = "p is not prime: "
-            err_msg += f"'{hex_string(p)}'" if p > 0xFFFFFFFF else f"{p}"
+            err_msg += f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
             raise BTClibEccValueError(err_msg)
 
     return r

@@ -35,6 +35,8 @@ top-level name of every module `src/` imports, at any depth of the code
 and in any spelling of the statement. Beside the package's own, what it
 lists is the one dependency `pyproject.toml` declares,
 `typing_extensions`; `btclib_secp256k1`, which is the `secp256k1` extra;
+`gmpy2`, which is the `gmpy2` extra and brings in native code, GMP with
+MPFR and MPC in its wheels, for the integers of the Python arithmetic;
 and standard-library modules, none of which is a network client or a
 process launcher. `os` is there for `os.environ` alone, `json` and
 `pathlib` to read the curve catalogue under `src/btclib_ecc/curves/_data/`,
