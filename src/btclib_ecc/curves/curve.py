@@ -621,7 +621,10 @@ def set_libsecp256k1_serving(*, serving: bool) -> None:
     The environment variable is the other way in, and the earlier one:
     `BTCLIB_ECC_NO_LIBSECP256K1` set to a non-empty value makes the initial
     state False, which is what a test runner wants -- it settles before
-    the first import, where this function cannot.
+    the first import, where this function cannot. It is not a lock: any code in
+    the process can reverse it with this function, so a test framework that
+    must not run on the bindings checks `is_libsecp256k1_serving` itself, where
+    it needs the answer.
 
     The first `serving=True` after that variable refused the bindings
     checks them against known answers. If one is wrong it raises

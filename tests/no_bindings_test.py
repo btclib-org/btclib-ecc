@@ -243,6 +243,38 @@ def test_the_environment_variable_refuses_the_installed_bindings() -> None:
     assert answered == ["True", "True", "True"]
 
 
+@needs_bindings
+def test_the_environment_variable_is_an_initial_state_not_a_lock() -> None:
+    """The setter reverses `BTCLIB_ECC_NO_LIBSECP256K1`, and a sign follows it.
+
+    Issue btclib-org/btclib-ecc#226: SECURITY.md and the setter's docstring
+    say the variable sets the initial state only. The child starts with it
+    set, turns the bindings on, and signs; the bindings' `sign` is wrapped to
+    record that the call reached them.
+    """
+    probe = (
+        "from btclib_ecc._libsecp256k1 import dsa as bindings;"
+        "from btclib_ecc.ecc import dsa;"
+        "from btclib_ecc.curves import is_libsecp256k1_serving as serving,"
+        " set_libsecp256k1_serving as setter;"
+        "calls = [];"
+        "real = bindings.sign;"
+        "bindings.sign = lambda *a, **k: (calls.append(1), real(*a, **k))[1];"
+        "before = serving();"
+        "setter(serving=True);"
+        f"dsa.sign({_MSG_HASH!r}, {_PRV_KEY}, grind=False);"
+        "print(before, serving(), len(calls))"
+    )
+    answered = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
+        env=_child_env(**{NO_LIBSECP256K1: "1"}),
+    ).stdout.split()
+    assert answered == ["False", "True", "1"]
+
+
 # `btclib-secp256k1` 0.8.0.6's own shape, from the issue: every name this
 # module takes from the package is there except
 # `btclib_secp256k1.ecdh.shared_point` -- the package is found, and one name
