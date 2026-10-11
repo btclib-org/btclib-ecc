@@ -1558,7 +1558,8 @@ class Signer:
             # is: these are the bindings' own computed scalars
             return sig.serialize(check_validity=False)
 
-        # raises under `required`; otherwise the arm stays as constructed
+        # under `required`, raises on secp256k1;
+        # otherwise the arm stays as constructed
         _libsecp256k1_serves(self._ec, self._hf, held_python_arm=True)
 
         # the challenge

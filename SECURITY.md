@@ -176,7 +176,7 @@ package is used to teach and to prototype as much as to build:
     above, then for secp256k1 as the curve, then for a hash function
     that is sha256 or absent -- it declines
     `hf is not None and hf is not sha256`
-    (`src/btclib_ecc/curves/curve.py:696`) -- with whatever further
+    (`src/btclib_ecc/curves/curve.py:697`) -- with whatever further
     options the call site passes it. The hash function is matched
     by identity rather than by what it computes, so
     `functools.partial(sha256)`, or any other wrapper a caller writes to
@@ -292,7 +292,7 @@ package is used to teach and to prototype as much as to build:
     that arm and infinity is not delegated at all --
     `curve._libsecp256k1_mult` at
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
-    (`src/btclib_ecc/curves/curve.py:968`). `dh.diffie_hellman` at
+    (`src/btclib_ecc/curves/curve.py:969`). `dh.diffie_hellman` at
     `sec = libsecp256k1_shared_point(`
     (`src/btclib_ecc/ecc/dh.py:119`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
@@ -313,7 +313,7 @@ package is used to teach and to prototype as much as to build:
     (`src/btclib_ecc/ecc/pedersen.py:382`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/btclib_ecc/curves/curve.py:1429`):
+    (`src/btclib_ecc/curves/curve.py:1430`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at
