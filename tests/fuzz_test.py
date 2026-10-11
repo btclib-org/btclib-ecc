@@ -17,8 +17,11 @@ expect anything else.
 `fuzz/`'s atheris harnesses ask the same question of the signature and
 envelope decoders for an hour a week; this asks it of every class
 decoder and of the module-level decoders in `BINARY_PARSERS`, on every
-run, for as long as hypothesis spends on a test. The wire inputs of
-musig2, frost and dleq are not driven here.
+run, for as long as hypothesis spends on a test. `WIRE_FUNCTIONS` asks
+it of the functions that read what peers send: musig2's and frost's
+nonce aggregation, musig2's key aggregation, dleq's proof verification
+and the two adaptor verifications. The other functions of those modules
+are not driven here.
 """
 
 from __future__ import annotations
@@ -31,8 +34,20 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from btclib_ecc.curves.sec_point import point_from_octets
-from btclib_ecc.ecc import dsa, ecies, ellswift, pedersen, ssa
+from btclib_ecc.curves import mult, secp256k1
+from btclib_ecc.curves.sec_point import bytes_from_point, point_from_octets
+from btclib_ecc.ecc import (
+    dleq,
+    dsa,
+    ecdsa_adaptor,
+    ecies,
+    ellswift,
+    frost,
+    musig2,
+    pedersen,
+    ssa,
+    ssa_adaptor,
+)
 from btclib_ecc.ecc.borromean import BorromeanSig
 from btclib_ecc.ecc.rangeproof import RangeProof
 from btclib_ecc.exceptions import (
@@ -226,3 +241,118 @@ def test_the_mutated_samples_parse() -> None:
     """A sample the decoder refuses would make every mutation a refusal."""
     for parse, sample in MUTATED_PARSERS.values():
         assert parse(sample).serialize() == sample
+
+
+# The functions that read what peers send, each with the type it returns
+# on input it does not refuse: the aggregate, or a boolean for a
+# verification
+_KEY = bytes_from_point(secp256k1.G, secp256k1)
+_X_ONLY_KEY = _KEY[1:]
+_PUB_NONCE = _KEY + bytes_from_point(mult(2))
+_MSG = bytes(range(32))
+_DLEQ_A = bytes_from_point(mult(3))
+_DLEQ_PROOF = dleq.generate_proof(3, _KEY, bytes(32))
+_SSA_PRE_SIG = ssa_adaptor.presign(_MSG, 1, _KEY, bytes(32))
+_ECDSA_ADAPTOR_SIG = ecdsa_adaptor.encrypt(_MSG, 1, _KEY, bytes(32))
+
+
+# Where each scalar of a sample starts: dleq's e and s, the s of a
+# pre-signature after its point, and the s_a, e and s of an ECDSA adaptor
+# signature after its two points
+_SCALAR_OFFSETS = {
+    _DLEQ_PROOF: (0, 32),
+    _SSA_PRE_SIG: (33,),
+    _ECDSA_ADAPTOR_SIG: (66, 98, 130),
+}
+
+
+def _wire(sample: bytes) -> st.SearchStrategy[bytes]:
+    """Return an argument that is random octets or a near-miss of sample.
+
+    Where sample holds scalars, one of them set to 0xff or 0x00 octets is
+    a near-miss too: a scalar that is not below n, or zero.
+    """
+    strategies = [st.binary(max_size=len(sample) + 8), _mutations(sample)]
+    if offsets := _SCALAR_OFFSETS.get(sample):
+        strategies.append(
+            st.builds(
+                lambda i, fill: sample[:i] + bytes([fill]) * 32 + sample[i + 32 :],
+                st.sampled_from(offsets),
+                st.sampled_from([0x00, 0xFF]),
+            )
+        )
+    return st.one_of(*strategies)
+
+
+def _wire_args(*samples: bytes) -> st.SearchStrategy[tuple[bytes, ...]]:
+    """Return the arguments of a call, all valid but at most a few.
+
+    An argument refused by the first check hides the ones behind it, so
+    most calls corrupt one argument and leave the others as they are.
+    """
+    one_corrupt = [
+        st.builds(
+            lambda bad, i=i: (*samples[:i], bad, *samples[i + 1 :]), _wire(sample)
+        )
+        for i, sample in enumerate(samples)
+    ]
+    return st.one_of(*one_corrupt, st.tuples(*(_wire(sample) for sample in samples)))
+
+
+def _wire_list(sample: bytes) -> st.SearchStrategy[tuple[list[bytes]]]:
+    """Return a list of near-misses and valid samples, as the one argument."""
+    item = st.one_of(st.just(sample), _wire(sample))
+    return st.tuples(st.lists(item, max_size=4))
+
+
+WIRE_FUNCTIONS: dict[str, tuple[Callable[..., Any], type, st.SearchStrategy[Any]]] = {
+    "musig2.nonce_agg": (musig2.nonce_agg, bytes, _wire_list(_PUB_NONCE)),
+    "musig2.key_agg": (musig2.key_agg, musig2.KeyAggContext, _wire_list(_KEY)),
+    "frost.nonce_agg": (frost.nonce_agg, bytes, _wire_list(_PUB_NONCE)),
+    "dleq.verify_proof": (
+        dleq.verify_proof,
+        bool,
+        _wire_args(_DLEQ_A, _KEY, _DLEQ_A, _DLEQ_PROOF),
+    ),
+    "ssa_adaptor.verify": (
+        ssa_adaptor.verify,
+        bool,
+        _wire_args(_SSA_PRE_SIG, _MSG, _X_ONLY_KEY, _KEY),
+    ),
+    "ecdsa_adaptor.verify": (
+        ecdsa_adaptor.verify,
+        bool,
+        _wire_args(_ECDSA_ADAPTOR_SIG, _MSG, _KEY, _KEY),
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    "function, answer, arguments",
+    WIRE_FUNCTIONS.values(),
+    ids=list(WIRE_FUNCTIONS.keys()),
+)
+@given(data=st.data())
+def test_wire_function_honors_the_exception_contract(
+    function: Callable[..., Any],
+    answer: type,
+    arguments: st.SearchStrategy[tuple[Any, ...]],
+    data: st.DataObject,
+) -> None:
+    """Fuzz the multi-argument wire functions: a refusal, or the right type."""
+    args = data.draw(arguments)
+    try:
+        result = function(*args)
+    except CONTRACT:
+        return
+    assert isinstance(result, answer)
+
+
+def test_the_wire_samples_are_accepted() -> None:
+    """A sample the function refuses would make every mutation a refusal."""
+    assert musig2.nonce_agg([_PUB_NONCE])
+    assert isinstance(musig2.key_agg([_KEY]), musig2.KeyAggContext)
+    assert frost.nonce_agg([_PUB_NONCE])
+    assert dleq.verify_proof(_DLEQ_A, _KEY, _DLEQ_A, _DLEQ_PROOF)
+    assert ssa_adaptor.verify(_SSA_PRE_SIG, _MSG, _X_ONLY_KEY, _KEY)
+    assert ecdsa_adaptor.verify(_ECDSA_ADAPTOR_SIG, _MSG, _KEY, _KEY)
