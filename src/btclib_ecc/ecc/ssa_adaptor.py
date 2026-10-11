@@ -148,7 +148,7 @@ def presign(
     return bytes_from_point(R1, secp256k1) + s.to_bytes(_SCALAR_SIZE, "big")
 
 
-def _parse(pre_sig: Octets) -> tuple[Point, int]:
+def _parse_var(pre_sig: Octets) -> tuple[Point, int]:
     """Return (R', s), refusing an R' that is no point and an s not below n."""
     data = bytes_from_octets(pre_sig, _PRE_SIG_SIZE)
     R1 = point_from_octets_var(data[:_POINT_SIZE])
@@ -168,7 +168,7 @@ def extract(pre_sig: Octets, msg: Octets, pub_key: ssa.BIP340PubKey) -> Point:
     A BTClibEccValueError for an R' that is no point, an s not below n,
     and an R' whose k*G or T is infinity.
     """
-    R1, s = _parse(pre_sig)
+    R1, s = _parse_var(pre_sig)
     m = bytes_from_octets(msg, _SCALAR_SIZE)
     P = ssa.point_from_bip340pub_key_var(pub_key)
 
@@ -231,7 +231,7 @@ def adapt(pre_sig: Octets, sec_adaptor: Integer) -> ssa.Sig:
     of the pre-signature's adaptor point, the signature does not verify.
     `ssa.verify_` is the caller's to run.
     """
-    R1, s = _parse(pre_sig)
+    R1, s = _parse_var(pre_sig)
     t = scalar_from_prv_key(sec_adaptor)
     if R1[1] % 2:
         t = secp256k1.n - t
@@ -246,7 +246,7 @@ def extract_adaptor(sig: ssa.Sig | Octets, pre_sig: Octets) -> int:
     does not come from `adapt` yields a wrong secret, and nothing here
     can tell.
     """
-    R1, s_pre = _parse(pre_sig)
+    R1, s_pre = _parse_var(pre_sig)
     if isinstance(sig, ssa.Sig):
         if sig.ec != secp256k1:
             raise BTClibEccValueError("not a secp256k1 signature")

@@ -380,7 +380,7 @@ class ThresholdInfo:
         )
 
 
-def _parse_present_pub_shares(
+def _parse_present_pub_shares_var(
     pub_shares: Sequence[bytes | None],
 ) -> tuple[list[int], list[Point]]:
     """Return the identifiers and points of every non-`None` entry.
@@ -429,7 +429,7 @@ def validate_threshold_info(info: ThresholdInfo) -> None:
     except BTClibEccValueError as e:
         raise BTClibEccValueError("The thresh_pk is not a valid point.") from e
 
-    parsed_ids, parsed_points = _parse_present_pub_shares(pub_shares)
+    parsed_ids, parsed_points = _parse_present_pub_shares_var(pub_shares)
     if len(parsed_ids) < t:
         raise BTClibEccValueError("At least t pubshares must be present.")
 
@@ -673,13 +673,13 @@ def nonce_agg(pub_nonces: Sequence[Octets]) -> bytes:
     return agg_nonce
 
 
-def _parse_session_pub_shares(
+def _parse_session_pub_shares_var(
     ids: Sequence[int], n: int, pub_shares: Sequence[bytes] | None
 ) -> list[Point]:
     """Return every pubshare's point, checking each id and share in step.
 
     Split out of `_validate_session_params` for the reason
-    `_parse_present_pub_shares` is split out of `validate_threshold_info`.
+    `_parse_present_pub_shares_var` is split out of `validate_threshold_info`.
     """
     pub_share_points: list[Point] = []
     for idx, signer_id in enumerate(ids):
@@ -715,7 +715,7 @@ def _validate_session_params(
             "The pubshares and ids lists must have the same length."
         )
 
-    pub_share_points = _parse_session_pub_shares(ids, n, pub_shares)
+    pub_share_points = _parse_session_pub_shares_var(ids, n, pub_shares)
     if _has_duplicates(ids):
         raise BTClibEccValueError("The ids list contains duplicate elements.")
     if (

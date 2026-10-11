@@ -182,7 +182,7 @@ def encrypt(
     )
 
 
-def _parse(adaptor_sig: Octets) -> tuple[Point, Point, int, int, int]:
+def _parse_var(adaptor_sig: Octets) -> tuple[Point, Point, int, int, int]:
     """Return (R, R_a, s_a, e, s), refusing what the specification refuses.
 
     A wrong length, a point that is not on the curve, an s_a or s not in
@@ -225,7 +225,7 @@ def assert_as_valid(
     equation that does not balance, and for an argument that is
     malformed.
     """
-    R, Ra, s_a, e, s = _parse(adaptor_sig)
+    R, Ra, s_a, e, s = _parse_var(adaptor_sig)
     m = _scalar(bytes_from_octets(msg_hash, _SCALAR_SIZE))
     X = point_from_pub_key(pub_key)
     Y = point_from_pub_key(enc_key)
@@ -283,7 +283,7 @@ def decrypt(adaptor_sig: Octets, dec_key: Integer) -> Sig:
     the adaptor signature and dec_key is the discrete logarithm of its
     enc_key: nothing here checks either.
     """
-    R, _, s_a, _, _ = _parse(adaptor_sig)
+    R, _, s_a, _, _ = _parse_var(adaptor_sig)
     y = scalar_from_prv_key(dec_key)
     s = s_a * mod_inv(y, secp256k1.n) % secp256k1.n
     return Sig(R[0] % secp256k1.n, min(s, secp256k1.n - s))
@@ -298,7 +298,7 @@ def recover(adaptor_sig: Octets, sig: Sig | Octets, enc_key: PubKey) -> int:
     negation: the signature is not a decryption of this adaptor
     signature under this key.
     """
-    R, _, s_a, _, _ = _parse(adaptor_sig)
+    R, _, s_a, _, _ = _parse_var(adaptor_sig)
     Y = point_from_pub_key(enc_key)
     if isinstance(sig, Sig):
         if sig.ec != secp256k1:

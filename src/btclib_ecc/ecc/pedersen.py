@@ -469,14 +469,14 @@ def verify(
 # the residuosity bit alone: `secp256k1_rangeproof_serialize_point`
 # writes `data[0] = !secp256k1_fe_is_square_var(&point->y)`, and a proof
 # carries that bit in a packed field rather than in front of an x, which
-# is why `ecc.rangeproof` calls `_bytes_from_point` and `_point_from_x`
-# and never `_point_from_octets`
+# is why `ecc.rangeproof` calls `_bytes_from_point_var` and `_point_from_x_var`
+# and never `_point_from_octets_var`
 _RANGEPROOF_TAG = 1
 _COMMITMENT_TAG = 9
 _GENERATOR_TAG = 11
 
 
-def _bytes_from_point(Q: Point, tag: int) -> bytes:
+def _bytes_from_point_var(Q: Point, tag: int) -> bytes:
     """Return `tag ^ is_square(y)` and then x, at whichever tag.
 
     The tag is the whole of what the encodings do not share, so what
@@ -495,7 +495,7 @@ def _bytes_from_point(Q: Point, tag: int) -> bytes:
     return bytes([tag ^ int(residue)]) + Q[0].to_bytes(secp256k1.p_size, "big")
 
 
-def _point_from_x(x: int, not_square: bool) -> Point:
+def _point_from_x_var(x: int, not_square: bool) -> Point:
     """Return the point x names, with the y the residuosity bit asks for.
 
     `secp256k1_ge_set_xquad` answers the y that is a square, and the
@@ -512,13 +512,13 @@ def _point_from_x(x: int, not_square: bool) -> Point:
     return x, secp256k1.p - y if not_square else y
 
 
-def _point_from_octets(octets: Octets, tag: int, name: str) -> Point:
+def _point_from_octets_var(octets: Octets, tag: int, name: str) -> Point:
     """Return the point those octets name, lifted by residuosity.
 
     `secp256k1_pedersen_commitment_parse`'s own refusal, at whichever
     tag: `(input[0] & 0xFE) != 8` is the leading octet outside the pair,
     written here against the tag it is given. The lift, and what else
-    it turns down, are `_point_from_x`'s, on bit 0 of the prefix.
+    it turns down, are `_point_from_x_var`'s, on bit 0 of the prefix.
     """
     octets = bytes_from_octets(octets, secp256k1.p_size + 1)
     prefix = octets[0]
@@ -526,7 +526,7 @@ def _point_from_octets(octets: Octets, tag: int, name: str) -> Point:
         raise BTClibEccValueError(f"not a {name}: prefix 0x{prefix:02x}")
 
     x = int.from_bytes(octets[1:], byteorder="big")
-    return _point_from_x(x, bool(prefix & 1))
+    return _point_from_x_var(x, bool(prefix & 1))
 
 
 def bytes_from_commitment(Q: Point) -> bytes:
@@ -538,7 +538,7 @@ def bytes_from_commitment(Q: Point) -> bytes:
     writes the parity of that same y, so the two answer the same octets
     only where the y that is a square is also the even one.
     """
-    return _bytes_from_point(Q, _COMMITMENT_TAG)
+    return _bytes_from_point_var(Q, _COMMITMENT_TAG)
 
 
 def commitment_from_octets(octets: Octets) -> Point:
@@ -549,7 +549,7 @@ def commitment_from_octets(octets: Octets) -> Point:
     calling anything that takes the commitment as a point --
     `ecc.rangeproof.RangeProof.pubk_rings`, `assert_as_valid`, `verify`.
     """
-    return _point_from_octets(octets, _COMMITMENT_TAG, "Pedersen commitment")
+    return _point_from_octets_var(octets, _COMMITMENT_TAG, "Pedersen commitment")
 
 
 def bytes_from_generator(Q: Point) -> bytes:
@@ -561,7 +561,7 @@ def bytes_from_generator(Q: Point) -> bytes:
     library computes; a blinded asset generator is what else this format
     carries.
     """
-    return _bytes_from_point(Q, _GENERATOR_TAG)
+    return _bytes_from_point_var(Q, _GENERATOR_TAG)
 
 
 def generator_from_octets(octets: Octets) -> Point:
@@ -574,4 +574,4 @@ def generator_from_octets(octets: Octets) -> Point:
     either way, so the tag is the whole of what keeps the two formats
     apart.
     """
-    return _point_from_octets(octets, _GENERATOR_TAG, "generator")
+    return _point_from_octets_var(octets, _GENERATOR_TAG, "generator")

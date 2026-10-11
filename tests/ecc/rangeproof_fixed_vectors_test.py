@@ -46,7 +46,7 @@ import pytest
 
 from btclib_ecc.curves import mult, secp256k1
 from btclib_ecc.ecc.pedersen import (
-    _point_from_x,
+    _point_from_x_var,
     bytes_from_commitment,
     commit,
     commitment_from_octets,
@@ -169,7 +169,7 @@ def test_the_rings_open_at_the_published_blinding_factor(
 
     rings = proof.pubk_rings(commitment, _GEN)
     stated = tuple(
-        _point_from_x(x, sign)
+        _point_from_x_var(x, sign)
         for x, sign in zip(proof.ring_commitments, proof.signs, strict=True)
     )
     assert tuple(ring[0] for ring in rings[: len(stated)]) == stated

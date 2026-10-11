@@ -90,14 +90,14 @@ and which `_rsizes` below computes the same way.
 the ring commitment's y is not a square. That is not the even/odd
 convention `curves.bytes_from_point`, BIP340 and the `02`/`03` SEC
 prefix carry, and the two disagree on the vectors
-`tests/ecc/rangeproof_test.py` reads. `ecc.pedersen._bytes_from_point`
+`tests/ecc/rangeproof_test.py` reads. `ecc.pedersen._bytes_from_point_var`
 at `_RANGEPROOF_TAG` is that codec, and every point entering a proof's
 hash goes through it: the value commitment, the generator, and each
 ring commitment `sign` states. A parse reads those bits back and a
 serialize writes them out, so what a `RangeProof` holds is the octets'
 own answer. Resolving
 an x back to a point is that convention read the other way, and
-`ecc.pedersen._point_from_x` is what does it: `secp256k1_ge_set_xquad`
+`ecc.pedersen._point_from_x_var` is what does it: `secp256k1_ge_set_xquad`
 takes the y that is a square, and `secp256k1_rangeproof_verify_impl`
 negates it where the sign bit says the y is not one.
 
@@ -147,9 +147,9 @@ from btclib_ecc.curves import (
 from btclib_ecc.ecc.borromean import BorromeanSig, PubkeyRing, _hash
 from btclib_ecc.ecc.pedersen import (
     _RANGEPROOF_TAG,
-    _bytes_from_point,
+    _bytes_from_point_var,
     _commit,
-    _point_from_x,
+    _point_from_x_var,
     commit,
 )
 from btclib_ecc.ecc.rfc6979_nonce import _HmacDrbg
@@ -338,7 +338,7 @@ def _header_octets(exp: int, mantissa: int, min_value: int | None) -> bytes:
     return out
 
 
-def _hashed_prefix(
+def _hashed_prefix_var(
     commitment: Point, gen: Point, exp: int, mantissa: int, min_value: int | None
 ) -> bytes:
     """Return the octets a proof's message and its nonce chain open with.
@@ -347,7 +347,7 @@ def _hashed_prefix(
     generator and the header into the `sha256_m` the rings are signed
     over, and hands the same three to `secp256k1_rangeproof_genrand`,
     which seeds its chain with the caller's nonce and then with them.
-    One function because `sign`, `RangeProof.nonce_chain`, `_ring_message`
+    One function because `sign`, `RangeProof.nonce_chain`, `_ring_message_var`
     and `rewind` each need exactly these octets, and a proof and the
     chain behind it are bound to the same three.
 
@@ -357,8 +357,8 @@ def _hashed_prefix(
     where it was.
     """
     return (
-        _bytes_from_point(commitment, _RANGEPROOF_TAG)
-        + _bytes_from_point(gen, _RANGEPROOF_TAG)
+        _bytes_from_point_var(commitment, _RANGEPROOF_TAG)
+        + _bytes_from_point_var(gen, _RANGEPROOF_TAG)
         + _header_octets(exp, mantissa, min_value)
     )
 
@@ -784,7 +784,7 @@ class RangeProof:
         secp256k1.require_on_curve(commitment)
 
         stated = [
-            _point_from_x(x, sign)
+            _point_from_x_var(x, sign)
             for x, sign in zip(self.ring_commitments, self.signs, strict=True)
         ]
         # zkp's own order: the offset and the stated commitments are
@@ -845,7 +845,7 @@ class RangeProof:
             self.assert_valid()
         secp256k1.require_on_curve(commitment)
         sign_key_idx = self.sign_key_idx(value)
-        seed = bytes_from_octets(nonce, _NONCE_SIZE) + _hashed_prefix(
+        seed = bytes_from_octets(nonce, _NONCE_SIZE) + _hashed_prefix_var(
             commitment, gen, self.exp, self.mantissa, self.min_value
         )
 
@@ -1125,7 +1125,7 @@ def sign(
     `gen` is the generator the commitment this proof is written against
     is made under, which `secp256k1_rangeproof.h` documents on each of
     its calls as the "additional generator 'h'". It reaches the
-    commitment, the octets `_hashed_prefix` writes and the weight each
+    commitment, the octets `_hashed_prefix_var` writes and the weight each
     ring's keys step down by, so a proof is bound to it: `verify` and
     `rewind` are handed it again or the proof does not hold.
     """
@@ -1146,7 +1146,7 @@ def sign(
     params = _prove_params(value, min_value, exp, min_bits)
     # zkp's `min_value ? 32 : 0`, over the rewritten floor: a range
     # starting at zero carries no field
-    prefix = _hashed_prefix(
+    prefix = _hashed_prefix_var(
         commit(blind_int, value, gen),
         gen,
         params.exp,
@@ -1184,7 +1184,7 @@ def sign(
         heads.append(head)
 
     # every ring commitment but the last, which the verifier recovers
-    stated = [_bytes_from_point(head, _RANGEPROOF_TAG) for head in heads[:-1]]
+    stated = [_bytes_from_point_var(head, _RANGEPROOF_TAG) for head in heads[:-1]]
     m = sha256(prefix + b"".join(stated) + extra_commit_bytes).digest()
     sig = _borromean_sign(
         m,
@@ -1279,23 +1279,25 @@ def _borromean_verify(
     return tuple(challenges)
 
 
-def _ring_message(
+def _ring_message_var(
     commitment: Point, proof: RangeProof, gen: Point, extra_commit: bytes
 ) -> bytes:
     """Return the message this proof's rings are signed over.
 
     `secp256k1_rangeproof_verify_impl` closes the same `sha256_m`
-    `sign` opens: `_hashed_prefix`, then the sign bit and the x of
+    `sign` opens: `_hashed_prefix_var`, then the sign bit and the x of
     every ring commitment the proof states, then `extra_commit`. Those
     first are the octets already on the wire, which is why they are
     written out here rather than resolved to points and handed back to
-    `_bytes_from_point`.
+    `_bytes_from_point_var`.
     """
     stated = b"".join(
         bytes([sign_bit]) + x.to_bytes(secp256k1.p_size, "big")
         for x, sign_bit in zip(proof.ring_commitments, proof.signs, strict=True)
     )
-    prefix = _hashed_prefix(commitment, gen, proof.exp, proof.mantissa, proof.min_value)
+    prefix = _hashed_prefix_var(
+        commitment, gen, proof.exp, proof.mantissa, proof.min_value
+    )
     return sha256(prefix + stated + extra_commit).digest()
 
 
@@ -1307,7 +1309,7 @@ def _verify_rings(
     `secp256k1_rangeproof_verify_impl`, assembled from what this module
     already has: `RangeProof.pubk_rings` rebuilds the rings that
     function hands to `secp256k1_borromean_verify_impl`,
-    `_ring_message` the message they are signed over, and
+    `_ring_message_var` the message they are signed over, and
     `_borromean_verify` walks them.
 
     The challenges come back rather than a bool because
@@ -1317,7 +1319,7 @@ def _verify_rings(
     it answers.
     """
     return _borromean_verify(
-        _ring_message(commitment, proof, gen, extra_commit),
+        _ring_message_var(commitment, proof, gen, extra_commit),
         proof.pubk_rings(commitment, gen),
         proof.sig,
     )
@@ -1335,7 +1337,7 @@ def _proof_from(proof: RangeProof | Octets) -> RangeProof:
     (issue btclib-org/btclib#2182).
 
     Here rather than at the `assert_valid` inside `pubk_rings`, which
-    `_verify_rings` reaches second: `_ring_message` runs first and packs
+    `_verify_rings` reaches second: `_ring_message_var` runs first and packs
     `min_value` into the eight octets that field has and every ring
     commitment into the curve's own width, so a number neither holds
     leaves an `OverflowError` -- no refusal of this library's, and
@@ -1449,7 +1451,7 @@ def verify(
     return True
 
 
-def _recover_x(k: int, e: int, s: int) -> int:
+def _recover_x_var(k: int, e: int, s: int) -> int:
     """Return the scalar a real signature was written under.
 
     `secp256k1_rangeproof_recover_x`. `_borromean_sign` answers `k - e*x`
@@ -1465,7 +1467,7 @@ def _recover_k(x: int, e: int, s: int) -> int:
     """Return the nonce a real signature was closed with.
 
     `secp256k1_rangeproof_recover_k`, the same equation read the other
-    way: `s + x*e`. A rewind takes this rather than `_recover_x` at
+    way: `s + x*e`. A rewind takes this rather than `_recover_x_var` at
     every ring but the last, where what it wants is the nonce itself --
     the message is xored into it, and no inversion is needed to get it
     back.
@@ -1561,7 +1563,7 @@ def rewind(
     written for. And a digit above the last ring's own size names no
     key of it, which is where an odd mantissa leaves a ring of two.
 
-    The blinding factor is then `_recover_x` at the last ring's digit,
+    The blinding factor is then `_recover_x_var` at the last ring's digit,
     less the chain's own factor for that ring: what the ring was signed
     under is the sum of the two, which is what lets a verifier recover
     the ring commitment the proof leaves out.
@@ -1583,13 +1585,13 @@ def rewind(
 
     `extra_commit` is `assert_as_valid`'s argument of that name, and
     it is spent on the verification this opens with: the chain
-    re-derived below is seeded by `_hashed_prefix`, which carries none
+    re-derived below is seeded by `_hashed_prefix_var`, which carries none
     of it.
     """
     proof = _proof_from(proof)
     ev = _verify_rings(commitment, proof, gen, bytes_from_octets(extra_commit))
     rsizes = proof.rsizes
-    seed = bytes_from_octets(nonce, _NONCE_SIZE) + _hashed_prefix(
+    seed = bytes_from_octets(nonce, _NONCE_SIZE) + _hashed_prefix_var(
         commitment, gen, proof.exp, proof.mantissa, proof.min_value
     )
     # the zeroed `prep` `rewind_inner` calls the chain with: what comes
@@ -1600,7 +1602,7 @@ def rewind(
 
     last = len(rsizes) - 1
     if rsizes == (1,):
-        blind = _recover_x(chain.draws[0][0], ev[0][0], s[0][0])
+        blind = _recover_x_var(chain.draws[0][0], ev[0][0], s[0][0])
         value, message = proof.min_value or 0, b""
     else:
         found = _value_encoding_var(rsizes, s[last], chain.draws[last])
@@ -1618,7 +1620,7 @@ def rewind(
             )
         value = v * 10**proof.exp + (proof.min_value or 0)
         blind = (
-            _recover_x(chain.draws[last][skip2], ev[last][skip2], s[last][skip2])
+            _recover_x_var(chain.draws[last][skip2], ev[last][skip2], s[last][skip2])
             - chain.blinding_factors[last]
         ) % secp256k1.n
         message = b"".join(
