@@ -202,7 +202,6 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "ecc.dsa.Signer.__init__": (),
     "ecc.dsa.Signer.sign_": (),
     "ecc.dsa.assert_as_valid_": (
-        "ecc/dsa_recovery_test.py",
         "ecc/ecdsa_adaptor_test.py",
         "ecc/rfc6979_test.py",
         "ecc/wycheproof_test.py",

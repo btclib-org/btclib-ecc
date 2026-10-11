@@ -70,4 +70,3 @@ def test_core_recovers_the_signers_key(vector: dict[str, str]) -> None:
     assert sec == dsa.recover_sec_(
         key_id, CORE_HASH, sig.serialize(), compressed=compressed
     )
-    assert dsa.verify_(CORE_HASH, Q, sig)

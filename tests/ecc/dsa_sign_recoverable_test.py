@@ -11,6 +11,7 @@ other than the bindings is in `tests/_data/README.md`, in its entry for
 
 import pytest
 
+from btclib_ecc.curves import mult
 from btclib_ecc.ecc import dsa
 from tests import both_arms
 from tests.ecc.dsa_recovery_test import CORE_HASH, CORE_PARAMS, core_vector
@@ -24,3 +25,4 @@ def test_core_signs_the_same_compact_signature(vector: dict[str, str]) -> None:
     sig, signed_key_id = dsa.sign_recoverable_(CORE_HASH, prv_key)
     assert sig == expected
     assert signed_key_id == key_id
+    assert dsa.verify_(CORE_HASH, mult(prv_key), sig)
