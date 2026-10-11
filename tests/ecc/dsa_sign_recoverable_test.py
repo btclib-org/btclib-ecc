@@ -4,12 +4,9 @@
 
 """`dsa.sign_recoverable_` against the compact signatures of Bitcoin Core.
 
-Agreeing with Core's expected bytes is not an authority other than the
-bindings, for the reason `tests/_data/README.md` gives in its entry for
-`bitcoin_core_compact_vectors.json`. So the test is not in
-`dsa_recovery_test.py`, which `py_arm_authority_test.py` lists in
-`_THIRD_PARTY_VECTORS`, and `dsa.sign_recoverable_` stays in
-`_WITHOUT_AN_AUTHORITY` there.
+The signature and recovery id must be Core's. Why that is not an authority
+other than the bindings is in `tests/_data/README.md`, in its entry for
+`bitcoin_core_compact_vectors.json`.
 """
 
 import pytest

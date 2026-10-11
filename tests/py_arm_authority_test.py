@@ -94,6 +94,9 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
         "test_vectors_verify_proof.csv",
     ),
     "ecc/dlc_oracle_test.py": ("dlc_schnorr_test.json",),
+    # what it checks is that the recovered key is the WIF's key, which no
+    # libsecp256k1 output supplies; tests/_data/README.md has the details in
+    # its entry for `bitcoin_core_compact_vectors.json`
     "ecc/dsa_recovery_test.py": ("bitcoin_core_compact_vectors.json",),
     "ecc/ecdsa_adaptor_test.py": ("ecdsa_adaptor.json",),
     "ecc/ellswift_test.py": (

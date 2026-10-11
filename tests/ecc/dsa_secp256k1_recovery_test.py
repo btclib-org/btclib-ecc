@@ -4,8 +4,9 @@
 
 """Recovery against libsecp256k1's own cases, pinned in `tests/_data/README.md`.
 
-Not listed in `py_arm_authority_test.py`, for the reason the README gives in
-its entry for `secp256k1_recovery_vectors.json`.
+Each recovery id must recover a key or refuse as upstream asserts. Why that
+is not an authority other than the bindings is in the README, in its entry
+for `secp256k1_recovery_vectors.json`.
 """
 
 from typing import Any
