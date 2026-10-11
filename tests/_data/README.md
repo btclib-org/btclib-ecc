@@ -665,7 +665,87 @@ credit spelling it would pass and land its reader on a function upstream
 does not have. What neither pin answers is whether the installed
 bindings expose a name, that being a fact about their own surface.
 
+### `tests/ecc/_data/secp256k1_recovery_vectors.json`
+
+```text
+repo    bitcoin-core/secp256k1
+path    src/modules/recovery/tests_impl.h
+commit  9ec3bfe22dc662875e6fca2419713eae105dabee  2025-10-01
+blob    09554a242ee9fb2aeb75f4f360f649a460eb5fea
+ours    441719cc172fcb20b3aaf8c650b81b6d64414d9a
+pulled  2026-10-11
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **transcribed**, off `test_ecdsa_recovery_edge_cases`: the message
+`msg32`, the signatures `sig64`, `sigb64` and `sigc64`, and for each the
+recovery ids upstream asserts recover a key. In `sigb64` and `sigc64` r
+equals s, and both are small. `recovers` maps a recovery id to that
+assertion, and an id upstream does not ask about is absent. The rows with
+a zero r or s are `sigc64` with the byte upstream's test zeroes. Every other
+value is in the pinned blob when its `0x` arrays are read as octets, and
+`msg32`, which upstream spells as character literals, is the ASCII of
+`This is a very secret message...`:
+
+```shell
+blob=<the blob this entry gives>
+value=<a hex string the file transcribes, r followed by s>
+```
+
+```shell
+gh api -H 'Accept: application/vnd.github.raw' \
+    "repos/bitcoin-core/secp256k1/git/blobs/${blob:?}" \
+    | python3 -c "import re,sys
+h = ''.join(re.findall(r'0x([0-9a-fA-F]{2})', sys.stdin.read()))
+print(sys.argv[1].lower() in h.lower())" "${value:?}"
+```
+
+The outcomes are libsecp256k1's own assertions, so a Python arm held to
+them agrees with that library's accept and refuse pattern and not with a
+derivation of its own. Upstream's comment says `sig64` was made with
+secret key zero, which is not a valid key. `tests/ecc/dsa_recovery_test.py`
+reads the file. This package refuses a zero r or s where upstream parses
+it; the test asks `recover_pub_key_` for the refusal.
+
 ## Other projects
+
+### `tests/ecc/_data/bitcoin_core_compact_vectors.json`
+
+```text
+repo    bitcoin/bitcoin
+path    src/test/key_tests.cpp
+commit  e8691056c0140f8fa850fc6837dde915ebeb22cc  2026-08-03
+blob    75173e4b2e0d026b3d406f6830646aec8c1ab2e9
+ours    b69061ea0c19ce5ad310816b918f946c3bfebe15
+pulled  2026-10-11
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **transcribed**, off `key_test1`: the keys it decodes from
+WIF (`strSecret1`, `strSecret1C`, `strSecret2`, `strSecret2C`), the message
+`Very deterministic message`, and the compact signature `SignCompact`
+must give for each, which the test checks as hex. A compact signature is
+a flag byte, which carries the recovery id and whether the key is
+compressed, then r and s. The message is hashed with Core's `Hash`, which
+is double SHA256, and the test applies that. Core's test also recovers the
+key from a compact signature and compares it with the key of the WIF, as
+`tests/ecc/dsa_recovery_test.py` does. The expected compact signatures
+are libsecp256k1's output inside Core: `CKey::SignCompact` calls
+`secp256k1_ecdsa_sign_recoverable` at the pinned commit. What is
+independent of it is that the recovered key equals the key of the WIF.
+Every string in the file is in the pinned blob:
+
+```shell
+blob=<the blob this entry gives>
+value=<a string the file transcribes>
+```
+
+```shell
+gh api -H 'Accept: application/vnd.github.raw' \
+    "repos/bitcoin/bitcoin/git/blobs/${blob:?}" \
+    | python3 -c "import sys
+print(sys.argv[1] in sys.stdin.read())" "${value:?}"
+```
 
 ### `tests/curves/_data/pubkey.json`
 
@@ -1301,6 +1381,56 @@ EOF
 Nothing upstream will ever refresh this file: `cryptography`'s encoder
 is the fixed point being checked against, not a moving target.
 
+## Outside vectors for the arms and curves other than secp256k1
+
+The Python arithmetic alone serves every curve of `CURVES` but secp256k1,
+and a vector of somebody else's making is what says it is right there. For
+each case, which one holds it, or that none was found. Read on 2026-10-11:
+
+- C2SP/wycheproof at `12fd3aaf33eb5fa1f52e026912ee00c054f9d984`, the file
+  names of `testvectors_v1/` from its tree and not the files, no checkout
+  of it being kept here;
+- bitcoin/bitcoin at `a8b69bdeaf`, bitcoin-core/secp256k1 at `22245aedf4`,
+  bitcoin/bips at `927b6de991` and python-ecdsa at `bff40c6cf2`, each from
+  a checkout brought forward.
+
+- **ECDSA signing and verifying on P-192, P-224, P-256, P-384 and P-521**:
+  the appendix of the RFC that `rfc6979.json` transcribes, vendored.
+- **ECDSA verifying on the other curves**: Wycheproof has `ecdsa_*` files
+  for secp160k1, secp160r1, secp160r2, secp192k1, secp192r1, secp224k1,
+  secp224r1, secp256r1, secp384r1 and secp521r1, and for brainpoolP224r1,
+  brainpoolP256r1, brainpoolP320r1, brainpoolP384r1 and brainpoolP512r1,
+  which are `bpp224r1` to `bpp512r1` here. None is vendored. It has none
+  for secp112r1, secp112r2, secp128r1, secp128r2, brainpoolP160r1 or
+  brainpoolP192r1. No other source was searched for these.
+- **ECDH**: Wycheproof has `ecdh_*` files for secp224r1, secp256r1,
+  secp384r1, secp521r1 and the brainpool curves above. None is
+  vendored. It has none for the other curves, and no other source was
+  searched for them.
+- **Point decoding**: Wycheproof's `ecdh_*_ecpoint_*` files, for secp224r1,
+  secp256r1, secp384r1 and secp521r1, are named for a bare point. None is
+  vendored, and what their cases reach was not read.
+- **Schnorr and batch verification**: none. BIP340 is for secp256k1 and says
+  that adapting it to other curves "is not straightforward and can result
+  in an insecure scheme". No Schnorr vector for another curve was found.
+- **The subgroup check on a curve of cofactor above one**, secp112r2 and
+  secp128r2, which this prints:
+
+  ```shell
+  uv run python -c "from btclib_ecc.curves.curve import CURVES; \
+  print([n for n, c in CURVES.items() if c.cofactor > 1])"
+  ```
+
+  Wycheproof has no file for either. python-ecdsa has secp112r2 and not
+  secp128r2, and `src/ecdsa/test_ecdsa.py` there (blob
+  `c1e25829b8558876021f9cdf3401a95a4cd56075` at commit
+  `c98364927e406af037d8f9652ff18094f207dcec`) carries a point on secp112r2,
+  `x = 0x02` and `y = 0xBE6AA4938EF7CFE6FE29595B6B00`, that is on the curve and
+  outside the subgroup of the generator, which its `Public_key` and
+  `point_is_valid` refuse. That one case is an outside vector for
+  secp112r2. It is not vendored, and what this package answers for it was
+  not measured. For secp128r2 none was found.
+
 ## What is not pinned, and why
 
 - **The transcribed files** are pinned to a prose revision, or, where the
@@ -1350,6 +1480,7 @@ Not checked byte for byte against one:
   source file, by the check the entry itself states: `rfc6979.json`,
   `zkp_rangeproof_fixed_vectors.json`, `zkp_generator_vectors.json`,
   `zkp_schnorr_adaptor_vectors.json`,
-  `dsa_anti_exfil_test.py`, `secp256k1_symbols.txt`.
+  `dsa_anti_exfil_test.py`, `secp256k1_symbols.txt`,
+  `bitcoin_core_compact_vectors.json` and `secp256k1_recovery_vectors.json`.
 - not vendored: `zkp_rangeproof_vectors.json` and
   `der_length_vectors.json` (this suite's own).
