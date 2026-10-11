@@ -244,7 +244,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 #   vector that holds it, Bitcoin Core's compact signatures, is
 #   libsecp256k1's output, and `tests/ecc/dsa_sign_recoverable_test.py`,
 #   which checks it, is left out of `_THIRD_PARTY_VECTORS` for that reason.
-#   A signature of another implementation's, recoverable, would close it.
+#   A recoverable signature made by another implementation would close it.
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",

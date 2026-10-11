@@ -1388,11 +1388,10 @@ is the fixed point being checked against, not a moving target.
 For each case, which vector of somebody else's making holds it, or that
 none was found. Read on 2026-10-11, and each claim has the command that
 re-checks it. The Wycheproof commit is
-`12fd3aaf33eb5fa1f52e026912ee00c054f9d984`, and the file names of
-`testvectors_v1/` are read from its tree, not the files, no checkout of it
-being kept here. The other sources are checkouts
-under `/Users/ferdi/Git/upstream`, brought forward: bitcoin/bips at
-`927b6de991` and python-ecdsa at `bff40c6cf2`.
+`12fd3aaf33eb5fa1f52e026912ee00c054f9d984`. The commands below read the
+file names of its `testvectors_v1/`, not the files. The other sources are
+bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
+(tlsfuzzer/python-ecdsa) at `bff40c6cf2340148d410d5b3def0e949c547caf1`.
 
 - **ECDSA signing and verifying on P-192, P-224, P-256, P-384 and P-521**:
   the appendix of the RFC that `rfc6979.json` transcribes, vendored.
@@ -1412,10 +1411,10 @@ under `/Users/ferdi/Git/upstream`, brought forward: bitcoin/bips at
 
   They are secp160k1, secp160r1, secp160r2, secp192k1, secp192r1,
   secp224k1, secp224r1, secp256k1, secp256r1, secp384r1, secp521r1 and
-  brainpoolP224r1 to brainpoolP512r1 (`bpp224r1` to `bpp512r1` here,
-  without brainpoolP160r1 and brainpoolP192r1). A curve of `CURVES` that
-  it does not print has no Wycheproof file, and no other source was
-  searched for it.
+  brainpoolP224r1 to brainpoolP512r1. Here those brainpool curves are
+  `bpp224r1` to `bpp512r1`, and secp192r1 to secp521r1 are also `nistp192`
+  to `nistp521`. A curve of `CURVES` it does not print under either name
+  has no Wycheproof file, and no other source was searched for it.
 - **ECDH and point decoding**: Wycheproof has `ecdh_*` files for the
   names this prints, vendored only for secp256k1:
 
@@ -1427,15 +1426,21 @@ under `/Users/ferdi/Git/upstream`, brought forward: bitcoin/bips at
 
   They are secp224r1, secp256r1, secp384r1, secp521r1 (some with `_pem`,
   `_webcrypto` or `_ecpoint` variants), the brainpool curves above,
-  secp256k1, and binary curves that `CURVES` does not have. The `_ecpoint`
+  secp256k1 (with a `_webcrypto` variant), and binary curves that `CURVES`
+  does not have. The `_ecpoint`
   files are named for a bare point, and what their cases reach was not
   read.
 - **Schnorr and batch verification**: none found. BIP340 is for secp256k1,
   and this prints its sentence on other curves:
 
   ```shell
-  git -C /Users/ferdi/Git/upstream/bips grep -h "not straightforward" \
-      927b6de991 -- bip-0340.mediawiki
+  ref=927b6de9915c9262615a6399de51b200f81e5aa4
+  ```
+
+  ```shell
+  gh api -H 'Accept: application/vnd.github.raw' \
+      "repos/bitcoin/bips/contents/bip-0340.mediawiki?ref=${ref:?}" \
+      | grep "not straightforward"
   ```
 
 - **The subgroup check on a curve of cofactor above one**, which this
@@ -1450,8 +1455,13 @@ under `/Users/ferdi/Git/upstream`, brought forward: bitcoin/bips at
   secp112r2 and not secp128r2:
 
   ```shell
-  git -C /Users/ferdi/Git/upstream/python-ecdsa grep -ohE \
-      'SECP1[12][0-9]r[12]' bff40c6cf2 -- src/ecdsa/curves.py | sort -u
+  ref=bff40c6cf2340148d410d5b3def0e949c547caf1
+  ```
+
+  ```shell
+  gh api -H 'Accept: application/vnd.github.raw' \
+      "repos/tlsfuzzer/python-ecdsa/contents/src/ecdsa/curves.py?ref=${ref:?}" \
+      | grep -ohE 'SECP1[12][0-9]r[12]' | sort -u
   ```
 
   Its `src/ecdsa/test_ecdsa.py` (blob
@@ -1459,11 +1469,13 @@ under `/Users/ferdi/Git/upstream`, brought forward: bitcoin/bips at
   `c98364927e406af037d8f9652ff18094f207dcec`) refuses a point of secp112r2
   that is on the curve and outside the subgroup of the generator. The
   point is checked with python-ecdsa's own code; this prints `True False
-  False`, that is on the curve, refused by `point_is_valid`, and not
-  killed by the group order:
+  False`, that is on the curve, refused by `point_is_valid`, and the group
+  order times it is not the point at infinity:
 
   ```shell
-  env PYTHONPATH=/Users/ferdi/Git/upstream/python-ecdsa/src python3 -c "
+  uv run --no-project \
+      --with "ecdsa @ git+https://github.com/tlsfuzzer/python-ecdsa@${ref:?}" \
+      python -I -c "
   from ecdsa.ecdsa import generator_112r2 as g, point_is_valid
   from ecdsa.ellipticcurve import PointJacobi, INFINITY
   x, y = 0x02, 0xBE6AA4938EF7CFE6FE29595B6B00
