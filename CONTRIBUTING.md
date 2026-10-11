@@ -647,9 +647,9 @@ authority table's re-derivation, whose command is under *Reproducing what CI
 runs*. Run it when the diff touches `tests/py_arm_authority_test.py`,
 `.github/scripts/check_py_arm_authority.py` or
 `.github/workflows/py-arm-authority.yml`. Run it also when the diff changes
-a module `_THIRD_PARTY_VECTORS` names or a vector file it lists, or code on
-the path from one of those modules to a function that calls
-`_libsecp256k1_serves`: any of them can move the table. The workflow's
+a module `_THIRD_PARTY_VECTORS` names or a vector file it lists, a function
+that calls `_libsecp256k1_serves`, or code on the path from one of those
+modules to such a function: any of them can move the table. The workflow's
 `paths:` filter names only the three files above, so a pull request touching
 none of them is not checked by it, and the failure shows on `main`.
 
