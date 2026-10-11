@@ -582,8 +582,7 @@ work, or it is not on an operand.** `dsa._assert_as_valid_` and
 `ssa._assert_as_valid_` spend their bulk, `_jac_double_mult_var`, on
 scalars derived from the operands, not on an operand, and
 `dsa._recover_pub_key_` and `ssa._recover_pub_key_` likewise, their one
-square root, on `r` or its lift, being among other work. That is dilution:
-an inverse varying by 1.32x is 10 us of a 40 us verification.
+square root, on `r` or its lift, being one step among other work.
 `ellswift._constants` is memoized on the curve and receives no value at
 all.
 
