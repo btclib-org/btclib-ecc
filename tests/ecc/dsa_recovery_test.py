@@ -8,8 +8,8 @@ Two sources, both pinned in `tests/_data/README.md`:
 
 - Bitcoin Core's `key_tests.cpp`: the compact signature, with its recovery
   flag, that `CKey::SignCompact` writes for four keys over one message.
-  Signing must give those octets and recovering from them must give the
-  signer's key.
+  Recovering from them must give the key of the WIF, which is what is
+  independent of libsecp256k1 here: the signatures are its output.
 - libsecp256k1's `secp256k1_recovery` tests: which of the four recovery ids
   recover a key from a fixed signature, and which refuse.
 
@@ -31,12 +31,12 @@ _CORE: dict[str, Any] = load("ecc", "_data", "bitcoin_core_compact_vectors.json"
 _LIBSECP256K1: dict[str, Any] = load("ecc", "_data", "secp256k1_recovery_vectors.json")
 
 # `Hash` of Core's hash.h, which `key_tests.cpp` hashes its message with
-_CORE_HASH = hashlib.sha256(
+CORE_HASH = hashlib.sha256(
     hashlib.sha256(_CORE["message"].encode("ascii")).digest()
 ).digest()
 
 
-def _core_vector(vector: dict[str, str]) -> tuple[int, bool, int, dsa.Sig]:
+def core_vector(vector: dict[str, str]) -> tuple[int, bool, int, dsa.Sig]:
     """Return a Core vector's key, compression, recovery id and signature.
 
     The flag byte of a compact signature is 27 + recid, plus 4 for a
@@ -53,38 +53,28 @@ def _core_vector(vector: dict[str, str]) -> tuple[int, bool, int, dsa.Sig]:
     return prv_key, bool(flag & 4), flag & 3, sig
 
 
-_CORE_PARAMS = [
+CORE_PARAMS = [
     pytest.param(vector, id=vector_id(i, vector["id"]))
     for i, vector in enumerate(_CORE["keys"])
 ]
 
 
-@pytest.mark.parametrize("vector", _CORE_PARAMS)
-@both_arms
-def test_core_signs_the_same_compact_signature(vector: dict[str, str]) -> None:
-    """`sign_recoverable_` gives Core's r, s and recovery id."""
-    prv_key, _, key_id, expected = _core_vector(vector)
-    sig, signed_key_id = dsa.sign_recoverable_(_CORE_HASH, prv_key)
-    assert sig == expected
-    assert signed_key_id == key_id
-
-
-@pytest.mark.parametrize("vector", _CORE_PARAMS)
+@pytest.mark.parametrize("vector", CORE_PARAMS)
 @both_arms
 def test_core_recovers_the_signers_key(vector: dict[str, str]) -> None:
     """Every spelling of the recovery gives the key of the WIF."""
-    prv_key, compressed, key_id, sig = _core_vector(vector)
+    prv_key, compressed, key_id, sig = core_vector(vector)
     Q = mult(prv_key)
 
-    assert dsa.recover_pub_key_(key_id, _CORE_HASH, sig) == Q
-    assert Q in dsa.recover_pub_keys_(_CORE_HASH, sig)
+    assert dsa.recover_pub_key_(key_id, CORE_HASH, sig) == Q
+    assert Q in dsa.recover_pub_keys_(CORE_HASH, sig)
 
-    sec = dsa.recover_sec_(key_id, _CORE_HASH, sig, compressed=compressed)
+    sec = dsa.recover_sec_(key_id, CORE_HASH, sig, compressed=compressed)
     assert len(sec) == (33 if compressed else 65)
     assert sec == dsa.recover_sec_(
-        key_id, _CORE_HASH, sig.serialize(), compressed=compressed
+        key_id, CORE_HASH, sig.serialize(), compressed=compressed
     )
-    assert dsa.verify_(_CORE_HASH, Q, sig)
+    assert dsa.verify_(CORE_HASH, Q, sig)
 
 
 _LIBSECP256K1_CASES = [

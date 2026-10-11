@@ -211,7 +211,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/der_test.py",
         "ecc/rfc6979_test.py",
     ),
-    "ecc.dsa.sign_recoverable_": ("ecc/dsa_recovery_test.py",),
+    "ecc.dsa.sign_recoverable_": (),
     "ecc.ellswift.create_var": ("ecc/ellswift_test.py",),
     "ecc.ellswift.decode_var": ("ecc/ellswift_test.py",),
     "ecc.ellswift.encode_var": ("ecc/ellswift_test.py",),
@@ -240,11 +240,17 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 #   reaches `dsa.sign_` or `dsa.assert_as_valid_` through the free
 #   functions; pointing one of those modules at the class is a test to
 #   write rather than a vector to find.
+# - `ecc.dsa.sign_recoverable_`, signing with the recovery id. The only
+#   vector that holds it, Bitcoin Core's compact signatures, is
+#   libsecp256k1's output, and `tests/ecc/dsa_sign_recoverable_test.py`,
+#   which checks it, is left out of `_THIRD_PARTY_VECTORS` for that reason.
+#   A signature of another implementation's, recoverable, would close it.
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
         "ecc.dsa.Signer.__init__",
         "ecc.dsa.Signer.sign_",
+        "ecc.dsa.sign_recoverable_",
     }
 )
 

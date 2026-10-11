@@ -733,6 +733,8 @@ key from a compact signature and compares it with the key of the WIF, as
 are libsecp256k1's output inside Core: `CKey::SignCompact` calls
 `secp256k1_ecdsa_sign_recoverable` at the pinned commit. What is
 independent of it is that the recovered key equals the key of the WIF.
+`tests/ecc/dsa_sign_recoverable_test.py` checks signing against the
+signatures and is not counted as an authority.
 Every string in the file is in the pinned blob:
 
 ```shell
@@ -1383,53 +1385,96 @@ is the fixed point being checked against, not a moving target.
 
 ## Outside vectors for the arms and curves other than secp256k1
 
-The Python arithmetic alone serves every curve of `CURVES` but secp256k1,
-and a vector of somebody else's making is what says it is right there. For
-each case, which one holds it, or that none was found. Read on 2026-10-11:
-
-- C2SP/wycheproof at `12fd3aaf33eb5fa1f52e026912ee00c054f9d984`, the file
-  names of `testvectors_v1/` from its tree and not the files, no checkout
-  of it being kept here;
-- bitcoin/bitcoin at `a8b69bdeaf`, bitcoin-core/secp256k1 at `22245aedf4`,
-  bitcoin/bips at `927b6de991` and python-ecdsa at `bff40c6cf2`, each from
-  a checkout brought forward.
+For each case, which vector of somebody else's making holds it, or that
+none was found. Read on 2026-10-11, and each claim has the command that
+re-checks it. The Wycheproof commit is
+`12fd3aaf33eb5fa1f52e026912ee00c054f9d984`, and the file names of
+`testvectors_v1/` are read from its tree, not the files, no checkout of it
+being kept here. The other sources are checkouts
+under `/Users/ferdi/Git/upstream`, brought forward: bitcoin/bips at
+`927b6de991` and python-ecdsa at `bff40c6cf2`.
 
 - **ECDSA signing and verifying on P-192, P-224, P-256, P-384 and P-521**:
   the appendix of the RFC that `rfc6979.json` transcribes, vendored.
 - **ECDSA verifying on the other curves**: Wycheproof has `ecdsa_*` files
-  for secp160k1, secp160r1, secp160r2, secp192k1, secp192r1, secp224k1,
-  secp224r1, secp256r1, secp384r1 and secp521r1, and for brainpoolP224r1,
-  brainpoolP256r1, brainpoolP320r1, brainpoolP384r1 and brainpoolP512r1,
-  which are `bpp224r1` to `bpp512r1` here. None is vendored. It has none
-  for secp112r1, secp112r2, secp128r1, secp128r2, brainpoolP160r1 or
-  brainpoolP192r1. No other source was searched for these.
-- **ECDH**: Wycheproof has `ecdh_*` files for secp224r1, secp256r1,
-  secp384r1, secp521r1 and the brainpool curves above. None is
-  vendored. It has none for the other curves, and no other source was
-  searched for them.
-- **Point decoding**: Wycheproof's `ecdh_*_ecpoint_*` files, for secp224r1,
-  secp256r1, secp384r1 and secp521r1, are named for a bare point. None is
-  vendored, and what their cases reach was not read.
-- **Schnorr and batch verification**: none. BIP340 is for secp256k1 and says
-  that adapting it to other curves "is not straightforward and can result
-  in an insecure scheme". No Schnorr vector for another curve was found.
-- **The subgroup check on a curve of cofactor above one**, secp112r2 and
-  secp128r2, which this prints:
+  for the curves this prints, vendored only for secp256k1:
+
+  ```shell
+  commit=<the Wycheproof commit above>
+  ```
+
+  ```shell
+  gh api "repos/C2SP/wycheproof/git/trees/${commit:?}:testvectors_v1" \
+      --jq '.tree[].path' \
+      | sed -nE 's/^ecdsa_(.*)_sha[0-9a-z]+_(p1363_)?test\.json$/\1/p' \
+      | sort -u
+  ```
+
+  They are secp160k1, secp160r1, secp160r2, secp192k1, secp192r1,
+  secp224k1, secp224r1, secp256k1, secp256r1, secp384r1, secp521r1 and
+  brainpoolP224r1 to brainpoolP512r1 (`bpp224r1` to `bpp512r1` here,
+  without brainpoolP160r1 and brainpoolP192r1). A curve of `CURVES` that
+  it does not print has no Wycheproof file, and no other source was
+  searched for it.
+- **ECDH and point decoding**: Wycheproof has `ecdh_*` files for the
+  names this prints, vendored only for secp256k1:
+
+  ```shell
+  gh api "repos/C2SP/wycheproof/git/trees/${commit:?}:testvectors_v1" \
+      --jq '.tree[].path' \
+      | sed -nE 's/^ecdh_(.*)_test\.json$/\1/p' | sort -u
+  ```
+
+  They are secp224r1, secp256r1, secp384r1, secp521r1 (some with `_pem`,
+  `_webcrypto` or `_ecpoint` variants), the brainpool curves above,
+  secp256k1, and binary curves that `CURVES` does not have. The `_ecpoint`
+  files are named for a bare point, and what their cases reach was not
+  read.
+- **Schnorr and batch verification**: none found. BIP340 is for secp256k1,
+  and this prints its sentence on other curves:
+
+  ```shell
+  git -C /Users/ferdi/Git/upstream/bips grep -h "not straightforward" \
+      927b6de991 -- bip-0340.mediawiki
+  ```
+
+- **The subgroup check on a curve of cofactor above one**, which this
+  prints (secp112r2 and secp128r2):
 
   ```shell
   uv run python -c "from btclib_ecc.curves.curve import CURVES; \
   print([n for n, c in CURVES.items() if c.cofactor > 1])"
   ```
 
-  Wycheproof has no file for either. python-ecdsa has secp112r2 and not
-  secp128r2, and `src/ecdsa/test_ecdsa.py` there (blob
+  Wycheproof has no file for either, by the call above. python-ecdsa has
+  secp112r2 and not secp128r2:
+
+  ```shell
+  git -C /Users/ferdi/Git/upstream/python-ecdsa grep -ohE \
+      'SECP1[12][0-9]r[12]' bff40c6cf2 -- src/ecdsa/curves.py | sort -u
+  ```
+
+  Its `src/ecdsa/test_ecdsa.py` (blob
   `c1e25829b8558876021f9cdf3401a95a4cd56075` at commit
-  `c98364927e406af037d8f9652ff18094f207dcec`) carries a point on secp112r2,
-  `x = 0x02` and `y = 0xBE6AA4938EF7CFE6FE29595B6B00`, that is on the curve and
-  outside the subgroup of the generator, which its `Public_key` and
-  `point_is_valid` refuse. That one case is an outside vector for
-  secp112r2. It is not vendored, and what this package answers for it was
-  not measured. For secp128r2 none was found.
+  `c98364927e406af037d8f9652ff18094f207dcec`) refuses a point of secp112r2
+  that is on the curve and outside the subgroup of the generator. The
+  point is checked with python-ecdsa's own code; this prints `True False
+  False`, that is on the curve, refused by `point_is_valid`, and not
+  killed by the group order:
+
+  ```shell
+  env PYTHONPATH=/Users/ferdi/Git/upstream/python-ecdsa/src python3 -c "
+  from ecdsa.ecdsa import generator_112r2 as g, point_is_valid
+  from ecdsa.ellipticcurve import PointJacobi, INFINITY
+  x, y = 0x02, 0xBE6AA4938EF7CFE6FE29595B6B00
+  P = PointJacobi(g.curve(), x, y, 1)
+  print(g.curve().contains_point(x, y), point_is_valid(g, x, y),
+        (P * g.order()) == INFINITY)"
+  ```
+
+  That one case is an outside vector for secp112r2. It is not vendored,
+  and what this package answers for it was not measured. For secp128r2
+  none was found.
 
 ## What is not pinned, and why
 
