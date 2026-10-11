@@ -20,8 +20,8 @@ decoder and of the module-level decoders in `BINARY_PARSERS`, on every
 run, for as long as hypothesis spends on a test. `WIRE_FUNCTIONS` asks
 it of the functions that read what peers send: musig2's and frost's
 nonce aggregation, musig2's key aggregation, dleq's proof verification
-and the two adaptor verifications. The atheris harnesses have none of
-these. The other functions of those modules are not driven here.
+and the two adaptor verifications. The other functions of those modules
+are not driven here.
 """
 
 from __future__ import annotations
