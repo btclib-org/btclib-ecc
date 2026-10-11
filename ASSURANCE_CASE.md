@@ -162,11 +162,11 @@ describes beside them.
   (`src/btclib_ecc/exceptions.py`), and `BTClibEccValueError` and
   `BTClibEccTypeError` derive from `ValueError` and `TypeError`, so
   `except ValueError` catches a value refused by the package.
-- **Fail-safe defaults.** A function whose duration follows its operand
-  ends in `_var`, and the plain name beside it is the one a secret may be
-  handed, so a caller who does not choose gets the safer call:
-  CONTRIBUTING.md's *A `_var` suffix means the operand decides the work*
-  states it with the measurement behind each name. A hash function that
+- **Fail-safe defaults.** A function whose work the value of a valid
+  operand decides ends in `_var`, and the plain name beside it is the one
+  a secret may be handed, so a caller who does not choose gets the safer
+  call: CONTRIBUTING.md's *A `_var` suffix means the operand decides the
+  work* states the rule and the names it gives. A hash function that
   is not sha256 itself, by identity, sends a call down the Python path,
   never to an answer computed for a different function.
 - **Complete mediation.** Every public function validates its inputs,

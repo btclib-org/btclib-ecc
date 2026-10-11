@@ -627,8 +627,8 @@ each value came from.
 
 Add the suffix when adding a function whose work follows the operand,
 and do not add it to the regular recodings (`signed_odd_digits`), the
-tables or the group law: their duration does not follow the operand, and a suffix
-on everything says nothing about anything.
+tables or the group law: their work does not follow the operand, and a
+suffix on everything says nothing about anything.
 
 What none of this does is make the Python path safe, and `SECURITY.md`'s
 limitations section is what says so at length: a table is still indexed
