@@ -26,7 +26,7 @@ from btclib_ecc.alias import INF, INFJ, Integer, JacPoint, Point
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
 from btclib_ecc.number_theory import (
     _field_element,
-    _is_prime,
+    _is_prime_var,
     mod_inv_batch_var,
     mod_inv_var,
     mod_sqrt_var,
@@ -130,7 +130,7 @@ class CurveGroup:
         b = int_from_integer(b)
 
         # 1) check that p is a prime
-        if not self._primes_are_trusted and not _is_prime(p):
+        if not self._primes_are_trusted and not _is_prime_var(p):
             err_msg = "p is not prime: "
             err_msg += f"'{hex_string(p)}'" if p > HEX_THRESHOLD else f"{p}"
             raise BTClibEccValueError(err_msg)
@@ -1612,7 +1612,7 @@ def _multi_mult_pairs(
 _MULTI_MULT_W = 5
 
 
-def _additions_by_position(
+def _additions_by_position_var(
     nafs: Sequence[list[int]], tables: Sequence[list[Point]], ec: CurveGroup
 ) -> list[list[Point]]:
     """Return the points each bit position adds, indexed by position.
@@ -1770,11 +1770,11 @@ def _multi_mult_w_NAF_var(
         at += len(jac)
 
     # one doubling per position and the additions that position has:
-    # `_additions_by_position` groups them this way rather than asking
+    # `_additions_by_position_var` groups them this way rather than asking
     # every wNAF for a digit at every position, and is also where a
     # digit becomes the point it names
     R = INFJ
-    for additions in reversed(_additions_by_position(nafs, tables, ec)):
+    for additions in reversed(_additions_by_position_var(nafs, tables, ec)):
         R = ec._double_jac(R)
         for P in additions:
             R = ec._add_jac_aff(R, P)

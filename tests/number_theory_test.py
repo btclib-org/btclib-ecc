@@ -625,7 +625,7 @@ def test_is_prime_agrees_with_trial_division() -> None:
     Two is no prime here, as the curve constructor wants it.
     """
     for n in range(-5, 20000):
-        assert number_theory._is_prime(n) == (
+        assert number_theory._is_prime_var(n) == (
             n % 2 == 1 and _is_prime_by_trial_division(n)
         )
 
@@ -646,30 +646,30 @@ def test_is_prime_refuses_pseudoprimes() -> None:
         9746347772161,
     ]
     for n in fermat_base_2 + strong_base_2 + carmichael:
-        assert not number_theory._is_prime(n)
+        assert not number_theory._is_prime_var(n)
 
     # the strong Lucas pseudoprimes are what the base-2 step is there for
     for n in (5459, 5777, 10877, 16109, 18971):
-        assert not number_theory._is_prime(n)
-        assert number_theory._is_strong_lucas_probable_prime(n)
-        assert not number_theory._is_strong_probable_prime_base_2(n)
+        assert not number_theory._is_prime_var(n)
+        assert number_theory._is_strong_lucas_probable_prime_var(n)
+        assert not number_theory._is_strong_probable_prime_base_2_var(n)
 
     # a base-2 strong pseudoprime is what the Lucas step is there for
     for n in strong_base_2:
-        assert number_theory._is_strong_probable_prime_base_2(n)
-        assert not number_theory._is_strong_lucas_probable_prime(n)
+        assert number_theory._is_strong_probable_prime_base_2_var(n)
+        assert not number_theory._is_strong_lucas_probable_prime_var(n)
 
     # perfect squares and a D with a factor in common with n
-    assert not number_theory._is_strong_lucas_probable_prime(1681)
-    assert not number_theory._is_strong_lucas_probable_prime(1765)
+    assert not number_theory._is_strong_lucas_probable_prime_var(1681)
+    assert not number_theory._is_strong_lucas_probable_prime_var(1765)
 
     # the least strong pseudoprime to each of the first twelve prime bases
-    assert not number_theory._is_prime(318665857834031151167461)
+    assert not number_theory._is_prime_var(318665857834031151167461)
 
 
 def test_is_prime_accepts_large_primes() -> None:
     """Accept the Mersenne primes 2**61 - 1 and 2**127 - 1."""
-    assert number_theory._is_prime(2**61 - 1)
-    assert number_theory._is_prime(2**127 - 1)
-    assert not number_theory._is_prime(2**127 + 1)
-    assert not number_theory._is_prime((2**61 - 1) * (2**89 - 1))
+    assert number_theory._is_prime_var(2**61 - 1)
+    assert number_theory._is_prime_var(2**127 - 1)
+    assert not number_theory._is_prime_var(2**127 + 1)
+    assert not number_theory._is_prime_var((2**61 - 1) * (2**89 - 1))

@@ -541,7 +541,7 @@ def tonelli_var(a: int, p: int) -> int:
     return r
 
 
-def _jacobi(a: int, n: int) -> int:
+def _jacobi_var(a: int, n: int) -> int:
     """Return the Jacobi symbol (a/n), for n odd and positive."""
     a %= n
     result = 1
@@ -557,7 +557,7 @@ def _jacobi(a: int, n: int) -> int:
     return result if n == 1 else 0
 
 
-def _is_strong_probable_prime_base_2(n: int) -> bool:
+def _is_strong_probable_prime_base_2_var(n: int) -> bool:
     """Return True if the odd n > 2 is a strong probable prime to base 2."""
     d = n - 1
     s = (d & -d).bit_length() - 1
@@ -572,7 +572,7 @@ def _is_strong_probable_prime_base_2(n: int) -> bool:
     return False
 
 
-def _is_strong_lucas_probable_prime(n: int) -> bool:
+def _is_strong_lucas_probable_prime_var(n: int) -> bool:
     """Return True if the odd n > 2 is a strong Lucas probable prime.
 
     Selfridge's method A picks the parameters: D is the first of 5, -7, 9,
@@ -581,7 +581,7 @@ def _is_strong_lucas_probable_prime(n: int) -> bool:
     if isqrt(n) ** 2 == n:
         return False
     D = 5
-    while (j := _jacobi(D, n)) == 1:
+    while (j := _jacobi_var(D, n)) == 1:
         D = -D - 2 if D > 0 else -D + 2
     if j == 0:
         # D has a factor in common with n: n is composite, |D| being < n
@@ -613,7 +613,7 @@ def _is_strong_lucas_probable_prime(n: int) -> bool:
     return False
 
 
-def _is_prime(x: int) -> bool:
+def _is_prime_var(x: int) -> bool:
     """Return True if x is an odd prime, by the Baillie-PSW test.
 
     Trial division by the primes up to 37, then a strong probable prime test
@@ -636,4 +636,6 @@ def _is_prime(x: int) -> bool:
     for q in (3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37):
         if x % q == 0:
             return x == q
-    return _is_strong_probable_prime_base_2(x) and _is_strong_lucas_probable_prime(x)
+    return _is_strong_probable_prime_base_2_var(
+        x
+    ) and _is_strong_lucas_probable_prime_var(x)

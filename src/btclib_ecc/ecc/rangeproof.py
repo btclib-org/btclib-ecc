@@ -1486,7 +1486,7 @@ def _ch32xor(a: int, b: int) -> bytes:
     )
 
 
-def _value_encoding(
+def _value_encoding_var(
     rsizes: Sequence[int], written: Sequence[int], drawn: Sequence[int]
 ) -> tuple[int, int] | None:
     """Return where the last ring carries the value, and the value.
@@ -1553,7 +1553,7 @@ def rewind(
     header's `min_value`, stated in the clear, and there is no second
     key to carry a message.
 
-    Everywhere else `_value_encoding` reads the value out of the last
+    Everywhere else `_value_encoding_var` reads the value out of the last
     ring, and two refusals follow it. The position it was found at and
     the last ring's own digit have to differ -- `_prep` writes the
     encoding at whichever of the two keys the digit does not take, so a
@@ -1603,7 +1603,7 @@ def rewind(
         blind = _recover_x(chain.draws[0][0], ev[0][0], s[0][0])
         value, message = proof.min_value or 0, b""
     else:
-        found = _value_encoding(rsizes, s[last], chain.draws[last])
+        found = _value_encoding_var(rsizes, s[last], chain.draws[last])
         if found is None:
             raise BTClibEccRuntimeError("rangeproof rewind reads no value encoding")
         skip1, v = found

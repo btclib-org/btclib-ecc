@@ -82,7 +82,7 @@ from btclib_ecc.exceptions import (
     BTClibEccTypeError,
     BTClibEccValueError,
 )
-from btclib_ecc.number_theory import _is_prime, legendre_symbol_var
+from btclib_ecc.number_theory import _is_prime_var, legendre_symbol_var
 
 __all__ = [
     "CURVES",
@@ -295,7 +295,7 @@ class Curve(CurveGroup):
         self.scalar_len = self.nlen
 
         # 5. Check that n is prime.
-        if not self._primes_are_trusted and not _is_prime(n):
+        if not self._primes_are_trusted and not _is_prime_var(n):
             err_msg = "n is not prime: "
             err_msg += f"{hex_string(n)}" if n > HEX_THRESHOLD else f"{n}"
             raise BTClibEccValueError(err_msg)

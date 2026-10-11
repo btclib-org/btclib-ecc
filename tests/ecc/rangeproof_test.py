@@ -1441,7 +1441,7 @@ def test_verify_refuses_a_ring_key_at_infinity() -> None:
 def test_rewind_refuses_a_nonce_that_is_not_the_proof_s() -> None:
     """A wrong nonce draws a different chain, and no key then reads as a value.
 
-    `_value_encoding` looks at two keys of the last ring and takes
+    `_value_encoding_var` looks at two keys of the last ring and takes
     neither: the xor of a proof's own `s` with a draw that never wrote
     it opens with bit 7 clear, or repeats none of its three eight-octet
     runs. The proof still verifies -- a rewind is what the nonce is for,

@@ -80,7 +80,7 @@ from btclib_ecc.curves.curve_group import (
 )
 from btclib_ecc.ecc import second_generator
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
-from btclib_ecc.number_theory import _is_prime, mod_inv_var, mod_sqrt_var
+from btclib_ecc.number_theory import _is_prime_var, mod_inv_var, mod_sqrt_var
 from tests import both_arms, load, needs_bindings, vector_id
 
 # test curves: very low cardinality. The name is p and n, in that order,
@@ -432,8 +432,8 @@ def test_catalogued_curves() -> None:
         for name, (p, a, b, G, n, cofactor) in params2.items():
             rebuilt = Curve(p, a, b, G, n, cofactor, name=name)
             assert rebuilt == CURVES[name]
-            assert _is_prime(CURVES[name].p)
-            assert _is_prime(CURVES[name].n)
+            assert _is_prime_var(CURVES[name].p)
+            assert _is_prime_var(CURVES[name].n)
             checked.add(name)
     assert checked == set(CURVES)
 
