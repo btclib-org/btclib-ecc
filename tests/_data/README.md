@@ -1427,9 +1427,8 @@ bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
   They are secp224r1, secp256r1, secp384r1, secp521r1 (some with `_pem`,
   `_webcrypto` or `_ecpoint` variants), the brainpool curves above,
   secp256k1 (with a `_webcrypto` variant), and binary curves that `CURVES`
-  does not have. The `_ecpoint`
-  files are named for a bare point, and what their cases reach was not
-  read.
+  does not have. The `_ecpoint` files are named for a bare point, and what
+  their cases reach was not read.
 - **Schnorr and batch verification**: none found. BIP340 is for secp256k1,
   and this prints its sentence on other curves:
 

@@ -4,12 +4,11 @@
 
 """`dsa.sign_recoverable_` against the compact signatures of Bitcoin Core.
 
-Core's expected bytes are libsecp256k1's output (`CKey::SignCompact` calls
-`secp256k1_ecdsa_sign_recoverable`), so agreeing with them is not an
-authority other than the bindings. This is why the test is not in
-`dsa_recovery_test.py`, which `py_arm_authority_test.py` lists in
-`_THIRD_PARTY_VECTORS`, and why `dsa.sign_recoverable_` stays in that
-file's `_WITHOUT_AN_AUTHORITY`.
+Agreeing with Core's expected bytes is not an authority other than the
+bindings, as `tests/_data/README.md` says in the entry for that file. This
+is why the test is not in `dsa_recovery_test.py`, which
+`py_arm_authority_test.py` lists in `_THIRD_PARTY_VECTORS`, and why
+`dsa.sign_recoverable_` stays in that file's `_WITHOUT_AN_AUTHORITY`.
 """
 
 import pytest

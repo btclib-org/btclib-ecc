@@ -4,12 +4,12 @@
 
 """ECDSA key recovery against vectors of somebody else's making.
 
-Two sources, both pinned in `tests/_data/README.md`:
+Each source is pinned in `tests/_data/README.md`, whose entry for the Core
+file says what recovering from its signatures does and does not establish:
 
 - Bitcoin Core's `key_tests.cpp`: the compact signature, with its recovery
-  flag, that `CKey::SignCompact` writes for four keys over one message.
-  Recovering from them must give the key of the WIF, which is what is
-  independent of libsecp256k1 here: the signatures are its output.
+  flag, that `CKey::SignCompact` writes for each of its keys over one
+  message. Recovering from it must give the key of the WIF.
 - libsecp256k1's `secp256k1_recovery` tests: which of the four recovery ids
   recover a key from a fixed signature, and which refuse.
 
