@@ -131,7 +131,7 @@ package is used to teach and to prototype as much as to build:
     this package no longer holding a private key as a Python `int`, which
     is a change to that representation and not to a call site.
     `dsa.Signer.__init__` at `self._q.to_bytes(32, "big")`
-    (`src/btclib_ecc/ecc/dsa.py:1477`) crosses the same boundary the
+    (`src/btclib_ecc/ecc/dsa.py:1476`) crosses the same boundary the
     other way, once, at construction: the plain `int`
     `scalar_from_prv_key` already produced becomes a transient `bytes` on
     the way into the owned buffer `wipe` overwrites afterwards. That
@@ -168,14 +168,15 @@ package is used to teach and to prototype as much as to build:
     infinity, a message length the bindings have no call for. `required`
     needs `serving=True`, and each call of the setter sets it afresh, so it
     is False unless passed. A `dsa.Signer` built while the bindings were
-    off signs on the Python arithmetic, but raises under `required` once
-    they would serve it
+    off, or with an `hf` they decline, signs on the Python arithmetic, but
+    raises under `required` once they would serve it, or while they
+    decline its `hf`
 - not every operation crosses that boundary, and one predicate decides
     whether it can: `curve._libsecp256k1_serves` asks for the switch
     above, then for secp256k1 as the curve, then for a hash function
     that is sha256 or absent -- it declines
     `hf is not None and hf is not sha256`
-    (`src/btclib_ecc/curves/curve.py:702`) -- with whatever further
+    (`src/btclib_ecc/curves/curve.py:700`) -- with whatever further
     options the call site passes it. The hash function is matched
     by identity rather than by what it computes, so
     `functools.partial(sha256)`, or any other wrapper a caller writes to
@@ -209,8 +210,8 @@ package is used to teach and to prototype as much as to build:
     parameter, so a message of any other size runs the Python equation
     below regardless of the bindings, as does a session carrying the
     adaptor extension `btclib_ecc.ecc.musig2` implements and the
-    bindings do not, unless the bindings are required (above), which
-    raises for the session. `key_agg`, `key_sort` and `nonce_agg` stay Python's
+    bindings do not. Under `required` such a session raises instead.
+    `key_agg`, `key_sort` and `nonce_agg` stay Python's
     alone either way: measured too close to the delegated arithmetic they
     already call, or run once per session rather than once per signer,
     to earn a second code path. This paragraph is about a secret meeting
@@ -291,7 +292,7 @@ package is used to teach and to prototype as much as to build:
     that arm and infinity is not delegated at all --
     `curve._libsecp256k1_mult` at
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
-    (`src/btclib_ecc/curves/curve.py:974`). `dh.diffie_hellman` at
+    (`src/btclib_ecc/curves/curve.py:972`). `dh.diffie_hellman` at
     `sec = libsecp256k1_shared_point(`
     (`src/btclib_ecc/ecc/dh.py:119`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
@@ -312,7 +313,7 @@ package is used to teach and to prototype as much as to build:
     (`src/btclib_ecc/ecc/pedersen.py:382`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/btclib_ecc/curves/curve.py:1435`):
+    (`src/btclib_ecc/curves/curve.py:1433`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at

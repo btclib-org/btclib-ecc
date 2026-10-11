@@ -220,5 +220,5 @@ def test_a_signer_built_with_the_bindings_off_is_refused_when_required() -> None
     set_libsecp256k1_serving(serving=False)
     signer = dsa.Signer(_PRV_KEY)
     set_libsecp256k1_serving(serving=True, required=True)
-    with pytest.raises(BTClibEccRuntimeError, match="built on the Python"):
+    with pytest.raises(BTClibEccRuntimeError, match="held_python_arm"):
         signer.sign_(_MSG_HASH)

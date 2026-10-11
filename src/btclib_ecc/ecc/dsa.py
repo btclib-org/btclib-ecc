@@ -57,7 +57,6 @@ from btclib_ecc.curves import (
     PreparedPoint,
     PubKey,
     bytes_from_point,
-    curve,
     mult,
     point_from_pub_key,
     scalar_from_prv_key,
@@ -1563,15 +1562,10 @@ class Signer:
             # is: these are the bindings' own computed scalars
             return sig.serialize(check_validity=False)
 
-        # the arm is the one decided at construction, unless the bindings
-        # are required: then this signer, built without them, is refused
-        # where they would serve it, and the predicate raises where they
-        # decline its hf
-        if curve._libsecp256k1_required and _libsecp256k1_serves(self._ec, self._hf):
-            raise _BindingsRequiredError(
-                "this signer was built on the Python arithmetic;"
-                " libsecp256k1 was required"
-            )
+        # the arm is the one decided at construction; under `required` the
+        # predicate refuses a signer built without the bindings where they
+        # would serve it now, and refuses a hash function they decline
+        _libsecp256k1_serves(self._ec, self._hf, held_python_arm=True)
 
         # the challenge
         c = challenge_(msg_hash, self._ec, self._hf)

@@ -639,13 +639,11 @@ def set_libsecp256k1_serving(*, serving: bool, required: bool = False) -> None:
     `required=True` goes further: a call on secp256k1 that the bindings
     decline raises `BTClibEccRuntimeError` instead of running the Python
     arithmetic. The call declines when the caller chose something the
-    bindings do not take: a hash function that is not `hashlib.sha256`, a
-    nonce of its own, a commitment, `lower_s=False`, a MuSig2 session with
-    an adaptor. Another curve, a point at infinity and a message length the
-    bindings have no call for are not choices of that kind, and run the
-    Python arithmetic as before. `required` needs
-    `serving=True`, and is refused with `serving=False`. Every call of this
-    function sets both, so `required` is False again unless it is passed.
+    bindings do not take; SECURITY.md lists the choices. Another curve, a
+    point at infinity and a message length the bindings have no call for
+    are not choices of that kind, and still run the Python arithmetic.
+    `required=True` needs `serving=True`. Every call of this function sets
+    both, so `required` is False unless it is passed.
 
     The environment variable is the other way in, and the earlier one:
     `BTCLIB_ECC_NO_LIBSECP256K1` set to a non-empty value makes the initial
