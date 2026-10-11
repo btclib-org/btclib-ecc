@@ -749,7 +749,8 @@ COVERAGE_FILE=coverage-data-bindings \
 ```
 
 `test.yml`, the `no-bindings` job — the suite in an environment without
-`btclib-secp256k1`, which asserts the absence first and collects coverage
+`btclib-secp256k1` and without gmpy2, the `harness` group carrying
+neither. It asserts the bindings' absence first and collects coverage
 without gating on it. `UV_PROJECT_ENVIRONMENT` keeps the run out of
 `.venv`, which `uv run` would otherwise rebuild without the bindings:
 
@@ -804,14 +805,14 @@ uv run --locked --only-group check pyroma --min 10 dist/*.tar.gz
 ```
 
 The job then installs the wheel it just built from an empty directory,
-bare and then with the `secp256k1` extra, and in each reads the version
-back, asserts which arithmetic serves, and signs and verifies once:
+bare and then with each extra, and in each reads the version back,
+asserts which arithmetic serves, and signs and verifies once:
 
 ```shell
 tmp=$(mktemp -d)
 set -- "$PWD"/dist/*.whl
 cd "$tmp"
-for extra in "" "[secp256k1]"; do
+for extra in "" "[secp256k1]" "[gmpy2]"; do
   rm -rf .venv
   uv venv
   uv pip install "$1$extra"
@@ -819,12 +820,14 @@ for extra in "" "[secp256k1]"; do
 import sys
 from importlib.metadata import requires, version
 import btclib_ecc
-from btclib_ecc.curves import is_libsecp256k1_serving, mult
+from btclib_ecc.curves import is_libsecp256k1_serving, mult, secp256k1
 from btclib_ecc.ecc import dsa
 
 print(version('btclib-ecc'), requires('btclib-ecc'))
 assert btclib_ecc.__version__ == version('btclib-ecc')
-assert is_libsecp256k1_serving() is (sys.argv[1] != '')
+assert is_libsecp256k1_serving() is (sys.argv[1] == '[secp256k1]')
+field = 'mpz' if sys.argv[1] == '[gmpy2]' else 'int'
+assert type(secp256k1._modulus).__name__ == field
 sig = dsa.sign(b'btclib_ecc', 1)
 assert dsa.verify(b'btclib_ecc', mult(1), sig)
 " "$extra"

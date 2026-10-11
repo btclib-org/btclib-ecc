@@ -381,17 +381,18 @@ jobs:
       - name: Rate the packaging metadata
         run: uv run --locked --only-group check pyroma --min 10 dist/*.tar.gz
       # install the wheel from an empty directory, so the import finds the
-      # wheel and not the source tree, once bare and once with the
-      # `secp256k1` extra, and sign and verify once in each. The bare
-      # install answers on the Python arithmetic and the extra on the
-      # bindings, so the two assert which one served rather than trusting
-      # that the install chose it. The dependencies resolve from the
-      # index, which is what a user installing this wheel gets
-      - name: Smoke-test the wheel, bare and with the secp256k1 extra
+      # wheel and not the source tree, once bare and once with each extra,
+      # and sign and verify once in each. The bare install answers on the
+      # Python arithmetic over int, the `secp256k1` extra on the bindings
+      # and the `gmpy2` extra on the Python arithmetic over mpz, so each
+      # asserts which one served rather than trusting that the install
+      # chose it. The dependencies resolve from the index, which is what a
+      # user installing this wheel gets
+      - name: Smoke-test the wheel, bare and with each extra
         run: |
           cd "$RUNNER_TEMP"
           set -- "$GITHUB_WORKSPACE"/dist/*.whl
-          for extra in "" "[secp256k1]"; do
+          for extra in "" "[secp256k1]" "[gmpy2]"; do
             rm -rf .venv
             uv venv
             uv pip install "$1$extra"
@@ -399,12 +400,14 @@ jobs:
           import sys
           from importlib.metadata import requires, version
           import btclib_ecc
-          from btclib_ecc.curves import is_libsecp256k1_serving, mult
+          from btclib_ecc.curves import is_libsecp256k1_serving, mult, secp256k1
           from btclib_ecc.ecc import dsa
 
           print(version('btclib-ecc'), requires('btclib-ecc'))
           assert btclib_ecc.__version__ == version('btclib-ecc')
-          assert is_libsecp256k1_serving() is (sys.argv[1] != '')
+          assert is_libsecp256k1_serving() is (sys.argv[1] == '[secp256k1]')
+          field = 'mpz' if sys.argv[1] == '[gmpy2]' else 'int'
+          assert type(secp256k1._modulus).__name__ == field
           sig = dsa.sign(b'btclib_ecc', 1)
           assert dsa.verify(b'btclib_ecc', mult(1), sig)
           " "$extra"

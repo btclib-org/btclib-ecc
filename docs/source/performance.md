@@ -26,7 +26,9 @@ issue btclib-org/btclib-ecc#212, on CPython 3.15.0rc2, macOS arm64
 best of seven repetitions over the same twenty random 256-bit scalars;
 a per-operation figure the best of seven over a fixed set of random
 operands, the counts in the script. The same comment holds the script's
-output on free-threaded CPython 3.15.0rc2 and on PyPy 3.11.15.
+output on free-threaded CPython 3.15.0rc2 and on PyPy 3.11.15. The
+library's rows are of its `int` arithmetic, which it runs where the
+`gmpy2` extra is not installed.
 
 The libsecp256k1 figures: commit 22245ae, built out of tree with
 cmake, `Release` (`-O2`), `SECP256K1_ASM=AUTO` on arm64, which builds no
@@ -185,12 +187,11 @@ it is.
     `int` and 83 ns on `mpz` (107 ns if `p` stays an `int`, so the
     modulus converts too). The left-to-right double-and-add over
     `add_jac` and `double_jac` runs in 416 µs with `mpz` coordinates
-    against 840 µs, 2.0x, and the inversion 15x. The cost: `curves/`
-    validates with `_utils.is_integer`, which admits an `int` and
-    nothing else, so the validation has to admit an `mpz`, the curve's
-    modulus has to be converted once, and gmpy2 would be an optional
-    extra like the bindings. The risk is two numeric types through all
-    of `curves/`, for no gain on the path that goes to the bindings.
+    against 840 µs, 2.0x, and the inversion 15x. The `gmpy2` extra
+    takes this lever: each curve converts its modulus to an `mpz` once,
+    and what leaves the package is converted back to `int`. A comment
+    on issue btclib-org/btclib-ecc#213 measures `mult(m, P)` with the
+    extra against without, with its script and conditions.
 1. **PyPy.** On PyPy 3.11.15 the same double-and-add runs in 497 µs,
     1.7x, and `mult(m, P)` in 333 µs, 1.5x, with no change to the code.
     Threads gain nothing there, PyPy keeping the GIL: sixty-four

@@ -213,10 +213,10 @@ def _sliding_window_table(Q: JacPoint, ec: CurveGroup, w: int) -> list[JacPoint]
     """
     P = Q
     for _ in range(w - 1):
-        P = ec.double_jac(P)
+        P = ec._double_jac(P)
     T = [P]
     for _ in range(1, pow(2, w - 1)):
-        T.append(ec.add_jac(T[-1], Q))
+        T.append(ec._add_jac(T[-1], Q))
     return T
 
 
@@ -225,9 +225,9 @@ def _double_and_add_var(
 ) -> JacPoint:
     """Fold digits into R by the plain binary method, one bit at a time."""
     for digit in digits:
-        R = ec.double_jac(R)
+        R = ec._double_jac(R)
         if digit == 1:
-            R = ec.add_jac(R, Q)
+            R = ec._add_jac(R, Q)
     return R
 
 
@@ -259,7 +259,7 @@ def _mult_sliding_window_var(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> Jac
     i = 0
     while i < len(digits):
         if digits[i] == 0:
-            R = ec.double_jac(R)
+            R = ec._double_jac(R)
             i += 1
             continue
         # a window opens here, and only a whole one indexes the table:
@@ -274,8 +274,8 @@ def _mult_sliding_window_var(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> Jac
         for a in range(w):
             t = 2 * t + digits[i + a]
         for _ in range(w):
-            R = ec.double_jac(R)
-        R = ec.add_jac(R, T[t - p])
+            R = ec._double_jac(R)
+        R = ec._add_jac(R, T[t - p])
         i += w
 
     return R
@@ -307,23 +307,23 @@ def _mult_w_NAF_var(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoint:
 
     b = pow(2, w)
 
-    Q2 = ec.double_jac(Q)
+    Q2 = ec._double_jac(Q)
     T = [Q]
-    T.extend(ec.add_jac(T[i - 1], Q2) for i in range(1, (b // 4)))
+    T.extend(ec._add_jac(T[i - 1], Q2) for i in range(1, (b // 4)))
     T.extend(ec.negate_jac(T[i - (b // 4)]) for i in range((b // 4), (b // 2)))
     R = INFJ
     for j in range(p - 1, -1, -1):
-        R = ec.double_jac(R)
+        R = ec._double_jac(R)
         if M[j] != 0:
             if M[j] > 0:
                 # It adds the element jQ
-                R = ec.add_jac(R, T[(M[j] - 1) // 2])
+                R = ec._add_jac(R, T[(M[j] - 1) // 2])
             elif w == 1:
                 # Case w=1 must be studied on its own for now
-                R = ec.add_jac(R, T[1])
+                R = ec._add_jac(R, T[1])
             else:
                 # In this case it adds the opposite, ie -jQ
-                R = ec.add_jac(R, T[(b // 4) - ((M[j] + 1) // 2)])
+                R = ec._add_jac(R, T[(b // 4) - ((M[j] + 1) // 2)])
     return R
 
 
@@ -493,17 +493,17 @@ def _regular_window_loop(
 
     # the accumulator starts at the sum of two table entries, so infinity
     # is out of the loop here too
-    R = ec.add_jac_aff(
+    R = ec._add_jac_aff(
         _jac_from_aff(TH[(us[-1] + offset) // 2]), TQ[(vs[-1] + offset) // 2]
     )
     for du, dv in zip(us[-2::-1], vs[-2::-1], strict=True):
         for _ in range(w):
-            R = ec.double_jac(R)
-        R = ec.add_jac_aff(R, TH[(du + offset) // 2])
-        R = ec.add_jac_aff(R, TQ[(dv + offset) // 2])
+            R = ec._double_jac(R)
+        R = ec._add_jac_aff(R, TH[(du + offset) // 2])
+        R = ec._add_jac_aff(R, TQ[(dv + offset) // 2])
     # and the two parity corrections, each made whatever the parity
-    R = ec.add_jac(R, (INFJ, ec.negate_jac(HJ))[not u & 1])
-    return ec.add_jac(R, (INFJ, ec.negate_jac(QJ))[not v & 1])
+    R = ec._add_jac(R, (INFJ, ec.negate_jac(HJ))[not u & 1])
+    return ec._add_jac(R, (INFJ, ec.negate_jac(QJ))[not v & 1])
 
 
 # secp256k1 constants for the GLV endomorphism, all four functions of

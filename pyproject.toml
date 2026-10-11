@@ -93,6 +93,11 @@ pull_requests = "https://github.com/btclib-org/btclib-ecc/pulls"
 # in one `try`, and a release missing one name of it fails that import with
 # an error naming the installed version and this floor
 secp256k1 = ["btclib-secp256k1>=0.8.0.8"]
+# GMP's integers for the Python arm's field arithmetic, through gmpy2's
+# mpz: every curve then reduces by an mpz modulus. An extra for the reason
+# the bindings are one, the int arithmetic answering where it is absent.
+# The floor is the release the suite has run against
+gmpy2 = ["gmpy2>=2.3.2"]
 
 # Every entry below declares a lower bound, the release uv.lock resolved
 # when the entry was written: a bound no run has installed would claim a
@@ -105,10 +110,13 @@ secp256k1 = ["btclib-secp256k1>=0.8.0.8"]
 # project without the bindings. tests/pyproject_test.py refuses the day
 # the two specifiers stop agreeing
 bindings = ["btclib-secp256k1>=0.8.0.8"]
+# the `gmpy2` extra again, as a group, for the same reason and under the
+# same test
+gmpy2 = ["gmpy2>=2.3.2"]
 # what runs the suite, without what the suite delegates to: `test` is the
-# two together, while `harness` alone is the environment a run without
-# the bindings builds. uv's `--no-group` suppresses a group that was
-# selected, not one another group includes
+# harness with both extras, while `harness` alone is the environment a run
+# without the bindings and without gmpy2 builds. uv's `--no-group`
+# suppresses a group that was selected, not one another group includes
 harness = [
     "coverage>=7.16.1",
     "hypothesis>=6.168.1",
@@ -117,7 +125,11 @@ harness = [
     "pytest-randomly>=5.0.0",
     "pytest-xdist>=3.8.0",
 ]
-test = [{ include-group = "harness" }, { include-group = "bindings" }]
+test = [
+    { include-group = "harness" },
+    { include-group = "bindings" },
+    { include-group = "gmpy2" },
+]
 lint = [
     { include-group = "bindings" },
     "mypy>=2.3.1",
