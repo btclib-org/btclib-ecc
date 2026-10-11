@@ -1529,8 +1529,9 @@ def assert_batch_as_valid_(
         raise BTClibEccValueError(_err_msg(batch_size, "messages", msgs))
     if len(sigs) != batch_size:
         raise BTClibEccValueError(_err_msg(batch_size, "signatures", sigs))
-    # whatever its size, a batch whose hash function the bindings decline
-    # is refused where they are required; the answer is not used here
+    # from two signatures up nothing hands hf to the bindings; this asks
+    # so that the batch answers as its batch of one does, which raises
+    # where the bindings are required and decline hf. The answer is unused
     _libsecp256k1_serves(sigs[0].ec, hf)
     if batch_size == 1:
         assert_as_valid_(msgs[0], Qs[0], sigs[0], hf)
@@ -1650,6 +1651,10 @@ def batch_verify_(
     has no reading for. It answers False otherwise: a
     failed verification and a well-formed key or scalar that is merely
     not authentic are both False, see `_assert_structurally_valid_`.
+
+    Where the bindings are required (`curves.set_libsecp256k1_serving` with
+    `required=True`) and decline `hf`, it raises `BTClibEccRuntimeError`
+    and does not answer False: nothing was checked.
     """
     _assert_batch_sequences(msgs, Qs, sigs)
     _assert_batch_not_empty(msgs, Qs, sigs)
@@ -1675,7 +1680,8 @@ def batch_verify(
 ) -> bool:
     """Batch verification of BIP340 signatures.
 
-    Raises and answers False for the same reasons `batch_verify_` does.
+    Raises and answers False for the same reasons `batch_verify_` does,
+    and raises where the bindings are required and decline `hf`.
     """
     _assert_batch_sequences(ms, Qs, sigs)
     _assert_batch_not_empty(ms, Qs, sigs)
