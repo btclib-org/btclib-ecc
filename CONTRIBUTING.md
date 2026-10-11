@@ -574,10 +574,9 @@ Otherwise most of the package's call graph would carry it, public functions
 included, a suffix on the package saying nothing. Blinding is the other
 boundary: `mult` calls `aff_from_jac_var`, and `_blinded_jac` replaced the
 `Z` that inverse runs on with a random one, so the operand no longer
-decides, which the 0.99x of `mult` in its scalar illustrates. So the question
-to ask of a new name is whether the value of a valid operand decides how
-many times the function, or the `_var` function that is its work, loops or
-leaves early.
+decides. So the question to ask of a new name is whether the value of a
+valid operand decides how many times the function, or the `_var` function
+that is its work, loops or leaves early.
 
 **These keep the plain name.** `dsa._assert_as_valid_` and
 `ssa._assert_as_valid_` spend their bulk, `_jac_double_mult_var`, on a pair
@@ -601,8 +600,7 @@ and BIP445; `curve.TweakChain.point`, which runs the bindings' chain where
 they serve and `_tweak_add_var` where they do not or the chain declines;
 `ssa_adaptor.adapt` and `extract_adaptor`, secp256k1-zkp#299's names,
 `adapt` also taking the adaptor secret, which a `_var` name would forbid;
-and
-`pedersen.commitment_from_octets`, `generator_from_octets`,
+and `pedersen.commitment_from_octets`, `generator_from_octets`,
 `bytes_from_commitment`, `bytes_from_generator` and `frost.tweak_ctx_init`,
 which wrap a private `_var` function. A named exception stops the carry, so
 its callers are not reached.
