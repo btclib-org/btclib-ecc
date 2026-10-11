@@ -1430,18 +1430,26 @@ bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
   curl -s https://www.rfc-editor.org/rfc/rfc6979.txt | grep -ci "nist"
   ```
 
-  python-ecdsa defines all of them but secp128r2, by the call below on its
-  `curves.py`. Its test files name them in the lines this prints, which
-  were read: key generation and signing round trips, interoperability with
-  OpenSSL where OpenSSL has the curve, arithmetic on the generator, and the
-  point of the last bullet. None stores a signature to verify, so none is an
-  outside vector for ECDSA:
+  python-ecdsa defines all of them but secp128r2, by the `curves.py` call
+  in the last bullet. Its test files name them in the lines this prints,
+  which were read: key generation and signing round trips, interoperability
+  with OpenSSL where OpenSSL has the curve, arithmetic on the generator
+  (Jacobi coordinates, precomputation), a stored public point in an
+  inequality test, and the point of the last bullet. None stores a
+  signature to verify, so none is an outside vector for ECDSA:
+
+  ```shell
+  dir=<a scratch directory>
+  ```
 
   ```shell
   git clone --quiet --filter=blob:none --no-checkout \
-      https://github.com/tlsfuzzer/python-ecdsa python-ecdsa
-  git -C python-ecdsa grep -n -iE \
-      "SECP112r[12]|SECP128r1|BRAINPOOLP(160|192)r1" \
+      https://github.com/tlsfuzzer/python-ecdsa "${dir:?}/python-ecdsa"
+  ```
+
+  ```shell
+  git -C "${dir:?}/python-ecdsa" grep -n -iE \
+      "112r[12]|128r1|brainpoolP(160|192)r1" \
       bff40c6cf2340148d410d5b3def0e949c547caf1 -- 'src/ecdsa/test_*.py'
   ```
 
@@ -1480,8 +1488,9 @@ bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
   print([n for n, c in CURVES.items() if c.cofactor > 1])"
   ```
 
-  Wycheproof has no file for either, by the call above. python-ecdsa has
-  secp112r2 and not secp128r2:
+  Wycheproof has no file for either, by the call above. python-ecdsa
+  defines secp112r2 and not secp128r2, and defines BRAINPOOLP160r1 and
+  BRAINPOOLP192r1, which are `bpp160r1` and `bpp192r1` here:
 
   ```shell
   ref=bff40c6cf2340148d410d5b3def0e949c547caf1
@@ -1490,7 +1499,7 @@ bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
   ```shell
   gh api -H 'Accept: application/vnd.github.raw' \
       "repos/tlsfuzzer/python-ecdsa/contents/src/ecdsa/curves.py?ref=${ref:?}" \
-      | grep -ohE 'SECP1[12][0-9]r[12]' | sort -u
+      | grep -ohE 'SECP1[12][0-9]r[12]|BRAINPOOLP(160|192)r1' | sort -u
   ```
 
   Its `src/ecdsa/test_ecdsa.py` (blob
