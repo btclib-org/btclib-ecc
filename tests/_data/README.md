@@ -1417,10 +1417,10 @@ bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
   `bpp224r1` to `bpp512r1`, and secp192r1 to secp521r1 are also `nistp192`
   to `nistp521`. A curve of `CURVES` it does not print under either name
   has no Wycheproof file: secp112r1, secp112r2, secp128r1, secp128r2,
-  `bpp160r1` and `bpp192r1`, which the next bullet takes.
+  `bpp160r1` and `bpp192r1`.
 - **ECDSA signing on secp160k1, secp160r1, secp160r2, secp192k1,
-  secp224k1 and `bpp224r1` to `bpp512r1`**: none found in the named
-  sources. The RFC's test vectors are for DSA, the NIST prime curves and
+  secp224k1 and `bpp224r1` to `bpp512r1`**: none found in the RFC
+  or Wycheproof. The RFC's test vectors are for DSA, the NIST prime curves and
   the binary curves, as the headings this prints show:
 
   ```shell
