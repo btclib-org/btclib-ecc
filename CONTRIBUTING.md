@@ -773,6 +773,23 @@ uv run --locked --no-default-groups --group harness \
     coverage report --rcfile=pyproject.toml
 ```
 
+`test.yml`, the `int-arithmetic` job — the suite with the bindings and
+without gmpy2. The `coverage` job's `test` group carries gmpy2, so there
+the tests that compare the Python arithmetic with the bindings compare
+its mpz arithmetic; here they compare its int arithmetic. It asserts the
+configuration first and measures no coverage:
+
+```shell
+UV_PROJECT_ENVIRONMENT=.venv-int-arithmetic \
+    uv run --locked --no-default-groups --group harness --group bindings \
+    python -c "from btclib_ecc.curves import is_libsecp256k1_serving, secp256k1;
+assert is_libsecp256k1_serving();
+assert type(secp256k1._modulus) is int, 'gmpy2 is installed'"
+UV_PROJECT_ENVIRONMENT=.venv-int-arithmetic \
+    uv run --locked --no-default-groups --group harness --group bindings \
+    pytest --no-cov
+```
+
 `test.yml`, the `dist` job — build the distribution files, check them and
 install one. `release.yml`'s `test` job calls this workflow, which then checks
 the files `reusable-build.yml` built and uploaded instead of building its own.

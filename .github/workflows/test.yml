@@ -269,6 +269,43 @@ jobs:
           uv run --locked --no-default-groups --group harness
           coverage report --rcfile=pyproject.toml
 
+  # the bindings without gmpy2, so that the tests comparing the Python
+  # arithmetic with the bindings compare its int arithmetic too: the
+  # `coverage` job's `test` group carries gmpy2, and there that arithmetic
+  # computes in mpz. `--no-cov`: `coverage` and `coverage-union` measure
+  # the floor, and this job is here for its comparisons
+  int-arithmetic:
+    name: Run the suite with the bindings and without gmpy2
+    if: >-
+      ${{ !github.event.pull_request.draft
+      && github.event.action != 'closed'
+      && needs.changes.outputs.code == 'true' }}
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+          python-version: "3.15"
+      # asked of the interpreter before the suite, as `no-bindings` asks:
+      # a job that silently kept gmpy2 would compare mpz again
+      - name: Assert the bindings serve and the arithmetic is int
+        run: >
+          uv run --locked --no-default-groups --group harness --group bindings
+          python -c "from btclib_ecc.curves import is_libsecp256k1_serving, secp256k1;
+          assert is_libsecp256k1_serving();
+          assert type(secp256k1._modulus) is int, 'gmpy2 is installed'"
+      - name: Run pytest
+        run: >
+          uv run --locked --no-default-groups --group harness --group bindings
+          pytest --no-cov
+
   # the packaging metadata is checked on every pull request, not only on
   # the tag that ships it: a release is the one place where finding a
   # problem is too late, a version being consumed by the upload that
@@ -434,7 +471,13 @@ jobs:
     # the name is what branch protection matches, and it carries the
     # workflow because a check context is keyed by name alone
     name: "test: every job passed"
-    needs: [changes, coverage, no-bindings, coverage-union, dist]
+    needs:
+      - changes
+      - coverage
+      - no-bindings
+      - int-arithmetic
+      - coverage-union
+      - dist
     # not success(): a job whose dependencies failed is skipped, and a
     # skipped check satisfies the rule, so the gate has to run to be able
     # to fail. Not always(): a cancellation of this run by its concurrency
