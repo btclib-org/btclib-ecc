@@ -34,7 +34,7 @@ __all__ = [
     "bytes_from_point",
     "bytes_from_prv_key_int",
     "mult_pub_key",
-    "point_from_octets",
+    "point_from_octets_var",
     "point_from_pub_key",
     "scalar_from_prv_key",
 ]
@@ -158,7 +158,7 @@ def bytes_from_prv_key_int(
     return bytes_from_point(mult(q, ec=ec), ec, compressed)
 
 
-def point_from_octets(
+def point_from_octets_var(
     pub_key: Octets, ec: Curve = secp256k1, *, hybrid: bool = False
 ) -> Point:
     """Return a tuple (x_Q, y_Q) that belongs to the curve.
@@ -258,7 +258,7 @@ def _assert_pub_key_type(pub_key: PubKey) -> None:
     btclib-org/btclib#814 is where it is stated: `dsa.verify` answers False
     about a value of a declared type and refuses a type it does not declare.
     The union is closed, so the question has an answer here;
-    `ssa.point_from_bip340pub_key` ends in this same refusal for the same
+    `ssa.point_from_bip340pub_key_var` ends in this same refusal for the same
     reason.
 
     Never echo the input: it may be private material passed by mistake, which is
@@ -273,13 +273,13 @@ def _assert_pub_key_type(pub_key: PubKey) -> None:
 def point_from_pub_key(pub_key: PubKey, ec: Curve = secp256k1) -> Point:
     """Return an elliptic curve point tuple from a public key.
 
-    `point_from_octets` is the parse of the one spelling that has to be parsed;
-    this is that parse with the two spellings that are already a point in front
-    of it, and it lives here for the reason `scalar_from_prv_key` does -- what a
-    public key is, at this layer, is a point of the curve, and nothing above
-    knows more about one than this file (issue btclib-org/btclib#1188). A
-    spelling that carries a network or a compression flag is not among them, an
-    extended key being one.
+    `point_from_octets_var` is the parse of the one spelling that has to be
+    parsed; this is that parse with the two spellings that are already a point
+    in front of it, and it lives here for the reason `scalar_from_prv_key`
+    does -- what a public key is, at this layer, is a point of the curve, and
+    nothing above knows more about one than this file (issue
+    btclib-org/btclib#1188). A spelling that carries a network or a
+    compression flag is not among them, an extended key being one.
 
     **A prepared point is read as the point it holds.**
     `curves.PreparedPoint` is a `Point` plus a caller's word that it will
@@ -291,7 +291,7 @@ def point_from_pub_key(pub_key: PubKey, ec: Curve = secp256k1) -> Point:
     another curve fails the `is_on_curve` its tuple then faces, exactly
     as a bare `Point` of that curve does and with the same message.
 
-    A tuple is confined to ⟨G⟩ here as `point_from_octets` confines the
+    A tuple is confined to ⟨G⟩ here as `point_from_octets_var` confines the
     octets it parses, on a curve whose cofactor makes the two different
     (issue btclib-org/btclib-ecc#15).
     """
@@ -310,7 +310,7 @@ def point_from_pub_key(pub_key: PubKey, ec: Curve = secp256k1) -> Point:
     # nor chain the parse failure that may have: raised outside the handler,
     # so that __context__ is empty too
     with contextlib.suppress(TypeError, ValueError):
-        return point_from_octets(pub_key, ec)
+        return point_from_octets_var(pub_key, ec)
     raise BTClibEccValueError("not a public key")
 
 
@@ -366,7 +366,7 @@ def _sec_from_pub_key(pub_key: PubKey, ec: Curve) -> bytes:
 def _mult_sec(sec: bytes, m: int, ec: Curve) -> Point:
     """Return m*P, for a point given as the SEC octets that name it.
 
-    `mult(m, point_from_octets(sec, ec), ec)` is the same answer, and pays
+    `mult(m, point_from_octets_var(sec, ec), ec)` is the same answer, and pays
     a round trip this does not: the octets are lifted to a point on the
     way in, and `mult` writes that point back out as octets for
     `ecdh.shared_point`, which is the call libsecp256k1 would have made
@@ -378,8 +378,8 @@ def _mult_sec(sec: bytes, m: int, ec: Curve) -> Point:
     them in unproven, the same trade `ecc.dsa` makes for its own delegated calls
     (issue btclib-org/btclib#887) -- because the call below is the proof: the
     bindings' own parse refuses what is not a point, and what they decline falls
-    through to the lift, whose `point_from_octets` is that same refusal on the
-    Python arm.
+    through to the lift, whose `point_from_octets_var` is that same refusal on
+    the Python arm.
 
     Hybrid octets are kept from the bindings, whose parse takes them, so that
     the lift refuses them on both arms.
@@ -388,7 +388,7 @@ def _mult_sec(sec: bytes, m: int, ec: Curve) -> Point:
         with contextlib.suppress(ValueError):
             return _point_from_sec(libsecp256k1_shared_point(sec, m, False))
 
-    return mult(m, point_from_octets(sec, ec), ec)
+    return mult(m, point_from_octets_var(sec, ec), ec)
 
 
 def mult_pub_key(m: Integer, pub_key: PubKey, ec: Curve = secp256k1) -> Point:

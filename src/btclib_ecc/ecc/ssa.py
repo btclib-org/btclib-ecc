@@ -82,7 +82,7 @@ from btclib_ecc.alias import BinaryData, HashF, Integer, JacPoint, Octets, Point
 from btclib_ecc.curves import (
     Curve,
     PreparedPoint,
-    point_from_octets,
+    point_from_octets_var,
     scalar_from_prv_key,
     secp256k1,
 )
@@ -127,7 +127,7 @@ __all__ = [
     "batch_verify_",
     "challenge_",
     "gen_keys",
-    "point_from_bip340pub_key",
+    "point_from_bip340pub_key_var",
     "sign",
     "sign_",
     "verify",
@@ -271,7 +271,7 @@ def _x_from_bip340pub_key(x_Q: BIP340PubKey, ec: Curve) -> int:
     """Return the x-coordinate of a BIP340 public key, however spelled.
 
     The dispatch over the spellings, without the lift that
-    `point_from_bip340pub_key` puts on top of it: what an x-only key is
+    `point_from_bip340pub_key_var` puts on top of it: what an x-only key is
     unlifted is an x, and a verification through the bindings has no use
     for the y -- `libsecp256k1_ssa.verify` takes the x-only octets, and
     proving x an x-coordinate is what parsing them does anyway (issue
@@ -319,19 +319,19 @@ def _x_from_bip340pub_key(x_Q: BIP340PubKey, ec: Curve) -> int:
         # the two octet spellings are told apart by length and not by
         # trying one and catching the other: p-size is BIP340's x-only
         # encoding, and the SEC sizes are a point whose x this wants.
-        # `point_from_octets` is the parse and the proof for the second,
+        # `point_from_octets_var` is the parse and the proof for the second,
         # where the first is unproved here on purpose -- what an x-only
         # key is unlifted is an x, and the docstring above says who
         # proves it
         # the sizes go to `bytes_from_octets` rather than to
-        # `point_from_octets`, which knows the SEC two: the x-only one is
+        # `point_from_octets_var`, which knows the SEC two: the x-only one is
         # this function's to accept, so a caller refused by the parse
         # below would be told that BIP340's own encoding is a wrong size
         sizes = (ec.p_size, ec.p_size + 1, 2 * ec.p_size + 1)
         octets = bytes_from_octets(x_Q, sizes)
         if len(octets) == ec.p_size:
             return int.from_bytes(octets, "big", signed=False)
-        return point_from_octets(octets, ec)[0]
+        return point_from_octets_var(octets, ec)[0]
 
     raise BTClibEccTypeError("not a BIP340 public key")
 
@@ -343,7 +343,7 @@ def _y_even_in_subgroup_var(x: int, ec: Curve) -> int:
     above 1 the lifted point need not be in <G>, and one of small order
     is no key and no nonce point: verification reads its multiples
     modulo n, which is wrong for such a point. The point is asked to be
-    on the curve first, as `point_from_octets` does: the curve's real
+    on the curve first, as `point_from_octets_var` does: the curve's real
     two-torsion x lifts to y = 0, which `_assert_in_subgroup` would read
     as infinity and accept.
     """
@@ -354,7 +354,7 @@ def _y_even_in_subgroup_var(x: int, ec: Curve) -> int:
     return y
 
 
-def point_from_bip340pub_key(x_Q: BIP340PubKey, ec: Curve = secp256k1) -> Point:
+def point_from_bip340pub_key_var(x_Q: BIP340PubKey, ec: Curve = secp256k1) -> Point:
     """Return a verified-as-valid BIP340 public key as Point tuple.
 
     It supports:
@@ -1169,7 +1169,7 @@ def _assert_structurally_valid_(Q: BIP340PubKey, sig: Sig | Octets, ec: Curve) -
 
     A public key spelled as 33 or 65 SEC octets, or as a native
     `(x, y)` tuple, is proved a point of the curve by this same call --
-    `point_from_octets` and `is_on_curve` do that as part of reading the
+    `point_from_octets_var` and `is_on_curve` do that as part of reading the
     encoding, with nothing short of the lift standing between them and
     a usable x. So `verify` raises for such a key that does not lift,
     where the 32-byte x-only spelling BIP340 itself defines does not:

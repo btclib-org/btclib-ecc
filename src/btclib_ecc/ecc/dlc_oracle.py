@@ -70,7 +70,7 @@ def sig_point_(
     s*G for the s that `sign_` returns with the nonce of R.
     """
     msg = bytes_from_octets(msg)
-    P = ssa.point_from_bip340pub_key(pub_key)
-    R = ssa.point_from_bip340pub_key(pub_nonce)
+    P = ssa.point_from_bip340pub_key_var(pub_key)
+    R = ssa.point_from_bip340pub_key_var(pub_nonce)
     c = ssa.challenge_(msg, P[0], R[0], secp256k1, sha256)
     return double_mult_var(c, P, 1, R)

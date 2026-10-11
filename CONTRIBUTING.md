@@ -404,7 +404,7 @@ for. That is what makes a truth safe — `strict="no"` is strict,
 `order_check="no"` checks the order — and it is a fact about the *name*,
 not about the check. So a flag whose `True` is the permissive value is a
 kind however little it computes, because the misreading waives the very
-refusal it was written to make: `point_from_octets`' `hybrid` parses the
+refusal it was written to make: `point_from_octets_var`'s `hybrid` parses the
 prefixes it was written to keep out.
 
 **Which of the two a flag is, is written down for every one of them.**
@@ -433,7 +433,7 @@ gate, so a new one is a prefix or a decision somebody wrote down.
   the one prefix that warns a caller it still needs an `except`.
 
 A converter is named for what it returns -- `bytes_from_octets`,
-`point_from_octets` -- and a query for what it answers.
+`point_from_octets_var` -- and a query for what it answers.
 
 **A member that takes nothing but `self` is a `@property`**, whatever it
 answers, and that is gated too: it is read off the object rather than
@@ -493,19 +493,42 @@ than skipping it -- `ssa.challenge_`'s `x_Q` and `x_K`, and
 
 ### A `_var` suffix means the operand decides the work
 
-A function whose duration follows the value it is given ends in `_var`,
-and the plain name beside it is the one a secret may be handed. It is
-libsecp256k1's convention and it is used there for the same two halves:
+A function ends in `_var` when the value of a valid operand decides its
+work: through a loop of its own whose count follows it or an early exit
+from one, or through a `_var` function it applies to that operand and that
+is the bulk of its work. A branch that only refuses an invalid operand, or
+handles a degenerate case such as the group law's doubling, does not
+count. The curve, and a format parameter the output states, such as a
+range proof's `exp`, are not operands: `find_all_points` loops over the
+curve's field, and `rangeproof._prove_params` and `rangeproof._max_value`
+loop `exp` times, a count the proof's header writes down.
+
+Some loops do not count either. A loop whose extra rounds only discard a
+candidate, such as a nonce function's rejection loop, tells nothing about
+the value it keeps: `dsa._grind_low_r` and `pedersen.second_generator`
+are of this kind. A loop that does one round per element it returns takes
+its duration from the size of the answer: `find_subgroup_points`. A loop
+whose count is the number of operands, not their value, does not count:
+`_multi_mult_pairs` loops once per scalar it is handed.
+
+The plain name beside a `_var` one means a regular or blinded algorithm
+was chosen on purpose, and is the one a secret may be handed; it promises
+nothing about constant time. The pair is libsecp256k1's convention, used
+there for the same two halves:
 `secp256k1_scalar_inverse_var` sits beside `secp256k1_scalar_inverse`,
 `secp256k1_gej_add_var` beside `secp256k1_gej_add_ge`. The point of it is
 that the question is answered at the call site rather than in the
 docstring of the thing being called. A leading underscore changes none of
-this: the suffix states the implementation's timing, for a private
+this: the suffix states the implementation's algorithm, for a private
 function as for a public one.
 
-What "the work" is depends on the function, and each of these was
-measured rather than assumed — on secp256k1's order or its `p`, over
-random operands of 256 bits down to 64, the ratio between the two ends:
+The suffix follows from the algorithm, not from a measurement: a timing
+on one machine and one interpreter does not hold on the next, and a
+reader cannot check that someone once took it.
+
+What "the work" is depends on the function. The ratios below illustrate
+it. They were measured on secp256k1's order or its `p`, over random
+operands of 256 bits down to 64, as the ratio between the two ends:
 
 - the count of point operations, for a scalar multiplication:
     `curve_group._mult_jac_var` and `curve_group_2._double_mult_w_NAF_var`
@@ -537,36 +560,63 @@ random operands of 256 bits down to 64, the ratio between the two ends:
     tiebreakers follow their `x` on the 1 mod 4 curves above, 1.84x on
     `secp224k1`, where on secp256k1 they are flat
 
-**The suffix is measured, never inherited, and that is what stops it.**
-Every function that *reaches* one of these through some chain of calls
-would otherwise take it: most of the package's own call graph, public
-functions included — a suffix on the package, saying nothing. Two things
-break the chain, and both are facts about the caller rather than about
-the callee. Blinding is one: `mult` calls `aff_from_jac_var` and is 0.99x
-in its scalar, because `_blinded_jac` randomized the `Z` that inverse is
-timed on. A public operand is the other: `point_from_octets` measures
-1.05x, its `y_even_var` being one fixed exponent on secp256k1 and its
-`_is_x_coordinate_var` reaching the bindings. So the question to ask of a
-new name is not what it calls, but what its own clock does with what it
-was handed — and the answer is a measurement.
+**Carrying the suffix up a call is a judgement.** A function whose work is
+a `_var` function on its operand takes the suffix with it:
+`aff_from_jac_var` and `add_aff_var` are an extended Euclid and a few
+products, `y_var`, `sec_point.point_from_octets_var` and
+`ssa.point_from_bip340pub_key_var` are a square root on a compressed or an
+x-only key, `musig2._cpoint_var`, `frost._cpoint_var` and their
+`_cpoint_ext_var` are that parse behind a size check, and `crack_prv_key_var`
+is an inverse around a hashing and a parsing that do not follow the operand's
+value. A function where the `_var` call is one step among other work, or one
+path of a type dispatch, keeps the plain name, as a verification does.
+Otherwise most of the package's call graph would carry it, public functions
+included, a suffix on the package saying nothing. Blinding is the other
+boundary: `mult` calls `aff_from_jac_var`, and `_blinded_jac` replaced the
+`Z` that inverse runs on with a random one, so the operand no longer
+decides. So the question to ask of a new name is whether the value of a
+valid operand decides how many times the function, or the `_var` function
+that is its work, loops or leaves early.
 
-**These are the exceptions the census leaves.** Every function that
-spends one of these primitives has been timed over random inputs of one
-class, against `add_jac` as the floor — 1.05x, the group law having
-nothing to branch on. What measures at that floor keeps its plain name,
-and each is here so that the next reader does not have to re-derive it:
-`dsa._assert_as_valid_` 1.07x and `dsa._recover_pub_key_` 1.05x,
-`ssa._assert_as_valid_` 1.07x and `ssa._recover_pub_key_` 1.06x,
-`sec_point.point_from_octets` 1.01x, `ssa.point_from_bip340pub_key` 1.03x
-and `Sig.assert_valid` 1.03x. The inverse or the root inside each of them
-is real, and it is diluted: an inverse varying by 1.32x is 10 us of a
-40 us verification.
+**These keep the plain name.** `dsa._assert_as_valid_` and
+`ssa._assert_as_valid_` spend their bulk, `_jac_double_mult_var`, on a pair
+of scalars of which one comes from a hash of the operands: `c` in ssa, and
+`u` in dsa, the message hash times 1/s. `dsa._recover_pub_key_` and
+`ssa._recover_pub_key_` have one square root, on `r` or its lift, among
+other work.
 `ellswift._constants` is memoized on the curve and receives no value at
 all.
 
-`ellswift._xswiftec_inv_var` is the one to keep in view: its cost follows
-an early return, not a slower sum, which is what a data-dependent branch
-looks like on a clock, and it is why the SwiftEC map carries the suffix.
+`dsa.Sig.assert_valid` and `dsa.recover_pub_keys_` loop over the
+x-coordinates congruent to `r` and keep their names, as exceptions to the
+rule. They loop again only for `r < p - n`: a negligible share of
+signatures on every prime-order curve, and almost every `r` on the insecure
+cofactor-4 curves `secp112r2` and `secp128r2`.
+
+These keep their names, each for its reason: `ssa.Sig.assert_valid`, a
+method name every `Sig` class shares; `apply_tweak` and `nonce_agg` of
+`musig2` and `frost`, the names of BIP327 and BIP445;
+`curve.TweakChain.point`, which runs the bindings' chain where they serve
+and `_tweak_add_var` where they do not or the chain declines;
+`ssa_adaptor.adapt`, the name of BlockstreamResearch/secp256k1-zkp#299,
+which takes the adaptor secret a `_var` name would forbid;
+`ssa_adaptor.extract_adaptor`, the name of `musig2.extract_adaptor` and of
+secp256k1-zkp's MuSig2 module; `ecdsa_adaptor.decrypt`, the name of
+`discreetlogcontracts/dlcspecs`'s ECDSA adaptor specification, which takes
+the decryption key and so cannot be `_var` either;
+`rangeproof._recover_x`, which is handed a secret nonce and whose one
+variable-time step, the inverse, is on the public `e`; and
+`pedersen.commitment_from_octets`, `generator_from_octets`,
+`bytes_from_commitment`, `bytes_from_generator` and `frost.tweak_ctx_init`,
+since a public name is not broken for a private `_var` function it wraps.
+A named exception stops the carry, so its callers are not reached.
+`rangeproof._value_encoding_var` reads a value recovered with a secret nonce
+and keeps its `_var` name; SECURITY.md's limitations state it.
+
+`ellswift._xswiftec_inv_var` has no loop of its own: it returns early, on
+whether its operands are squares, before the inverse and the square roots
+that are its work, and takes the suffix from them. On secp256k1, whose
+`p` is 3 mod 4, `mod_sqrt_var` is one power.
 
 Three tiers of duration follow, of which only the first is constant-time:
 
@@ -596,10 +646,10 @@ its `r`, its `s` and a verification's `Z` take `mod_inv_var`, and a
 reviewer should be able to tell which is which without tracing where
 each value came from.
 
-Add the suffix when adding such a function, having measured that it earns
-one, and do not add it to the recodings, the tables or the group law:
-those take no operand whose size varies, and a suffix on everything says
-nothing about anything.
+Add the suffix when adding a function whose work follows the operand,
+and do not add it to the regular recodings (`signed_odd_digits`), the
+tables or the group law: their work does not follow the operand, and a
+suffix on everything says nothing about anything.
 
 What none of this does is make the Python path safe, and `SECURITY.md`'s
 limitations section is what says so at length: a table is still indexed

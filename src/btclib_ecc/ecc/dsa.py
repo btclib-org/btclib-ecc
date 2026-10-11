@@ -2431,7 +2431,7 @@ def _libsecp256k1_recover_point_(
     # already, and hands in a 32-byte msg_hash and a key_id in [0, 3].
     #
     # 0x04 || x || y (SEC 1 v.2, section 2.3.3), read rather than parsed
-    # through point_from_octets: this is a point libsecp256k1 has just
+    # through point_from_octets_var: this is a point libsecp256k1 has just
     # created, and proving it on the curve again is work with a known
     # answer. The two callers are the named candidate and the enumeration
     # over all four of them, which is the only reason this is a function:

@@ -134,7 +134,7 @@ from btclib_ecc.curves.curve import _libsecp256k1_serves, _sum_var, _tweak_add_v
 from btclib_ecc.curves.sec_point import (
     bytes_from_point,
     bytes_from_prv_key_int,
-    point_from_octets,
+    point_from_octets_var,
 )
 from btclib_ecc.ecc import ssa
 from btclib_ecc.exceptions import (
@@ -228,22 +228,22 @@ def _cbytes_ext(P: Point) -> bytes:
     return _INF_BYTES if P[1] == 0 else _cbytes(P)
 
 
-def _cpoint(octets: Octets) -> Point:
+def _cpoint_var(octets: Octets) -> Point:
     """Deserialize a compressed point, refusing anything else.
 
-    `point_from_octets` is the SEC parser and takes the uncompressed
+    `point_from_octets_var` is the SEC parser and takes the uncompressed
     0x04 form too; the size check ahead of it is what makes this
     BIP327's `cpoint`, which is compressed-only -- a 33-byte input with
     an 0x04 prefix is then the wrong size for what its prefix announces,
     and is refused as such.
     """
-    return point_from_octets(bytes_from_octets(octets, _PK_SIZE), secp256k1)
+    return point_from_octets_var(bytes_from_octets(octets, _PK_SIZE), secp256k1)
 
 
-def _cpoint_ext(octets: Octets) -> Point:
+def _cpoint_ext_var(octets: Octets) -> Point:
     """Deserialize a point that may be the infinity one."""
     data = bytes_from_octets(octets, _PK_SIZE)
-    return INF if data == _INF_BYTES else _cpoint(data)
+    return INF if data == _INF_BYTES else _cpoint_var(data)
 
 
 def _bytes_xor(a: bytes, b: bytes) -> bytes:
@@ -384,7 +384,7 @@ def key_agg(pub_keys: Sequence[Octets]) -> KeyAggContext:
     coefficients: list[int] = []
     for i, pk in enumerate(pks):
         try:
-            points.append(_cpoint(pk))
+            points.append(_cpoint_var(pk))
         except BTClibEccValueError as e:
             raise InvalidContributionError(i, "pubkey") from e
         coefficients.append(_key_agg_coeff_(L, second, pk))
@@ -586,7 +586,7 @@ def nonce_agg(pub_nonces: Sequence[Octets]) -> bytes:
         R_j: list[Point] = []
         for i, pub_nonce in enumerate(nonces):
             try:
-                R_j.append(_cpoint(pub_nonce[j * _PK_SIZE : (j + 1) * _PK_SIZE]))
+                R_j.append(_cpoint_var(pub_nonce[j * _PK_SIZE : (j + 1) * _PK_SIZE]))
             except BTClibEccValueError as e:
                 raise InvalidContributionError(i, "pubnonce") from e
         # the terms handed over at once rather than added into a running
@@ -739,8 +739,8 @@ def session_values(session_ctx: SessionContext) -> SessionValues:
     Q = key_agg_ctx.Q
     x_Q = key_agg_ctx.x_only_pub_key
     try:
-        R_1 = _cpoint_ext(session_ctx.agg_nonce[:_PK_SIZE])
-        R_2 = _cpoint_ext(session_ctx.agg_nonce[_PK_SIZE:])
+        R_1 = _cpoint_ext_var(session_ctx.agg_nonce[:_PK_SIZE])
+        R_2 = _cpoint_ext_var(session_ctx.agg_nonce[_PK_SIZE:])
     except BTClibEccValueError as err:
         raise InvalidContributionError(None, "aggnonce") from err
     # the adaptor point, folded into R_1 before b is hashed and not into
@@ -751,7 +751,7 @@ def session_values(session_ctx: SessionContext) -> SessionValues:
     # what keeps every BIP327 vector byte-identical to before this
     if session_ctx.adaptor is not None:
         try:
-            T = _cpoint(session_ctx.adaptor)
+            T = _cpoint_var(session_ctx.adaptor)
         except BTClibEccValueError as err:
             raise InvalidContributionError(None, "adaptor") from err
         R_1 = secp256k1.add_var(R_1, T)
@@ -1031,12 +1031,12 @@ def partial_sig_verify_(
             raise BTClibEccValueError(err_msg) from e
         _session_key_agg_coeff(session_ctx, pub_key)
         return bool(verified)
-    R_s1 = _cpoint(pub_nonce[:_PK_SIZE])
-    R_s2 = _cpoint(pub_nonce[_PK_SIZE:])
+    R_s1 = _cpoint_var(pub_nonce[:_PK_SIZE])
+    R_s2 = _cpoint_var(pub_nonce[_PK_SIZE:])
     R_s = secp256k1.add_var(R_s1, mult(values.b, R_s2, secp256k1))
     if values.R[1] % 2:
         R_s = secp256k1.negate(R_s)
-    P = _cpoint(pub_key)
+    P = _cpoint_var(pub_key)
     a = _session_key_agg_coeff(session_ctx, pub_key)
     g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
     g = g * values.gacc % secp256k1.n

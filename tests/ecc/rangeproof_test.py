@@ -98,8 +98,8 @@ from btclib_ecc.ecc import rangeproof
 from btclib_ecc.ecc.borromean import BorromeanSig
 from btclib_ecc.ecc.pedersen import (
     _RANGEPROOF_TAG,
-    _bytes_from_point,
-    _point_from_x,
+    _bytes_from_point_var,
+    _point_from_x_var,
     bytes_from_commitment,
     bytes_from_generator,
     commit,
@@ -481,14 +481,14 @@ def test_pubk_rings_open_at_the_recorded_blinding_factor(
     # residuosity bit at another tag: `9 ^ is_square(y)` for a Pedersen
     # commitment, `1 ^` it at `_RANGEPROOF_TAG`
     recorded = bytes.fromhex(vector["commitment"])
-    assert _bytes_from_point(commitment, _RANGEPROOF_TAG) == (
+    assert _bytes_from_point_var(commitment, _RANGEPROOF_TAG) == (
         bytes([recorded[0] ^ 8]) + recorded[1:]
     )
 
     rings = proof.pubk_rings(commitment, _GEN)
     assert tuple(len(ring) for ring in rings) == proof.rsizes
     stated = tuple(
-        _point_from_x(x, sign)
+        _point_from_x_var(x, sign)
         for x, sign in zip(proof.ring_commitments, proof.signs, strict=True)
     )
     assert tuple(ring[0] for ring in rings[: len(stated)]) == stated
@@ -532,9 +532,9 @@ def test_a_ring_commitment_x_resolves_against_residuosity() -> None:
     for vector in _VECTORS:
         proof = RangeProof.parse(bytes.fromhex(vector["proof"]))
         for x, sign_bit in zip(proof.ring_commitments, proof.signs, strict=True):
-            point = _point_from_x(x, sign_bit)
+            point = _point_from_x_var(x, sign_bit)
             octets = bytes([sign_bit]) + x.to_bytes(secp256k1.p_size, "big")
-            assert _bytes_from_point(point, _RANGEPROOF_TAG) == octets
+            assert _bytes_from_point_var(point, _RANGEPROOF_TAG) == octets
 
 
 def test_sign_key_idx_refuses_a_value_this_proof_has_no_digit_for() -> None:
@@ -646,10 +646,10 @@ def _seed(vector: dict[str, Any]) -> bytes:
     octets = bytes.fromhex(vector["proof"])
     return (
         bytes.fromhex(vector["nonce"])
-        + _bytes_from_point(
+        + _bytes_from_point_var(
             commit(vector["blind"], vector["value"], _GEN), _RANGEPROOF_TAG
         )
-        + _bytes_from_point(second_generator(), _RANGEPROOF_TAG)
+        + _bytes_from_point_var(second_generator(), _RANGEPROOF_TAG)
         + octets[: _header_size(octets)]
     )
 
@@ -708,7 +708,7 @@ def test_the_nonce_chain_writes_the_ring_commitments_a_proof_states(
             )
         )
 
-    stated = [_bytes_from_point(head, _RANGEPROOF_TAG) for head in heads[:-1]]
+    stated = [_bytes_from_point_var(head, _RANGEPROOF_TAG) for head in heads[:-1]]
     assert tuple(int.from_bytes(o[1:], "big") for o in stated) == proof.ring_commitments
     assert tuple(bool(o[0]) for o in stated) == proof.signs
     assert tuple(ring[0] for ring in proof.pubk_rings(commitment, _GEN)) == tuple(heads)
@@ -741,7 +741,7 @@ def test_nonce_chain_refuses_a_commitment_that_is_no_point() -> None:
     """The commitment is required on the curve, before any seed exists.
 
     The refusal is the explicit one, `pubk_rings`' on the argument of
-    the same name. `_bytes_from_point` would turn the same pair down
+    the same name. `_bytes_from_point_var` would turn the same pair down
     where the seed is written, so what the explicit check fixes is
     where the refusal happens rather than whether it happens.
     """
@@ -757,7 +757,7 @@ def test_nonce_chain_refuses_a_commitment_at_infinity() -> None:
     `is_on_curve` answers `True` for any `(x, 0)`, that being how a
     point at infinity is spelled in affine coordinates, so the
     `require_on_curve` above the seed lets it through and
-    `_bytes_from_point` is what turns it down. `match` is on that
+    `_bytes_from_point_var` is what turns it down. `match` is on that
     refusal's own message, the off-curve one above raising a different
     one from the same method.
     """
@@ -1130,7 +1130,7 @@ def test_a_proof_written_here_opens_at_its_own_blinding_factor(
 
     rings = proof.pubk_rings(commit(_BLIND, value, _GEN), _GEN)
     stated = tuple(
-        _point_from_x(x, sign_bit)
+        _point_from_x_var(x, sign_bit)
         for x, sign_bit in zip(proof.ring_commitments, proof.signs, strict=True)
     )
     assert tuple(ring[0] for ring in rings[: len(stated)]) == stated
@@ -1341,7 +1341,7 @@ def test_a_built_proof_is_asked_what_a_parse_asks_the_octets() -> None:
 
     These states because of where each field is written: the header
     octets carry the exponent and the mantissa in one byte each, and
-    `_ring_message` packs `min_value` into the eight octets that field
+    `_ring_message_var` packs `min_value` into the eight octets that field
     has and every ring commitment into the curve's own width, so a
     number that does not fit is an `OverflowError` or a `ValueError`
     from `int.to_bytes` and `bytes()` rather than a refusal of this
@@ -1419,7 +1419,7 @@ def test_verify_refuses_a_ring_key_at_infinity() -> None:
     vector = _vector("odd mantissa")
     proof = RangeProof.parse(_octets("odd mantissa"))
     assert proof.exp == 0
-    octets = _bytes_from_point(second_generator(), _RANGEPROOF_TAG)
+    octets = _bytes_from_point_var(second_generator(), _RANGEPROOF_TAG)
     holed = replace_unchecked(
         proof,
         signs=(bool(octets[0]), *proof.signs[1:]),
@@ -1441,7 +1441,7 @@ def test_verify_refuses_a_ring_key_at_infinity() -> None:
 def test_rewind_refuses_a_nonce_that_is_not_the_proof_s() -> None:
     """A wrong nonce draws a different chain, and no key then reads as a value.
 
-    `_value_encoding` looks at two keys of the last ring and takes
+    `_value_encoding_var` looks at two keys of the last ring and takes
     neither: the xor of a proof's own `s` with a draw that never wrote
     it opens with bit 7 clear, or repeats none of its three eight-octet
     runs. The proof still verifies -- a rewind is what the nonce is for,
@@ -1895,7 +1895,7 @@ def test_the_nonce_chain_answers_proofs_zkp_signs_at_other_shapes() -> None:
                 mult(chain.blinding_factors[i], secp256k1.G, secp256k1),
                 mult(sign_key_idx[i] * scale << 2 * i, second_generator(), secp256k1),
             )
-            assert _bytes_from_point(head, _RANGEPROOF_TAG) == bytes(
+            assert _bytes_from_point_var(head, _RANGEPROOF_TAG) == bytes(
                 [proof.signs[i]]
             ) + x.to_bytes(secp256k1.p_size, "big")
 

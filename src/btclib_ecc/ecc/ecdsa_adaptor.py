@@ -57,7 +57,7 @@ from btclib_ecc.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
-from btclib_ecc.curves.sec_point import point_from_octets
+from btclib_ecc.curves.sec_point import point_from_octets_var
 from btclib_ecc.ecc.dsa import Sig
 from btclib_ecc.exceptions import BTClibEccRuntimeError, BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
@@ -182,7 +182,7 @@ def encrypt(
     )
 
 
-def _parse(adaptor_sig: Octets) -> tuple[Point, Point, int, int, int]:
+def _parse_var(adaptor_sig: Octets) -> tuple[Point, Point, int, int, int]:
     """Return (R, R_a, s_a, e, s), refusing what the specification refuses.
 
     A wrong length, a point that is not on the curve, an s_a or s not in
@@ -198,8 +198,8 @@ def _parse(adaptor_sig: Octets) -> tuple[Point, Point, int, int, int]:
     of proofs.
     """
     data = bytes_from_octets(adaptor_sig, _SIG_SIZE)
-    R = point_from_octets(data[:_R_END])
-    Ra = point_from_octets(data[_R_END:_RA_END])
+    R = point_from_octets_var(data[:_R_END])
+    Ra = point_from_octets_var(data[_R_END:_RA_END])
     s_a = int.from_bytes(data[_RA_END:_SA_END], "big")
     e = _scalar(data[_SA_END:_E_END])
     s = int.from_bytes(data[_E_END:], "big")
@@ -225,7 +225,7 @@ def assert_as_valid(
     equation that does not balance, and for an argument that is
     malformed.
     """
-    R, Ra, s_a, e, s = _parse(adaptor_sig)
+    R, Ra, s_a, e, s = _parse_var(adaptor_sig)
     m = _scalar(bytes_from_octets(msg_hash, _SCALAR_SIZE))
     X = point_from_pub_key(pub_key)
     Y = point_from_pub_key(enc_key)
@@ -283,7 +283,7 @@ def decrypt(adaptor_sig: Octets, dec_key: Integer) -> Sig:
     the adaptor signature and dec_key is the discrete logarithm of its
     enc_key: nothing here checks either.
     """
-    R, _, s_a, _, _ = _parse(adaptor_sig)
+    R, _, s_a, _, _ = _parse_var(adaptor_sig)
     y = scalar_from_prv_key(dec_key)
     s = s_a * mod_inv(y, secp256k1.n) % secp256k1.n
     return Sig(R[0] % secp256k1.n, min(s, secp256k1.n - s))
@@ -298,7 +298,7 @@ def recover(adaptor_sig: Octets, sig: Sig | Octets, enc_key: PubKey) -> int:
     negation: the signature is not a decryption of this adaptor
     signature under this key.
     """
-    R, _, s_a, _, _ = _parse(adaptor_sig)
+    R, _, s_a, _, _ = _parse_var(adaptor_sig)
     Y = point_from_pub_key(enc_key)
     if isinstance(sig, Sig):
         if sig.ec != secp256k1:

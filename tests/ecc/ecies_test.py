@@ -335,7 +335,7 @@ def test_derive_keys_is_the_same_on_both_sides() -> None:
 def test_derive_keys_refuses_a_hybrid_key_on_both_arms(
     bindings: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """0x06 and 0x07 are refused as `point_from_octets` refuses them.
+    """0x06 and 0x07 are refused as `point_from_octets_var` refuses them.
 
     The bindings parse them, so without the refusal the same key is valid
     on one install and invalid on another (issue btclib-org/btclib-ecc#75).

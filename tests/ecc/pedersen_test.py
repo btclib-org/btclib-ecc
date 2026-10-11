@@ -51,7 +51,7 @@ from btclib_ecc.curves import (
     curve,
     double_mult_var,
     mult,
-    point_from_octets,
+    point_from_octets_var,
     secp256k1,
 )
 from btclib_ecc.curves.curve import CURVES, _assert_in_subgroup
@@ -536,7 +536,7 @@ def test_the_leading_octet_is_residuosity_and_not_parity() -> None:
     agreements = set()
     for vector in _VECTORS:
         octets = bytes.fromhex(vector["commitment"])
-        by_parity = point_from_octets(bytes([0x02 | octets[0] & 1]) + octets[1:])
+        by_parity = point_from_octets_var(bytes([0x02 | octets[0] & 1]) + octets[1:])
         commitment = pedersen.commitment_from_octets(octets)
         assert by_parity[0] == commitment[0]
         agrees = by_parity == commitment

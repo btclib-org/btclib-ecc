@@ -1115,8 +1115,8 @@ def test_the_interleaved_loop_makes_the_operations_its_wnafs_name(
 ) -> None:
     """One doubling per bit position, and the point each nonzero digit names.
 
-    What `_additions_by_position` reorganized is where a digit is looked up, not
-    what is done with it (issue btclib-org/btclib#906), and a comparison of
+    What `_additions_by_position_var` reorganized is where a digit is looked up,
+    not what is done with it (issue btclib-org/btclib#906), and a comparison of
     results would be blind to a reordering that answers the same point -- group
     addition commutes. So the operations are asserted: the sequence of doublings
     and additions the call makes, *with the point each addition takes*, against

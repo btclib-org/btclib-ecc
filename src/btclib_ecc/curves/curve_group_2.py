@@ -67,7 +67,7 @@ Taken, in the function named:
     - table of odd multiples, `secp256k1_ecmult_odd_multiples_table`:
       `_odd_multiples`, `_odd_multiples_aff`
     - sign of a digit on the point, `secp256k1_ecmult_table_get_ge`:
-      `_additions_by_position`
+      `_additions_by_position_var`
     - one loop and its doublings for all points,
       `secp256k1_ecmult_strauss_wnaf`: `_multi_mult_w_NAF_var`,
       `_double_mult_w_NAF_var`

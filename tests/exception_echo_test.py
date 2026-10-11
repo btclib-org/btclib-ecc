@@ -26,7 +26,7 @@ import pytest
 from btclib_ecc import number_theory as nt
 from btclib_ecc.curves import (
     mult_pub_key,
-    point_from_octets,
+    point_from_octets_var,
     point_from_pub_key,
     secp256k1,
 )
@@ -106,9 +106,15 @@ _CASES: dict[str, tuple[Callable[[], Any], int | bytes]] = {
         lambda: point_from_pub_key((PRV_INT, PRV_INT)),
         PRV_INT,
     ),
-    "point_from_octets, 02": (lambda: point_from_octets(SEC), PRV_INT),
-    "point_from_octets, 04": (lambda: point_from_octets(b"\x04" + PRV + PRV), PRV_INT),
-    "point_from_bip340pub_key": (lambda: ssa.point_from_bip340pub_key(PRV), PRV_INT),
+    "point_from_octets_var, 02": (lambda: point_from_octets_var(SEC), PRV_INT),
+    "point_from_octets_var, 04": (
+        lambda: point_from_octets_var(b"\x04" + PRV + PRV),
+        PRV_INT,
+    ),
+    "point_from_bip340pub_key_var": (
+        lambda: ssa.point_from_bip340pub_key_var(PRV),
+        PRV_INT,
+    ),
     "ssa.assert_batch_as_valid": (
         lambda: ssa.assert_batch_as_valid([_MSG], [PRV], [_sig()]),
         PRV_INT,

@@ -269,7 +269,7 @@ def test_proof_e_is_reduced_modulo_n() -> None:
     """A proof e of n or above is read modulo n, as the reference reads it."""
     adaptor_sig = ecdsa_adaptor.encrypt(_MSG, _X, _ENC, _AUX)
     for e in (_N, _N + 5):
-        parsed = ecdsa_adaptor._parse(_with(adaptor_sig, 98, e.to_bytes(32, "big")))
+        parsed = ecdsa_adaptor._parse_var(_with(adaptor_sig, 98, e.to_bytes(32, "big")))
         assert parsed[3] == e - _N
 
 

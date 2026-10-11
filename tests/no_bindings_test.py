@@ -67,7 +67,7 @@ from btclib_ecc.curves import (
     curve,
     is_libsecp256k1_serving,
     mult,
-    point_from_octets,
+    point_from_octets_var,
     secp256k1,
     set_libsecp256k1_serving,
 )
@@ -580,11 +580,11 @@ _Y = _Q[1].to_bytes(32, "big")
 # name -> the call. Each is held to the message as well as the class: each
 # refusal runs in a shared precondition above the arm split --
 # `int_from_integer` for the bool (issue btclib-org/btclib#1206),
-# `point_from_octets`'s own hybrid check for the key -- so neither arm sees the
-# input before the one sentence of this package has fired
+# `point_from_octets_var`'s own hybrid check for the key -- so neither arm sees
+# the input before the one sentence of this package has fired
 _REFUSALS: dict[str, Callable[[], object]] = {
     "bool private key": lambda: dsa.sign(_MSG_HASH, True),
-    "hybrid public key": lambda: point_from_octets(bytes([0x06]) + _X + _Y),
+    "hybrid public key": lambda: point_from_octets_var(bytes([0x06]) + _X + _Y),
 }
 
 # a second child, built the same way as `_CHILD` above: the finder
@@ -613,7 +613,7 @@ class RefuseTheBindings:
 sys.meta_path.insert(0, RefuseTheBindings())
 
 from btclib_ecc._libsecp256k1 import INSTALLED
-from btclib_ecc.curves import curve, point_from_octets
+from btclib_ecc.curves import curve, point_from_octets_var
 from btclib_ecc.ecc import dsa
 from btclib_ecc.exceptions import BTClibEccException
 
@@ -633,7 +633,7 @@ print(json.dumps({{
     "dispatch": curve._libsecp256k1_available,
     "bool private key": refused(lambda: dsa.sign({msg_hash!r}, True)),
     "hybrid public key": refused(
-        lambda: point_from_octets(bytes.fromhex({hybrid_sec!r}))
+        lambda: point_from_octets_var(bytes.fromhex({hybrid_sec!r}))
     ),
 }}))
 """
