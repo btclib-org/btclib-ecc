@@ -702,10 +702,12 @@ print(sys.argv[1].lower() in h.lower())" "${value:?}"
 
 The outcomes are libsecp256k1's own assertions, so a Python arm held to
 them agrees with that library's accept and refuse pattern and not with a
-derivation of its own. Upstream's comment says `sig64` was made with
-secret key zero, which is not a valid key. `tests/ecc/dsa_recovery_test.py`
-reads the file. This package refuses a zero r or s where upstream parses
-it; the test asks `recover_pub_key_` for the refusal.
+derivation of its own, and for that reason the module reading the file,
+`tests/ecc/dsa_secp256k1_recovery_test.py`, is not an authority in
+`tests/py_arm_authority_test.py`. Upstream's comment says `sig64` was made
+with secret key zero, which is not a valid key. This package refuses a
+zero r or s where upstream parses it; the test asks `recover_pub_key_`
+for the refusal.
 
 ## Other projects
 
