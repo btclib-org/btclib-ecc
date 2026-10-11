@@ -1418,6 +1418,30 @@ bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
   to `nistp521`. A curve of `CURVES` it does not print under either name
   has no Wycheproof file: secp112r1, secp112r2, secp128r1, secp128r2,
   `bpp160r1` and `bpp192r1`, which the next bullet takes.
+- **ECDSA signing on secp160k1, secp160r1, secp160r2, secp192k1,
+  secp224k1 and `bpp224r1` to `bpp512r1`**: none found in the named
+  sources. The RFC's test vectors are for DSA, the NIST prime curves and
+  the binary curves, as the headings this prints show:
+
+  ```shell
+  curl -s https://www.rfc-editor.org/rfc/rfc6979.txt \
+      | grep -E "^A\.2\.[0-9]+\."
+  ```
+
+  Every Wycheproof `ecdsa_*` file names a verification schema, none a
+  signing one, as this prints (it reads each file of the commit above):
+
+  ```shell
+  repo=repos/C2SP/wycheproof
+  for f in $(gh api "${repo}/git/trees/${commit:?}:testvectors_v1" \
+      --jq '.tree[].path' | grep '^ecdsa_'); do
+    gh api -H 'Accept: application/vnd.github.raw' \
+        "${repo}/contents/testvectors_v1/${f}?ref=${commit:?}" \
+        | grep -m1 '"schema"'
+  done | sort | uniq -c
+  ```
+
+  The curves without a Wycheproof file are taken by the next bullet.
 - **ECDSA on secp112r1, secp112r2, secp128r1, secp128r2, `bpp160r1` and
   `bpp192r1`**: no outside vector was found in Wycheproof, python-ecdsa or
   the RFC. Wycheproof has no file for them, by the call above. The RFC has
