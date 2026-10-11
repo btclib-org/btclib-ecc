@@ -647,10 +647,11 @@ authority table's re-derivation, whose command is under *Reproducing what CI
 runs*. Run it when the diff touches `tests/py_arm_authority_test.py`,
 `.github/scripts/check_py_arm_authority.py` or
 `.github/workflows/py-arm-authority.yml`. Run it also when the diff changes
-a function that calls `_libsecp256k1_serves`, which can move the table. The
-workflow's `paths:` filter names only the three files above and not `src/`,
-so a pull request that changes such a function is not checked by it, and the
-failure shows on `main`.
+a module `_THIRD_PARTY_VECTORS` names, or code on the path from one of those
+modules to a function that calls `_libsecp256k1_serves`: either can move the
+table. The workflow's `paths:` filter names only the three files above, so a
+pull request touching none of them is not checked by it, and the failure
+shows on `main`.
 
 **Every job that installs from `uv.lock` passes `--locked`.** The jobs
 that do not are deliberate:
@@ -766,11 +767,11 @@ without gating on it. `UV_PROJECT_ENVIRONMENT` keeps the run out of
 
 ```shell
 UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
-    uv run --locked --no-default-groups --group harness \
+    uv run --exact --locked --no-default-groups --group harness \
     python -c "from btclib_ecc._libsecp256k1 import INSTALLED; assert not INSTALLED"
 UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
     COVERAGE_FILE=coverage-data-no-bindings \
-    uv run --locked --no-default-groups --group harness pytest --cov-fail-under=0
+    uv run --exact --locked --no-default-groups --group harness pytest --cov-fail-under=0
 ```
 
 `test.yml`, the `coverage-union` job — the two runs' data combined and
@@ -791,30 +792,32 @@ configuration first and measures no coverage:
 
 ```shell
 UV_PROJECT_ENVIRONMENT=.venv-int-arithmetic \
-    uv run --locked --no-default-groups --group harness --group bindings \
+    uv run --exact --locked --no-default-groups \
+    --group harness --group bindings \
     python -c "from btclib_ecc.curves import is_libsecp256k1_serving, secp256k1;
 assert is_libsecp256k1_serving();
 assert type(secp256k1._modulus) is int, 'gmpy2 is installed'"
 UV_PROJECT_ENVIRONMENT=.venv-int-arithmetic \
-    uv run --locked --no-default-groups --group harness --group bindings \
+    uv run --exact --locked --no-default-groups \
+    --group harness --group bindings \
     pytest --no-cov
 ```
 
 `py-arm-authority.yml` — each third-party vector module run alone under
 coverage, with no bindings installed, and the result compared with the table
-in `tests/py_arm_authority_test.py`. It takes minutes. `--dry-run` is what the
-workflow passes on a pull request: it reports a disagreement and opens no
+in `tests/py_arm_authority_test.py`. `--dry-run` is what the
+workflow passes on a pull request: it reports a disagreement and touches no
 issue. The environment assertion comes first, as above:
 
 ```shell
 UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
-    uv run --locked --no-default-groups --group harness \
+    uv run --exact --locked --no-default-groups --group harness \
     python -c "from btclib_ecc._libsecp256k1 import INSTALLED;
 assert not INSTALLED, 'btclib_secp256k1 is installed';
 from btclib_ecc.curves import is_libsecp256k1_serving;
 assert not is_libsecp256k1_serving()"
 UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
-    uv run --locked --no-default-groups --group harness \
+    uv run --exact --locked --no-default-groups --group harness \
     python .github/scripts/check_py_arm_authority.py \
     "Python arm authority table disagrees with a fresh measurement" --dry-run
 ```
