@@ -653,9 +653,9 @@ suffix on everything says nothing about anything.
 
 What none of this does is make the Python path safe, and `SECURITY.md`'s
 limitations section is what says so at length: a table is still indexed
-by a secret digit, and that is out of reach from bytecode. A name in the
-second tier closes one measured channel, and the honest form of the claim
-is that one — which channel, measured how, and what is left.
+by a secret digit, and that is out of reach from bytecode. A second-tier
+algorithm closes one channel, and the honest claim names it: which one,
+measured how, and what is left.
 
 ### The environment and the gates
 
