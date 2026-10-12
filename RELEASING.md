@@ -405,15 +405,15 @@ result.
    A dependent that fails gets its fix ready first. The release is tagged,
    then the dependent releases with its floor raised to it.
 
-1. Merge it, with the button, the way every other pull request here
-   lands.
+1. Merge it, the way `CONTRIBUTING.md`'s *Landing it* lands every pull
+   request.
 
    "Squash and merge" is the only method either the repository setting
    or the ruleset accepts, and auto-merge presses it once the approval
-   and the checks are in. Branch protection requires an approving review,
-   and the release pull request waits for one from somebody other than
-   its author, like every other. There is no second landing to choose
-   between: a direct push to `main` is refused for everyone.
+   and the checks are in. `GOVERNANCE.md`'s
+   [*How a decision is made*](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md#how-a-decision-is-made)
+   says when the maintainer lands it without the approval. A direct push
+   to `main` is refused for everyone.
 
    Name the release commit's title and body explicitly, rather than leave
    them to `squash_merge_commit_message`'s repository default, which
@@ -424,10 +424,8 @@ result.
      --body-file <path> --subject <title>
    ```
 
-   Only in an emergency does the maintainer add `--admin`, which clears
-   `REVIEW_REQUIRED` without the approval: the pair REPOSITORY.md's
-   "Branch protection" describes, `enforce_admins` `false` together with
-   holding `admin`.
+   Landing through the bypass adds `--admin`, as `CONTRIBUTING.md`'s
+   *Landing it* says.
 
    That the commit is composed by GitHub and signed with its web-flow
    key rather than yours costs nothing. What `main-integrity` requires
