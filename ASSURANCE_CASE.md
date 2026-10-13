@@ -249,10 +249,12 @@ to, and what counters each.
 - **Error message containing sensitive information (CWE-209).** An
   exception, its cause and its context do not repeat a key passed as a
   public key, a committed value, a blinding factor or a scalar operand; a
-  modulus is printed. `str_from_string`'s refusal of a non-ASCII byte and
-  `hex_string`'s of a negative integer print neither the input nor the
-  number. `tests/exception_echo_test.py`, `tests/curves/sec_point_test.py`,
-  `tests/ecc/dsa_test.py` and `tests/utils_test.py` hold this.
+  modulus is printed. `str_from_string`'s refusal of a non-ASCII byte,
+  `Envelope.b64decode`'s of a non-ASCII str and `hex_string`'s of a negative
+  integer print neither the input nor the number.
+  `tests/exception_echo_test.py`, `tests/curves/sec_point_test.py`,
+  `tests/ecc/dsa_test.py`, `tests/ecc/ecies_test.py` and
+  `tests/utils_test.py` hold this.
 - **Type confusion (CWE-843).** mypy runs with `strict = true`
   (`pyproject.toml`) as a hook of the lint gate in
   `.pre-commit-config.yaml`, and `tests/integer_policy_test.py` refuses a

@@ -342,11 +342,18 @@ class Envelope:
         # `.strip` untouched and left as an AttributeError about a missing
         # method. Stripping covers bytes as well as str: the whitespace around a
         # copied and pasted envelope is the one laxity worth tolerating
-        text = str_from_string(data, "base64 envelope").strip()
+        text = str_from_string(data, "base64 envelope")
+        # a str is not checked by `str_from_string`. The refusal is the one
+        # it gives bytes, with the position in the unstripped input, and not
+        # the codec's error, which names the character and holds the input
+        if not text.isascii():
+            position = next(i for i, char in enumerate(text) if ord(char) > 127)
+            err_msg = f"non-ascii character in base64 envelope at position {position}"
+            raise BTClibEccValueError(err_msg)
+        data_bin = text.strip().encode("ascii")
         try:
-            data_bin = text.encode("ascii")
             data_decoded = base64.b64decode(data_bin, validate=True)
-        except ValueError as e:  # binascii.Error and UnicodeEncodeError
+        except ValueError as e:  # binascii.Error
             raise BTClibEccValueError(f"invalid base64 encoding: {e}") from e
         if base64.b64encode(data_decoded) != data_bin:
             raise BTClibEccValueError("invalid base64 encoding: not canonical")
