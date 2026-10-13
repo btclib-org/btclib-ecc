@@ -163,7 +163,6 @@ _EXEMPT: dict[str, str] = {
     "their prefix -- measured, all files verify identically at 32 and at 64.": _UPSTREAM_FACT,
     "and its verifier does not apply that rule, so two of these verdicts": _UPSTREAM_FACT,
     "are exempted rather than asserted — `wycheproof_test.py` reads which two": _UPSTREAM_FACT,
-    "case is otherwise the same 463 cases, `numberOfTests` included.": _UPSTREAM_FACT,
     "above, without the bitcoin profile's two extra rules: what a": _UPSTREAM_FACT,
     "of the two the files above vary one at a time.": _UPSTREAM_FACT,
     "digests that report their own length and a SHAKE's is 0.": _UPSTREAM_FACT,
@@ -172,7 +171,6 @@ _EXEMPT: dict[str, str] = {
     "Verdict: **transcribed**. Appendix A.2 of RFC 6979 gives 50 vectors, ten each": _UPSTREAM_FACT,
     "  check skips an entry whose `behind` reads other than 0, a gap somebody": _UPSTREAM_FACT,
     "request vendoring a file is guaranteed to have -- and two branches moving": _UPSTREAM_FACT,
-    "giving the reason RFC 9591 gives for shipping none over `vss_verify`: it": _UPSTREAM_FACT,
 }
 
 

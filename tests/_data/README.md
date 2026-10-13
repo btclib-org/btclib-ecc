@@ -450,27 +450,22 @@ adds the largest value an s field holds.
 
 ### BIP445 (FROST signing): files under `tests/ecc/_data/bip445/`
 
-The signing-algorithm vectors of `python/vectors/`, vendored whole and
-under upstream's own names, in a subdirectory rather than flat under
-`tests/ecc/_data/`: BIP327 above already publishes files of these same
-names there, and a vendored file keeps the name upstream gave it rather
-than losing it to that collision. `ValidateThresholdInfo`
-ships no vector file, `python/vectors/test_vectors_summary.md`
-giving the reason RFC 9591 gives for shipping none over `vss_verify`: it
-checks key material a key generation protocol produced, and this BIP
-specifies no key generation.
+The JSON files of `python/vectors/`, vendored whole and under upstream's
+own names, in a subdirectory rather than flat under `tests/ecc/_data/`:
+BIP327 above already publishes files of these same names there, and a
+vendored file keeps the name upstream gave it rather than losing it to
+that collision.
 
-The BIP is a draft, at version 0.12.0 in `siv2r/bip-frost-signing`. Its
-pull request to `bitcoin/bips`, `bitcoin/bips#2070`, is at version 0.10.0,
-and version 0.11.0 fixes a secret share leak in `DeterministicSign`
-(`siv2r/bip-frost-signing#59`). The pins below follow
+The BIP is a draft, at version 0.12.1 in `siv2r/bip-frost-signing`. Its
+pull request to `bitcoin/bips`, `bitcoin/bips#2070`, also reads 0.12.1 at
+its head `363f69340b6731368db4a514147c7dec8eb5fd99`, but lacks
+`siv2r/bip-frost-signing`'s `75318bc740428c435ec137842442879980fff1d5`
+(2026-10-12): the rule that an input of the wrong length fails, and the
+tweak vector file without its wrong-length tweak. The pins below follow
 `siv2r/bip-frost-signing` for that reason, and move back to
-`bitcoin/bips#2070` once it carries 0.12.0 or later. Each file is pinned
-to the commit on that repository's default branch, `master`, that last
-touched it: `825633bad2f9500d1b4e981f3a11cadd17bbf21d` (2026-10-07) for
-all but `nonce_agg_vectors.json`, which
-`a715d1a324b993183e940e5d8f4b7d3b50b3105b` (2026-10-06) touched last --
-the same distinction the BIP327 entry above draws for
+`bitcoin/bips#2070` once it carries that commit. Each file is pinned to
+the commit on that repository's default branch, `master`, that last
+touched it, the same distinction the BIP327 entry above draws for
 `sign_verify_vectors.json` and `sig_agg_vectors.json`.
 
 `tests/ecc/frost_test.py` runs every case of every file. An error case
@@ -520,10 +515,10 @@ Verdict: **identical but for a trailing newline**, which the
 ```text
 repo    siv2r/bip-frost-signing
 path    python/vectors/sign_verify_vectors.json
-commit  825633bad2f9500d1b4e981f3a11cadd17bbf21d  2026-10-07
-blob    923d97f1496035a222cfae05026b2c88b2693dec
-ours    2421971686d86ada026adf0a2c2b5c19f70b8e59
-pulled  2026-09-17, refreshed 2026-10-09
+commit  762bd48c42eed9a00f6f62fb846f2826013664ac  2026-10-10
+blob    3f08e8e8a9a64f5c0c7f0d965541d0a8d0182c08
+ours    ddc130d13e418062be1cacfa123a262d4c6b7657
+pulled  2026-09-17, refreshed 2026-10-09, 2026-10-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -535,10 +530,10 @@ Verdict: **identical but for a trailing newline**, which the
 ```text
 repo    siv2r/bip-frost-signing
 path    python/vectors/tweak_vectors.json
-commit  825633bad2f9500d1b4e981f3a11cadd17bbf21d  2026-10-07
-blob    4b6af3a11ed3168814c28a4f8fd12bb693534677
-ours    75eac2237e1ee10a7339768e79d0efc949529abc
-pulled  2026-09-17, refreshed 2026-10-09
+commit  75318bc740428c435ec137842442879980fff1d5  2026-10-12
+blob    498fb90c755a9caf3a53b229e95cc1c4aed482fb
+ours    01290469e9946aa4d25cdca1c1dad66608395149
+pulled  2026-09-17, refreshed 2026-10-09, 2026-10-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -550,10 +545,10 @@ Verdict: **identical but for a trailing newline**, which the
 ```text
 repo    siv2r/bip-frost-signing
 path    python/vectors/det_sign_vectors.json
-commit  825633bad2f9500d1b4e981f3a11cadd17bbf21d  2026-10-07
-blob    a4190418065c05a6fedbd86b27016902df03bd04
-ours    d77a43620afa151d04638c5c96679b21fc7c39fe
-pulled  2026-09-17, refreshed 2026-10-09
+commit  762bd48c42eed9a00f6f62fb846f2826013664ac  2026-10-10
+blob    b2f0f62065b29c6fd779bdad4184af8cd2e773ea
+ours    def3867dbc84c8ee0249b5926e69bb63ef3c81c2
+pulled  2026-09-17, refreshed 2026-10-09, 2026-10-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -565,10 +560,25 @@ Verdict: **identical but for a trailing newline**, which the
 ```text
 repo    siv2r/bip-frost-signing
 path    python/vectors/sig_agg_vectors.json
-commit  825633bad2f9500d1b4e981f3a11cadd17bbf21d  2026-10-07
-blob    cc0c327648d425a63968163afaf524069e07909a
-ours    a76732fe385d88dc3400efea485dbcda2934663e
-pulled  2026-09-17, refreshed 2026-10-09
+commit  61f589f4f85b862ba7ce0e59b7dadea0f4bd98d3  2026-10-10
+blob    4d9c99a06b5c031d6055a0674c3fec3663b9fb53
+ours    a6d48f662ae05bd52837cd5274c08411a57b7675
+pulled  2026-09-17, refreshed 2026-10-09, 2026-10-13
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for a trailing newline**, which the
+`end-of-file-fixer` hook added.
+
+### `tests/ecc/_data/bip445/threshold_info_vectors.json`
+
+```text
+repo    siv2r/bip-frost-signing
+path    python/vectors/threshold_info_vectors.json
+commit  762bd48c42eed9a00f6f62fb846f2826013664ac  2026-10-10
+blob    3d0904cab63830b0645a31176c325df9c653d6ef
+ours    f0a3cb4145ebe6372065b0ff1a979339edc75b8f
+pulled  2026-10-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -837,9 +847,9 @@ bitcoin-core/secp256k1 and secp256k1lab both do with it.
 ```text
 repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_sha256_bitcoin_test.json
-commit  234d9689d0cbb77a21fd603d6055ab47498bff69  2026-08-17
-blob    88097c48ba49f358179ac3aa6c6a64562d0f4e65
-pulled  2026-08-13, refreshed 2026-08-25
+commit  12fd3aaf33eb5fa1f52e026912ee00c054f9d984  2026-10-06
+blob    d5c273b5d0f54c502616ae0c651696d56d91618c
+pulled  2026-08-13, refreshed 2026-08-25, 2026-10-13
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -850,10 +860,10 @@ and its verifier does not apply that rule, so two of these verdicts
 are exempted rather than asserted — `wycheproof_test.py` reads which two
 out of the file below.
 
-The pin between here and the file's previous commit (`5722833ca004`)
-replaces the top-level `generatorVersion` with a `source` object per test
-group and adds the file's own `schema` field; every test group and every
-case is otherwise the same 463 cases, `numberOfTests` included.
+The pin adds tcId 464 to the file at its previous pin (`234d9689d0cb`),
+in a test group of its own: an `invalid` signature whose r + n equals
+x(kG) modulo p but is not below p. Every other test group and case is
+unchanged; `numberOfTests` counts the new one.
 
 ### `tests/ecc/_data/ecdsa_secp256k1_sha256_test.json`
 
