@@ -246,8 +246,10 @@ to, and what counters each.
   construction, and drops the key on the Python arm; a wiped signer
   refuses to sign either way; SECURITY.md states what a Python `int` holding
   a key still does not allow.
-- **Error message containing sensitive information (CWE-209).** An
-  exception, its cause and its context do not repeat a key passed as a
+- **Error message containing sensitive information (CWE-209).** The
+  rule is the organization's [*A refusal carries no
+  secret*](https://github.com/btclib-org/.github#a-refusal-carries-no-secret).
+  Here, an exception, its cause and its context do not repeat a key passed as a
   public key, a committed value, a blinding factor or a scalar operand; a
   modulus is printed. `str_from_string`'s refusal of a non-ASCII byte,
   `Envelope.b64decode`'s of a non-ASCII str and `hex_string`'s of a negative
