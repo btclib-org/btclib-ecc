@@ -183,7 +183,11 @@ def str_from_string(s: String, what: str) -> str:
     try:
         return bytes(s).decode("ascii")
     except UnicodeDecodeError as e:
-        raise BTClibEccValueError(f"non-ascii character in {what}: {e}") from e
+        # the UnicodeDecodeError holds the whole input and names the
+        # refused byte: raised here it would chain both, so the position
+        # is kept and the refusal is raised after the block
+        position = e.start
+    raise BTClibEccValueError(f"non-ascii character in {what} at position {position}")
 
 
 def bytesio_from_binarydata(stream: BinaryData) -> BytesIO:
@@ -418,7 +422,7 @@ def hex_string(i: Integer) -> str:
     """
     int_ = int_from_integer(i)
     if int_ < 0:
-        raise BTClibEccValueError(f"negative integer: {int_}")
+        raise BTClibEccValueError("negative integer")
     a_str = f"{int_:x}"
     if len(a_str) % 2 != 0:
         a_str = f"0{a_str}"

@@ -125,9 +125,9 @@ def test_hex_string() -> None:
     with pytest.raises(BTClibEccValueError, match="invalid hex string: "):
         hex_string(a_str)
 
-    int_ = -1
-    with pytest.raises(BTClibEccValueError, match="negative integer: "):
-        hex_string(int_)
+    # the refusal says nothing of the value it refuses
+    with pytest.raises(BTClibEccValueError, match="^negative integer$"):
+        hex_string(-123456789)
 
     # zero is not negative: `< 0` weakened to `<= 0` would refuse it
     assert hex_string(0) == "00"
@@ -341,3 +341,19 @@ def test_a_string_is_ascii_or_refused() -> None:
     assert str_from_string(b"abc", "armor") == "abc"
     with pytest.raises(BTClibEccValueError, match="non-ascii character in armor"):
         str_from_string(b"\xe0", "armor")
+
+
+def test_the_non_ascii_refusal_names_the_position_and_nothing_of_the_input() -> None:
+    """The refusal carries neither the byte nor the input, nor a cause.
+
+    The input may be secret; the `UnicodeDecodeError` that finds the byte
+    names it and holds the whole input, so it must not be chained.
+    """
+    with pytest.raises(BTClibEccValueError) as refusal:
+        str_from_string(b"ab\xe0\xe1cd", "armor")
+    assert str(refusal.value) == "non-ascii character in armor at position 2"
+    for text in (str(refusal.value), repr(refusal.value)):
+        for echoed in ("xe0", "0xe0", "e0", "\\x", "ab", "cd"):
+            assert echoed not in text
+    assert refusal.value.__cause__ is None
+    assert refusal.value.__context__ is None

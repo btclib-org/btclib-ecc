@@ -513,7 +513,6 @@ def test_parse_rejects_the_wrong_magic() -> None:
     [
         ("not base64 at all!", "invalid base64 encoding"),
         ("QklFMQ", "invalid base64 encoding"),
-        ("é", "invalid base64 encoding"),
     ],
 )
 def test_b64decode_rejects_bad_armor(armor: str, err_msg: str) -> None:
@@ -546,3 +545,39 @@ def test_b64decode_requires_the_canonical_encoding() -> None:
     assert base64.b64decode(tweaked, validate=True) == envelope.serialize()
     with pytest.raises(BTClibEccValueError, match="not canonical"):
         ecies.Envelope.b64decode(tweaked)
+
+
+def test_b64decode_refuses_non_ascii_naming_only_the_position() -> None:
+    """A non-ASCII str armor is refused with its position and nothing else.
+
+    The codec's error would name the character and hold the whole input,
+    and would be chained.
+    """
+    with pytest.raises(BTClibEccValueError) as refusal:
+        ecies.Envelope.b64decode(" SECRETab\xe0cd")
+    assert str(refusal.value) == "non-ascii character in base64 envelope at position 9"
+    for text in (str(refusal.value), repr(refusal.value)):
+        for echoed in ("xe0", "e0", "\xe0", "SECRET", "ab", "cd"):
+            assert echoed not in text
+    assert refusal.value.__cause__ is None
+    assert refusal.value.__context__ is None
+
+
+@pytest.mark.parametrize("padding", ["", " ", "\n\t "])
+def test_b64decode_refuses_a_str_and_bytes_armor_alike(padding: str) -> None:
+    """The same characters, as str or as bytes, give the same refusal.
+
+    The position counts the input as given, whitespace included, and
+    nothing is chained, whichever the type.
+    """
+    armor = f"{padding}SECRETab\xe0cd"
+    refusals = []
+    for given in (armor, armor.encode("utf-8"), armor.encode("latin-1")):
+        with pytest.raises(BTClibEccValueError) as refusal:
+            ecies.Envelope.b64decode(given)
+        assert refusal.value.__cause__ is None
+        assert refusal.value.__context__ is None
+        refusals.append(str(refusal.value))
+    position = len(padding) + len("SECRETab")
+    expected = f"non-ascii character in base64 envelope at position {position}"
+    assert refusals == [expected] * 3
