@@ -267,8 +267,8 @@ to, and what counters each.
   The `repr` and `str` of the classes that hold a key or a nonce are checked
   the same way. `tests/ecc/dsa_test.py` checks `dsa.Signer`,
   `tests/ecc/ssa_test.py` `ssa.Signer`, `tests/ecc/rfc6979_test.py`
-  `_HmacDrbg`, and `tests/ecc/rangeproof_test.py` `NonceChain` and
-  `Rewound`.
+  `_HmacDrbg`, and `tests/ecc/rangeproof_test.py` `NonceChain`,
+  `Rewound` and `_ProveParams`.
   The other exception tests are in `tests/exception_echo_test.py`,
   `tests/curves/sec_point_test.py`, `tests/ecc/dsa_test.py`,
   `tests/ecc/ecies_test.py` and `tests/utils_test.py`.

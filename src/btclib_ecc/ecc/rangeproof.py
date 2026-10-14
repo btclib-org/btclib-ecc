@@ -393,6 +393,9 @@ class _ProveParams(NamedTuple):
     `v` is the value the mantissa's digits count, `scale` the `10**exp`
     each of them weighs, `rsizes` how many keys each ring holds and
     `sign_key_idx` the digit each ring proves.
+
+    `v` is secret, and so is `sign_key_idx`, whose digits are `v` in base
+    four. The other fields are in the header or follow from it.
     """
 
     v: int
@@ -402,6 +405,15 @@ class _ProveParams(NamedTuple):
     mantissa: int
     scale: int
     exp: int
+
+    @override
+    def __repr__(self) -> str:
+        """Name the fields, and print the values of the public ones only."""
+        return (
+            f"{type(self).__name__}(v=..., rsizes={self.rsizes!r}, "
+            f"sign_key_idx=..., min_value={self.min_value!r}, "
+            f"mantissa={self.mantissa!r}, scale={self.scale!r}, exp={self.exp!r})"
+        )
 
 
 def _prove_params(value: int, min_value: int, exp: int, min_bits: int) -> _ProveParams:
