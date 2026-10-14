@@ -188,9 +188,7 @@ _KEY_MATERIAL_MATCH_ERR = (
     " the threshold public key."
 )
 _THRESH_PK_INF_ERR = "The threshold public key must not be the point at infinity."
-_NONCE_SIGNER_ID_ERR = (
-    f"The optional signer_id must be an integer less than {MAX_PARTICIPANTS}."
-)
+_NONCE_SIGNER_ID_ERR = f"The optional signer_id must be less than {MAX_PARTICIPANTS}."
 _SEC_SHARE_RANGE_ERR = "The secshare is out of range."
 _AGG_OTHER_NONCE_ABSENT_ERR = "The aggothernonce must be omitted when u = 1."
 _AGG_OTHER_NONCE_PRESENT_ERR = (
