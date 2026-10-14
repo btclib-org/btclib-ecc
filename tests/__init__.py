@@ -333,8 +333,8 @@ both_arms = pytest.mark.usefixtures("arm")
 #
 # The first 16 bytes are 0xff, which puts the integer above the group order;
 # the rest is picked by hand, because a run such as all zeros is a piece of
-# clean messages too. A 33-byte value is an xprv's `00 || k` field, and a 30-byte
-# one is a key cut short.
+# clean messages too. A 33-byte value is an xprv's `00 || k` field, and a
+# 30-byte one is a key cut short.
 _REFUSED_RANDOM = bytes.fromhex("9f3a6c1e5b7d284a0c93e6f1d2b85a47")
 _REFUSED_BYTES = b"\xff" * 16 + _REFUSED_RANDOM
 _REFUSED_INT = int.from_bytes(_REFUSED_BYTES, "big")
