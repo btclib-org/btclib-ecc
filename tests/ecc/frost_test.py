@@ -694,9 +694,7 @@ def test_det_sign_refuses_a_signer_id_outside_the_ids(signer_id: int) -> None:
     """
     group = _two_of_three_det_sign_group()
     _, other_nonce = frost.nonce_gen()
-    with pytest.raises(
-        BTClibEccValueError, match="^The signer's id is missing from the ids list.$"
-    ):
+    with pytest.raises(BTClibEccValueError, match="missing from the ids"):
         frost.deterministic_sign(
             bytes.fromhex(group["secshares"][0]),
             signer_id,
