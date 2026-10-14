@@ -4,7 +4,7 @@
 
 """Tests for the `btclib_ecc.ecc.frost` module.
 
-The vectors are BIP445's own, all six signing-algorithm files of
+The vectors are BIP445's own, every JSON file of
 `siv2r/bip-frost-signing`'s `python/vectors/`, vendored under
 `tests/ecc/_data/bip445/`; `tests/_data/README.md` pins the revision.
 Every case of every file is exercised, the error cases included, and an
@@ -14,13 +14,7 @@ party misbehaved and how, or the message of a plain value error.
 There is no oracle to cross-validate against, unlike `musig2_test.py`'s
 own `btclib_secp256k1.musig`: BIP445 has no C implementation this
 library wraps, so every function here is the Python arithmetic and the
-vectors are its only authority. `ValidateThresholdInfo` ships no
-vector file of its own, `tests/_data/README.md` and BIP445's own
-`test_vectors_summary.md` giving the same reason -- it checks key
-material a key generation protocol produced, and this module produces
-none -- so its tests below build `ThresholdInfo` from the vectors' own
-already-consistent key material instead, tampering with one share at a
-time to reach each refusal.
+vectors are its only authority.
 """
 
 from dataclasses import replace
@@ -669,6 +663,28 @@ def test_det_sign_refuses_an_aggothernonce_of_the_wrong_length(length: int) -> N
         )
 
 
+@pytest.mark.parametrize("length", [31, 33])
+def test_det_sign_refuses_an_aux_rand_of_the_wrong_length(length: int) -> None:
+    """`aux_rand`, where given, is 32 bytes and no other size."""
+    group = _two_of_three_det_sign_group()
+    _, other_nonce = frost.nonce_gen()
+    with pytest.raises(BTClibEccValueError, match="instead of 32"):
+        frost.deterministic_sign(
+            bytes.fromhex(group["secshares"][0]),
+            0,
+            other_nonce,
+            group["n"],
+            group["t"],
+            [0, 1],
+            None,
+            bytes.fromhex(group["thresh_pk"]),
+            [],
+            [],
+            bytes(32),
+            bytes(length),
+        )
+
+
 # --------------------------------------------------------------------
 # sig_agg_vectors.json
 # --------------------------------------------------------------------
@@ -737,136 +753,53 @@ def test_sig_agg_error_vectors(group: dict[str, Any], case: dict[str, Any]) -> N
 
 
 # --------------------------------------------------------------------
-# ValidateThresholdInfo: no vector file, per test_vectors_summary.md and
-# tests/_data/README.md. Built from the sign_verify_vectors groups' own
-# already-consistent key material, one refusal reached at a time.
+# threshold_info_vectors.json
 # --------------------------------------------------------------------
 
-
-def _threshold_info_groups() -> list[Any]:
-    return [
-        pytest.param(group, id=group["tg_id"]) for group in _SIGN_VERIFY["test_groups"]
-    ]
+_THRESHOLD_INFO = load("ecc", "_data", "bip445", "threshold_info_vectors.json")
 
 
-@pytest.mark.parametrize("group", _threshold_info_groups())
-def test_validate_threshold_info_accepts_consistent_key_material(
-    group: dict[str, Any],
+def _threshold_info(group: dict[str, Any], case: dict[str, Any]) -> frost.ThresholdInfo:
+    """Build the case's `ThresholdInfo`; a `None` index is an absent share."""
+    pub_shares = _hex_all(group["pubshares"])
+    return frost.ThresholdInfo(
+        case["t"],
+        bytes.fromhex(case["thresh_pk"]),
+        [None if i is None else pub_shares[i] for i in case["pubshare_indices"]],
+    )
+
+
+@pytest.mark.parametrize(
+    "group, case", _all_group_params(_THRESHOLD_INFO, "valid_tests")
+)
+def test_threshold_info_valid_vectors(
+    group: dict[str, Any], case: dict[str, Any]
 ) -> None:
-    """Every group's own full pubshare list validates against its own key."""
-    n, t = group["n"], group["t"]
-    thresh_pk = bytes.fromhex(group["thresh_pk"])
-    pub_shares = _hex_all(group["pubshares"])[:n]
-    frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
+    """Reproduce the valid cases of BIP445's threshold_info_vectors.json."""
+    frost.validate_threshold_info(_threshold_info(group, case))
 
 
-@pytest.mark.parametrize("group", _threshold_info_groups())
-def test_validate_threshold_info_accepts_shares_left_unknown(
-    group: dict[str, Any],
+@pytest.mark.parametrize(
+    "group, case", _all_group_params(_THRESHOLD_INFO, "error_tests")
+)
+def test_threshold_info_error_vectors(
+    group: dict[str, Any], case: dict[str, Any]
 ) -> None:
-    """A `None` entry beyond `t` known shares does not stop validation."""
-    n, t = group["n"], group["t"]
-    if n <= t:
-        pytest.skip("group has no share to leave unknown beyond t")
-    thresh_pk = bytes.fromhex(group["thresh_pk"])
-    pub_shares: list[bytes | None] = list(_hex_all(group["pubshares"])[:n])
-    pub_shares[-1] = None
-    frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
-
-
-@pytest.mark.parametrize("group", _threshold_info_groups())
-def test_validate_threshold_info_refuses_a_share_off_the_polynomial(
-    group: dict[str, Any],
-) -> None:
-    """A share swapped in from another group breaks the polynomial fit."""
-    n, t = group["n"], group["t"]
-    thresh_pk = bytes.fromhex(group["thresh_pk"])
-    pub_shares: list[bytes | None] = list(_hex_all(group["pubshares"])[:n])
-    if n <= t:
-        pytest.skip("no share beyond the base t to tamper with")
-    foreign_group = next(g for g in _SIGN_VERIFY["test_groups"] if g is not group)
-    pub_shares[-1] = bytes.fromhex(foreign_group["pubshares"][0])
-    with pytest.raises(BTClibEccValueError, match="do not lie on a single polynomial"):
-        frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
-
-
-def test_validate_threshold_info_refuses_a_key_the_shares_do_not_match() -> None:
-    """A threshold public key that is not the shares' own constant term."""
-    group = _SIGN_VERIFY["test_groups"][0]
-    n, t = group["n"], group["t"]
-    pub_shares = _hex_all(group["pubshares"])[:n]
-    other_thresh_pk = bytes.fromhex(_SIGN_VERIFY["test_groups"][1]["thresh_pk"])
-    with pytest.raises(BTClibEccValueError, match="do not match"):
-        frost.validate_threshold_info(
-            frost.ThresholdInfo(t, other_thresh_pk, pub_shares)
-        )
-
-
-def test_validate_threshold_info_refuses_an_invalid_threshold_public_key() -> None:
-    """A `thresh_pk` that does not decode to a compressed point."""
-    group = _SIGN_VERIFY["test_groups"][0]
-    n, t = group["n"], group["t"]
-    pub_shares = _hex_all(group["pubshares"])[:n]
-    not_a_point = bytes.fromhex("02" + "ff" * 32)
-    with pytest.raises(BTClibEccValueError, match="The thresh_pk is not a valid point"):
-        frost.validate_threshold_info(frost.ThresholdInfo(t, not_a_point, pub_shares))
-
-
-def test_validate_threshold_info_refuses_an_invalid_pubshare() -> None:
-    """A present pubshare that does not decode to a compressed point."""
-    group = _SIGN_VERIFY["test_groups"][0]
-    n, t = group["n"], group["t"]
-    thresh_pk = bytes.fromhex(group["thresh_pk"])
-    pub_shares: list[bytes | None] = list(_hex_all(group["pubshares"])[:n])
-    pub_shares[0] = bytes.fromhex("02" + "ff" * 32)
-    with pytest.raises(
-        BTClibEccValueError, match=r"The pubshare at index 0 is not a valid point\."
-    ):
-        frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
-
-
-def test_validate_threshold_info_refuses_fewer_than_t_present_shares() -> None:
-    """Fewer than `t` non-`None` entries in `pub_shares`."""
-    group = next(g for g in _SIGN_VERIFY["test_groups"] if g["t"] > 1)
-    n, t = group["n"], group["t"]
-    thresh_pk = bytes.fromhex(group["thresh_pk"])
-    pub_shares: list[bytes | None] = list(_hex_all(group["pubshares"])[:n])
-    for i in range(1, n):
-        pub_shares[i] = None
-    with pytest.raises(
-        BTClibEccValueError, match="At least t pubshares must be present"
-    ):
-        frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
-
-
-def test_validate_threshold_info_refuses_a_threshold_outside_1_to_n() -> None:
-    """`t` greater than `n`, `n` being `len(pub_shares)`."""
-    group = _SIGN_VERIFY["test_groups"][0]
-    n = group["n"]
-    thresh_pk = bytes.fromhex(group["thresh_pk"])
-    pub_shares = _hex_all(group["pubshares"])[:n]
-    with pytest.raises(BTClibEccValueError, match=r"1 <= t <= n"):
-        frost.validate_threshold_info(frost.ThresholdInfo(n + 1, thresh_pk, pub_shares))
-
-
-def test_validate_threshold_info_refuses_more_than_128_participants() -> None:
-    """`len(pub_shares)` past the security bound the module docstring gives."""
-    group = _SIGN_VERIFY["test_groups"][0]
-    thresh_pk = bytes.fromhex(group["thresh_pk"])
-    pub_shares: list[bytes | None] = [None] * 129
-    with pytest.raises(BTClibEccValueError, match=r"n <= 128"):
-        frost.validate_threshold_info(frost.ThresholdInfo(1, thresh_pk, pub_shares))
+    """Reproduce the error cases of BIP445's threshold_info_vectors.json."""
+    with pytest.raises(_ERRORS) as excinfo:
+        frost.validate_threshold_info(_threshold_info(group, case))
+    assert_error(case["error"], excinfo.value)
 
 
 # --------------------------------------------------------------------
-# Session-parameter refusals no vector reaches: none of the six files
-# varies n or t in an error case, or asks pubshares and ids to disagree
-# in length, or drives partial_sig_verify's own upfront checks.
+# Session-parameter refusals no vector reaches: none of the session vector
+# files varies t in an error case, or asks pubshares and ids to disagree in
+# length, or drives partial_sig_verify's own upfront checks.
 # --------------------------------------------------------------------
 
 
 def test_session_values_refuses_a_threshold_outside_1_to_n() -> None:
-    """No vector varies `n` or `t` in an error case; `SessionContext` does."""
+    """No session vector varies `t` in an error case; `SessionContext` does."""
     group = _SIGN_VERIFY["test_groups"][0]
     n = group["n"]
     thresh_pk = bytes.fromhex(group["thresh_pk"])
@@ -874,17 +807,6 @@ def test_session_values_refuses_a_threshold_outside_1_to_n() -> None:
         n, n + 1, [0], None, thresh_pk, bytes(66), [], [], b"msg"
     )
     with pytest.raises(BTClibEccValueError, match=r"1 <= t <= n"):
-        frost.session_values(session_ctx)
-
-
-def test_session_values_refuses_more_than_128_participants() -> None:
-    """`n` past the security bound the module docstring gives."""
-    group = _SIGN_VERIFY["test_groups"][0]
-    thresh_pk = bytes.fromhex(group["thresh_pk"])
-    session_ctx = frost.SessionContext(
-        129, 1, [0], None, thresh_pk, bytes(66), [], [], b"msg"
-    )
-    with pytest.raises(BTClibEccValueError, match=r"n <= 128"):
         frost.session_values(session_ctx)
 
 
@@ -1233,7 +1155,7 @@ def test_partial_sig_verify_internal_refuses_a_malformed_pub_share() -> None:
 
 # --------------------------------------------------------------------
 # Boundaries the vectors leave unpinned. Each of these is a comparison
-# whose two neighbours the six files never place a case on, so a check
+# whose two neighbours the vector files never both reach, so a check
 # weakened by one step, or loosened to one side only, passes every vector.
 # --------------------------------------------------------------------
 
@@ -1256,17 +1178,28 @@ def _one_signer_session(
     return session_ctx, sec_nonce, pub_nonce
 
 
-def test_sign_zeroes_the_two_scalars_and_nothing_beyond() -> None:
-    """The secnonce is 64 bytes, and a longer buffer keeps what follows.
+@pytest.mark.parametrize("length", [63, 65])
+def test_sign_refuses_a_secnonce_of_the_wrong_length(length: int) -> None:
+    """The secnonce is 64 bytes, and a refused one is left as it was."""
+    sec_share = (5).to_bytes(32, "big")
+    session_ctx, sec_nonce, _ = _one_signer_session(sec_share)
+    buffer = (sec_nonce + b"\xab")[:length]
+    unspent = bytes(buffer)
+    with pytest.raises(BTClibEccValueError, match="The secnonce must be a 64-byte"):
+        frost.sign(buffer, sec_share, 0, session_ctx)
+    assert buffer == unspent
 
-    The scalars are overwritten in place: a slice assignment of another
-    width would grow or shrink the buffer the caller holds, and one
-    reaching past the scalars would zero what is not `sign`'s.
-    """
+
+@pytest.mark.parametrize("length", [31, 33])
+def test_sign_refuses_a_secshare_of_the_wrong_length_before_the_nonce(
+    length: int,
+) -> None:
+    """The secshare is 32 bytes, and its refusal leaves the nonce unspent."""
     session_ctx, sec_nonce, _ = _one_signer_session((5).to_bytes(32, "big"))
-    buffer = sec_nonce + b"\xab"
-    frost.sign(buffer, (5).to_bytes(32, "big"), 0, session_ctx)
-    assert buffer == bytearray(64) + b"\xab"
+    unspent = bytes(sec_nonce)
+    with pytest.raises(BTClibEccValueError, match="instead of 32"):
+        frost.sign(sec_nonce, (5).to_bytes(length, "big"), 0, session_ctx)
+    assert sec_nonce == unspent
 
 
 @pytest.mark.parametrize(

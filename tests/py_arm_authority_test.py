@@ -109,6 +109,7 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
         "nonce_gen_vectors.json",
         "sig_agg_vectors.json",
         "sign_verify_vectors.json",
+        "threshold_info_vectors.json",
         "tweak_vectors.json",
     ),
     "ecc/musig2_test.py": (
