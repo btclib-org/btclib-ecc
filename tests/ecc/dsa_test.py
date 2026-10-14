@@ -4,6 +4,7 @@
 
 """Tests for the `btclib_ecc.ecc.dsa` module."""
 
+import copy
 import re
 import secrets
 from collections.abc import Callable
@@ -45,8 +46,10 @@ from btclib_ecc.exceptions import (
 from btclib_ecc.hashes import reduce_to_hlen
 from btclib_ecc.number_theory import mod_inv_var
 from tests import (
+    HELD_KEYS,
     REFUSED_SCALARS,
     Sha256FirstByte,
+    assert_repr_secret_free,
     both_arms,
     key_pair_spellings,
     load,
@@ -3172,3 +3175,10 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
     with pytest.raises(BTClibEccException) as refused:
         call(secret)
     assert_secret_free(refused.value, spellings)
+
+
+@pytest.mark.parametrize("kind", HELD_KEYS)
+@both_arms
+def test_a_signers_repr_and_str_carry_no_secret(kind: str) -> None:
+    """The key a signer holds is in neither text, whatever spelling built it."""
+    assert_repr_secret_free(dsa.Signer(copy.copy(HELD_KEYS[kind])))

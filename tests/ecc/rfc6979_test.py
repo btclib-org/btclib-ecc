@@ -21,13 +21,21 @@ from btclib_ecc.curves import mult
 from btclib_ecc.curves.curve import CURVES, Curve, secp256k1
 from btclib_ecc.ecc import dsa
 from btclib_ecc.ecc.bip340_nonce import _bip340_nonce_, bip340_nonce_
-from btclib_ecc.ecc.rfc6979_nonce import _rfc6979_nonce_, challenge_, rfc6979_nonce_
+from btclib_ecc.ecc.rfc6979_nonce import (
+    _HmacDrbg,
+    _rfc6979_nonce_,
+    challenge_,
+    rfc6979_nonce_,
+)
 from btclib_ecc.exceptions import BTClibEccException, BTClibEccRuntimeError
 from btclib_ecc.hashes import reduce_to_hlen
 from tests import (
+    HELD_KEY_SPELLINGS,
+    HELD_KEYS,
     REFUSED_EXTRA,
     REFUSED_SCALARS,
     Sha256FirstByte,
+    assert_repr_secret_free,
     both_arms,
     load,
     refused_secret,
@@ -472,3 +480,12 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
     with pytest.raises(BTClibEccException) as refused:
         call(secret)
     assert_secret_free(refused.value, spellings)
+
+
+@pytest.mark.parametrize("kind", ["bytes", "bytearray"])
+def test_a_drbgs_repr_and_str_carry_no_secret(kind: str) -> None:
+    """Neither the seed nor the K and V it leads to is in either text."""
+    drbg = _HmacDrbg(bytes(HELD_KEYS[kind]), hashlib.sha256)
+    drbg.generate(32)
+    drbg.reseed()
+    assert_repr_secret_free(drbg, [*HELD_KEY_SPELLINGS, drbg.k, drbg.v])

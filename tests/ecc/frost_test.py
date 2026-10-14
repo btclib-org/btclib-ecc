@@ -31,7 +31,15 @@ from btclib_ecc.exceptions import (
     BTClibEccValueError,
     InvalidContributionError,
 )
-from tests import REFUSED_AUX, REFUSED_EXTRA, REFUSED_OCTETS, both_arms, load, refused_secret, vector_id
+from tests import (
+    REFUSED_AUX,
+    REFUSED_EXTRA,
+    REFUSED_OCTETS,
+    both_arms,
+    load,
+    refused_secret,
+    vector_id,
+)
 from tests.secret_free import assert_secret_free
 
 _ERRORS = (BTClibEccValueError, InvalidContributionError)

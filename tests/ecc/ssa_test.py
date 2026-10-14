@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import copy
 import itertools
 from collections.abc import Callable
 from hashlib import sha256 as hf
@@ -37,9 +38,11 @@ from btclib_ecc.exceptions import (
 from btclib_ecc.hashes import reduce_to_hlen
 from btclib_ecc.number_theory import mod_inv_var
 from tests import (
+    HELD_KEYS,
     REFUSED_AUX,
     REFUSED_SCALARS,
     Sha256FirstByte,
+    assert_repr_secret_free,
     b58decode,
     b58encode,
     both_arms,
@@ -2227,3 +2230,10 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
     with pytest.raises(BTClibEccException) as refused:
         call(secret)
     assert_secret_free(refused.value, spellings)
+
+
+@pytest.mark.parametrize("kind", HELD_KEYS)
+@both_arms
+def test_a_signers_repr_and_str_carry_no_secret(kind: str) -> None:
+    """The key a signer holds is in neither text, whatever spelling built it."""
+    assert_repr_secret_free(ssa.Signer(copy.copy(HELD_KEYS[kind])))

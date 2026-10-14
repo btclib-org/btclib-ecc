@@ -21,7 +21,13 @@ from btclib_ecc.ecc import bip340_nonce, ssa
 from btclib_ecc.ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
 from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
-from tests import REFUSED_AUX, REFUSED_SCALARS, Sha256FirstByte, both_arms, refused_secret
+from tests import (
+    REFUSED_AUX,
+    REFUSED_SCALARS,
+    Sha256FirstByte,
+    both_arms,
+    refused_secret,
+)
 from tests.curves.curve_test import byte_boundary_curves
 from tests.secret_free import assert_secret_free
 

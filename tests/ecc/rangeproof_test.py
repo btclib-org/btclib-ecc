@@ -115,7 +115,10 @@ from btclib_ecc.exceptions import (
     BTClibEccValueError,
 )
 from tests import (
+    HELD_KEY_SPELLINGS,
+    HELD_KEYS,
     REFUSED_SCALARS,
+    assert_repr_secret_free,
     both_arms,
     load,
     needs_zkp,
@@ -1658,6 +1661,15 @@ def test_the_results_repr_holds_none_of_their_values() -> None:
     assert factors == (123456789,)
     assert draws == ((987654321, 2, 3, 4),)
     assert repr(chain) == "NonceChain(blinding_factors=..., draws=...)"
+
+
+def test_the_results_repr_and_str_carry_no_secret() -> None:
+    """A blinding factor, a draw and a value are in neither text."""
+    secret = HELD_KEYS["int"]
+    chain = rangeproof.NonceChain((secret,), ((secret, secret + 1),))
+    assert_repr_secret_free(chain, [*HELD_KEY_SPELLINGS, str(secret + 1)])
+    rewound = rangeproof.Rewound(secret, secret + 2, HELD_KEYS["bytes"])
+    assert_repr_secret_free(rewound, [*HELD_KEY_SPELLINGS, str(secret + 2)])
 
 
 @pytest.mark.parametrize(

@@ -38,6 +38,7 @@ from typing import Any, NamedTuple
 import pytest
 
 import btclib_ecc
+from tests.secret_free import assert_secret_free
 
 _TESTS_DIR = Path(__file__).parent
 
@@ -331,8 +332,8 @@ both_arms = pytest.mark.usefixtures("arm")
 # the library refuses it, with every spelling the refusal could print.
 #
 # The first 16 bytes are 0xff, which puts the integer above the group order;
-# the rest is picked by hand, because a run such as all zeros is a piece of clean
-# messages too. A 33-byte value is an xprv's `00 || k` field, and a 30-byte
+# the rest is picked by hand, because a run such as all zeros is a piece of
+# clean messages too. A 33-byte value is an xprv's `00 || k` field, and a 30-byte
 # one is a key cut short.
 _REFUSED_RANDOM = bytes.fromhex("9f3a6c1e5b7d284a0c93e6f1d2b85a47")
 _REFUSED_BYTES = b"\xff" * 16 + _REFUSED_RANDOM
@@ -396,6 +397,27 @@ REFUSED_OCTETS = [
 # 30-byte value is accepted where the size is free.
 REFUSED_AUX = ["int", "negative int", "0x hex string", "33 bytes", "30 bytes", "WIF"]
 REFUSED_EXTRA = ["int", "negative int", "0x hex string", "WIF"]
+
+# A private key a constructor accepts, in each spelling it accepts: the one
+# valid scalar of the secrets above, which an object then holds.
+HELD_KEYS: dict[str, Any] = {
+    "int": int.from_bytes(_REFUSED_WRONG_KEY, "big"),
+    "bytes": _REFUSED_WRONG_KEY,
+    "bytearray": bytearray(_REFUSED_WRONG_KEY),
+    "hex string": _REFUSED_WRONG_KEY.hex(),
+}
+HELD_KEY_SPELLINGS = _spellings_of(_REFUSED_WRONG_KEY)
+
+
+def assert_repr_secret_free(
+    obj: object, secrets: list[str | bytes] = HELD_KEY_SPELLINGS
+) -> None:
+    """Assert that neither `repr(obj)` nor `str(obj)` holds a piece of a secret.
+
+    `assert_secret_free` reads an exception, so the two texts go in one.
+    """
+    assert_secret_free(Exception(repr(obj), str(obj)), secrets)
+
 
 # What a test asking the flagged `btclib_secp256k1.zkp` extension for the right
 # answer is marked with. Issue btclib-org/btclib#1679 is the sentinel that

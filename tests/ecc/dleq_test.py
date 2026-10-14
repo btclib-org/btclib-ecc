@@ -23,7 +23,14 @@ from btclib_ecc.curves import mult, point_from_pub_key, secp256k1
 from btclib_ecc.ecc import dleq
 from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
-from tests import REFUSED_AUX, REFUSED_SCALARS, both_arms, load_csv, refused_secret, vector_id
+from tests import (
+    REFUSED_AUX,
+    REFUSED_SCALARS,
+    both_arms,
+    load_csv,
+    refused_secret,
+    vector_id,
+)
 from tests.secret_free import assert_secret_free
 
 # what the generation file writes in the proof column of a case that must
