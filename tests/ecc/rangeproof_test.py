@@ -109,6 +109,7 @@ from btclib_ecc.ecc.pedersen import (
 from btclib_ecc.ecc.rangeproof import RangeProof, sign, sign_public_value
 from btclib_ecc.exceptions import (
     BTClibEccRuntimeError,
+    BTClibEccTypeError,
     BTClibEccValueError,
 )
 from tests import load, needs_zkp, replace_unchecked, vector_id
@@ -1171,6 +1172,67 @@ def test_sign_refuses_what_it_has_no_octets_for() -> None:
         BTClibEccValueError, match="invalid size: 31 bytes instead of 32"
     ):
         sign(_BLIND, 1, _NONCE[:-2], _GEN)
+
+
+# a bool is an int to Python and no integer to this library; the bytes and
+# the str are what issue 270 reports, which reached a comparison
+_NOT_INTEGERS = [True, 1.5, "1", b"\x01", None, [1]]
+
+
+def _refusal(value: Any, what: str) -> str:
+    """Return the message that names the argument and the type, no more."""
+    return f"^invalid {what} type: {type(value).__name__}$"
+
+
+@pytest.mark.parametrize("value", _NOT_INTEGERS, ids=repr)
+@pytest.mark.parametrize("what", ["value", "min_value", "exp", "min_bits"])
+def test_sign_refuses_an_argument_that_is_no_integer(what: str, value: Any) -> None:
+    """A builtin error leaves from underneath the exception contract."""
+    kwargs: dict[str, Any] = {"value": 7} | {what: value}
+    with pytest.raises(BTClibEccTypeError, match=_refusal(value, what)):
+        sign(_BLIND, kwargs.pop("value"), _NONCE, _GEN, **kwargs)
+
+
+@pytest.mark.parametrize("value", _NOT_INTEGERS, ids=repr)
+def test_sign_public_value_refuses_a_value_that_is_no_integer(value: Any) -> None:
+    """The public-value spelling reaches the same check as `sign`."""
+    with pytest.raises(BTClibEccTypeError, match=_refusal(value, "value")):
+        sign_public_value(_BLIND, value, _NONCE, _GEN)
+
+
+@pytest.mark.parametrize("value", _NOT_INTEGERS, ids=repr)
+def test_a_proof_refuses_a_value_that_is_no_integer(value: Any) -> None:
+    """The proof's own methods read a value the same way `sign` does."""
+    proof = sign(_BLIND, 7, _NONCE, _GEN)
+    commitment = commit(_BLIND, 7, _GEN)
+    with pytest.raises(BTClibEccTypeError, match=_refusal(value, "value")):
+        proof.sign_key_idx(value)
+    with pytest.raises(BTClibEccTypeError, match=_refusal(value, "value")):
+        proof.nonce_chain(commitment, value, _NONCE, _GEN)
+
+
+@pytest.mark.parametrize("value", [v for v in _NOT_INTEGERS if v is not None], ids=repr)
+@pytest.mark.parametrize("what", ["exp", "mantissa", "min_value"])
+def test_a_proof_refuses_a_header_field_that_is_no_integer(
+    what: str, value: Any
+) -> None:
+    """None is left out: it is how `min_value` says the field is absent."""
+    proof = sign(_BLIND, 7, _NONCE, _GEN)
+    fields: dict[str, Any] = {
+        "exp": proof.exp,
+        "mantissa": proof.mantissa,
+        "min_value": None,
+    }
+    fields[what] = value
+    with pytest.raises(BTClibEccTypeError, match=_refusal(value, what)):
+        RangeProof(
+            fields["exp"],
+            fields["mantissa"],
+            fields["min_value"],
+            proof.signs,
+            proof.ring_commitments,
+            proof.sig,
+        )
 
 
 @pytest.mark.parametrize(

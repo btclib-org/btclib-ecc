@@ -134,6 +134,7 @@ from btclib_ecc._utils import (
     bytes_from_octets,
     bytesio_from_binarydata,
     int_from_bits,
+    is_integer,
     read_exactly,
 )
 from btclib_ecc.alias import INF, BinaryData, Integer, Octets, Point
@@ -155,6 +156,7 @@ from btclib_ecc.ecc.pedersen import (
 from btclib_ecc.ecc.rfc6979_nonce import _HmacDrbg
 from btclib_ecc.exceptions import (
     BTClibEccRuntimeError,
+    BTClibEccTypeError,
     BTClibEccValueError,
 )
 from btclib_ecc.number_theory import mod_inv_var
@@ -201,6 +203,18 @@ _NONCE_SIZE = 32
 # chain, which is the widest a ring gets rather than the width of the
 # ring in hand: `genrand` indexes that buffer by `i * 4 + j`
 _RING_STRIDE = 4
+
+
+def _assert_integers(**named: object) -> None:
+    """Refuse an argument that is no integer, a bool not being one.
+
+    Each is compared, shifted or multiplied next, and a `bytes`, a `str`
+    or a float leaves those as a builtin error. The refusal names the
+    argument and the type, never the value.
+    """
+    for what, value in named.items():
+        if not is_integer(value):
+            raise BTClibEccTypeError(f"invalid {what} type: {type(value).__name__}")
 
 
 def _assert_valid_mantissa(mantissa: int) -> None:
@@ -296,6 +310,9 @@ def _assert_valid_header(exp: int, mantissa: int, min_value: int | None) -> None
     answers being the caller's to ask for; its own mantissa check is
     why this function does not run one a second time.
     """
+    _assert_integers(exp=exp, mantissa=mantissa)
+    if min_value is not None:
+        _assert_integers(min_value=min_value)
     if mantissa:
         if not 0 <= exp <= _MAX_EXP:
             raise BTClibEccValueError(f"rangeproof exponent not in 0..18: {exp}")
@@ -862,6 +879,7 @@ class RangeProof:
         that range, or one the exponent's own scaling cannot reach, is
         no value of this proof and is refused.
         """
+        _assert_integers(value=value)
         min_value = self.min_value or 0
         if not min_value <= value <= self.max_value:
             err_msg = f"rangeproof value not in {min_value}..{self.max_value}"
@@ -1089,7 +1107,8 @@ def sign(
     more than `value`, `nonce` the 32 octets `rangeproof_genrand` seeds
     its chain with, `exp` in -1..18 and `min_bits` in 0..64 -- the
     bounds `secp256k1_rangeproof_sign_impl` reads before it asks for a
-    header.
+    header. A `value`, `min_value`, `exp` or `min_bits` that is no
+    integer, a bool included, is a `BTClibEccTypeError`.
 
     `nonce` must be unique to each call, never reused, and kept secret
     except from parties allowed to `rewind` the proof: anyone who learns
@@ -1130,6 +1149,7 @@ def sign(
     `rewind` are handed it again or the proof does not hold.
     """
     blind_int = scalar_from_prv_key(blind, secp256k1)
+    _assert_integers(value=value, min_value=min_value, exp=exp, min_bits=min_bits)
     if not 0 <= value <= _UINT64_MAX:
         raise BTClibEccValueError("rangeproof value not in 0..2**64-1")
     if not 0 <= min_value <= value:
