@@ -6,6 +6,7 @@
 
 import re
 import secrets
+from collections.abc import Callable
 from hashlib import sha1, sha256, sha512
 from io import BytesIO
 from typing import Any
@@ -36,6 +37,7 @@ from btclib_ecc.curves.curve_group import CurveGroup, _mult, _mult_jac_var
 from btclib_ecc.ecc import dsa
 from btclib_ecc.ecc.rfc6979_nonce import challenge_
 from btclib_ecc.exceptions import (
+    BTClibEccException,
     BTClibEccRuntimeError,
     BTClibEccTypeError,
     BTClibEccValueError,
@@ -43,10 +45,13 @@ from btclib_ecc.exceptions import (
 from btclib_ecc.hashes import reduce_to_hlen
 from btclib_ecc.number_theory import mod_inv_var
 from tests import (
+    REFUSED_SCALARS,
     Sha256FirstByte,
+    both_arms,
     key_pair_spellings,
     load,
     needs_bindings,
+    refused_secret,
     vector_id,
 )
 from tests.curves.curve_test import (
@@ -57,6 +62,7 @@ from tests.curves.curve_test import (
     no_bindings_anywhere,
     secp256k1_bis,
 )
+from tests.secret_free import assert_secret_free
 
 _KEYS = key_pair_spellings()
 pub_key_point = _KEYS.Q
@@ -3114,3 +3120,55 @@ def test_a_hybrid_key_is_refused_on_both_arms(
             dsa.verify(b"a message", key, sig)
         with pytest.raises(BTClibEccValueError, match="not a public key"):
             dsa.sign_(msg_hash, q, pub_key=key)
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_SECRET_MSG = bytes(range(32))
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "gen_keys": (dsa.gen_keys, REFUSED_SCALARS),
+    "sign, private key": (lambda s: dsa.sign(_SECRET_MSG, s), REFUSED_SCALARS),
+    "sign, nonce": (
+        lambda s: dsa.sign(_SECRET_MSG, 1, s, grind=False),
+        REFUSED_SCALARS,
+    ),
+    "sign_recoverable, private key": (
+        lambda s: dsa.sign_recoverable(_SECRET_MSG, s),
+        REFUSED_SCALARS,
+    ),
+    "sign_recoverable, nonce": (
+        lambda s: dsa.sign_recoverable(_SECRET_MSG, 1, s),
+        REFUSED_SCALARS,
+    ),
+    "Signer": (dsa.Signer, REFUSED_SCALARS),
+    "anti_exfil_signer_commit": (
+        lambda s: dsa.anti_exfil_signer_commit(_SECRET_MSG, s, bytes(32)),
+        REFUSED_SCALARS,
+    ),
+    "anti_exfil_sign": (
+        lambda s: dsa.anti_exfil_sign(_SECRET_MSG, s, bytes(32)),
+        REFUSED_SCALARS,
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

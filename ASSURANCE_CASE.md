@@ -252,8 +252,9 @@ to, and what counters each.
   section 7 of its standard, which asks each such refusal for a test
   calling `assert_secret_free`. `tests/secret_free/__init__.py` is that
   helper, copied from `btclib-org/.github`, and `tests/secret_free_test.py`
-  tests it. No test of a refusal calls it yet:
-  btclib-org/btclib-ecc#263 owes them.
+  tests it. `test_a_refusal_carries_no_secret`, in the test file of each
+  module that takes a private key, a nonce or a secret share, feeds a
+  secret to each of its refusals and passes it to `assert_secret_free`.
   Here, an exception, its cause and its context do not repeat a key passed as a
   public key, a committed value, a blinding factor or a scalar operand; a
   modulus is printed. `str_from_string`'s refusal of a non-ASCII byte,

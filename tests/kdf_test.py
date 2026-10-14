@@ -18,13 +18,21 @@ be editing the authority rather than citing it, which is what
 cost is test data in this file: no dependency, and no production path.
 """
 
+from collections.abc import Callable
 from hashlib import sha1, sha224, sha256, sha384, sha512
+from typing import Any
 
 import pytest
 
 from btclib_ecc.alias import HashF
-from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
+from btclib_ecc.exceptions import (
+    BTClibEccException,
+    BTClibEccTypeError,
+    BTClibEccValueError,
+)
 from btclib_ecc.kdf import ansi_x9_63_kdf, hkdf, hkdf_expand, hkdf_extract
+from tests import both_arms, refused_secret
+from tests.secret_free import assert_secret_free
 
 
 @pytest.mark.parametrize("size", [-1, 0, -(2**32)])
@@ -401,3 +409,53 @@ def test_hkdf_expand_refuses_a_prk_that_is_no_bytes() -> None:
     """
     with pytest.raises(BTClibEccTypeError, match="invalid prk type"):
         hkdf_expand("a" * 32, 10, sha256, None)  # type: ignore[arg-type]
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+# the secret is bytes where bytes are what the call takes, and refused as
+# anything else
+_SECRET_NOT_BYTES = [
+    "int",
+    "negative int",
+    "bytearray",
+    "hex string",
+    "0x hex string",
+    "WIF",
+]
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "ansi_x9_63_kdf, shared secret": (
+        lambda s: ansi_x9_63_kdf(s, 32, sha256, None),
+        _SECRET_NOT_BYTES,
+    ),
+    "hkdf_extract, input keying material": (
+        lambda s: hkdf_extract(s, None, sha256),
+        _SECRET_NOT_BYTES,
+    ),
+    "hkdf_expand, pseudorandom key": (
+        lambda s: hkdf_expand(s, 32, sha256, None),
+        [*_SECRET_NOT_BYTES, "30 bytes"],
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

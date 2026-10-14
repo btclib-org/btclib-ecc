@@ -57,11 +57,13 @@ from btclib_ecc.curves import (
 from btclib_ecc.curves.curve import CURVES, _assert_in_subgroup
 from btclib_ecc.ecc import pedersen
 from btclib_ecc.exceptions import (
+    BTClibEccException,
     BTClibEccRuntimeError,
     BTClibEccValueError,
 )
-from tests import load, needs_bindings, needs_zkp, vector_id
+from tests import both_arms, load, needs_bindings, needs_zkp, refused_secret, vector_id
 from tests.curves.curve_test import secp112r2_order_4_point
+from tests.secret_free import assert_secret_free
 
 # guarded module scope, the same shape `btclib_ecc._libsecp256k1` uses: this
 # file is collected in every job, including the no-bindings one where
@@ -897,3 +899,46 @@ def test_the_second_generator_is_in_the_subgroup_on_every_curve() -> None:
         _assert_in_subgroup(H, ec)
     for name in ("secp112r2", "secp128r2"):
         assert CURVES[name].cofactor > 1
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "generator_from_seed, blinding factor": (
+        lambda s: pedersen.generator_from_seed(bytes(32), s),
+        [
+            "int",
+            "negative int",
+            "bytes",
+            "bytearray",
+            "hex string",
+            "0x hex string",
+            "WIF",
+        ],
+    ),
+    "generator_from_seed, seed": (
+        pedersen.generator_from_seed,
+        ["int", "negative int", "33 bytes", "30 bytes", "0x hex string", "WIF"],
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

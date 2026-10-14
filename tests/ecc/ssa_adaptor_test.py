@@ -11,6 +11,7 @@ pins the revision. Each case keeps upstream's array names, and its
 `checks` are the helpers upstream calls on it, with their flags.
 """
 
+from collections.abc import Callable
 from hashlib import sha256
 from typing import Any
 
@@ -19,8 +20,9 @@ import pytest
 from btclib_ecc.curves import CURVES, bytes_from_point, mult, point_from_pub_key
 from btclib_ecc.curves import secp256k1 as ec
 from btclib_ecc.ecc import ssa, ssa_adaptor
-from btclib_ecc.exceptions import BTClibEccValueError
-from tests import both_arms, load, vector_id
+from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
+from tests import REFUSED_SCALARS, both_arms, load, refused_secret, vector_id
+from tests.secret_free import assert_secret_free
 
 _VECTORS: list[dict[str, Any]] = load(
     "ecc", "_data", "zkp_schnorr_adaptor_vectors.json"
@@ -226,3 +228,47 @@ def test_extract_adaptor_refuses_what_is_not_an_adaptation() -> None:
     other_curve = ssa.Sig(sig.r, sig.s, CURVES["secp256r1"], check_validity=False)
     with pytest.raises(BTClibEccValueError, match="secp256k1"):
         ssa_adaptor.extract_adaptor(other_curve, pre_sig)
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_SECRET_MSG = bytes(range(32))
+_SECRET_ADAPTOR = bytes_from_point(mult(7))
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "presign, private key": (
+        lambda s: ssa_adaptor.presign(_SECRET_MSG, s, _SECRET_ADAPTOR),
+        REFUSED_SCALARS,
+    ),
+    "presign, nonce": (
+        lambda s: ssa_adaptor.presign(_SECRET_MSG, 1, _SECRET_ADAPTOR, nonce=s),
+        REFUSED_SCALARS,
+    ),
+    "adapt": (
+        lambda s: ssa_adaptor.adapt(
+            ssa_adaptor.presign(_SECRET_MSG, 1, _SECRET_ADAPTOR), s
+        ),
+        REFUSED_SCALARS,
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

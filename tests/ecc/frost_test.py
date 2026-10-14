@@ -17,6 +17,7 @@ library wraps, so every function here is the Python arithmetic and the
 vectors are its only authority.
 """
 
+from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
 
@@ -25,11 +26,13 @@ import pytest
 from btclib_ecc.curves import bytes_from_point, mult, secp256k1
 from btclib_ecc.ecc import frost, ssa
 from btclib_ecc.exceptions import (
+    BTClibEccException,
     BTClibEccTypeError,
     BTClibEccValueError,
     InvalidContributionError,
 )
-from tests import both_arms, load, vector_id
+from tests import REFUSED_OCTETS, both_arms, load, refused_secret, vector_id
+from tests.secret_free import assert_secret_free
 
 _ERRORS = (BTClibEccValueError, InvalidContributionError)
 
@@ -1381,3 +1384,76 @@ def test_a_session_context_is_replaced_and_not_carried_over() -> None:
     assert other != session_ctx
     assert frost.session_values(other).e != values.e
     assert frost.session_values(session_ctx) is values
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+
+def _secret_sign(sec_nonce: Any, sec_share: Any) -> object:
+    session_ctx, *_ = _two_of_three_session()
+    return frost.sign(sec_nonce, sec_share, 0, session_ctx)
+
+
+def _secret_deterministic_sign(sec_share: Any) -> object:
+    session_ctx, _, _, pub_shares, _ = _two_of_three_session()
+    return frost.deterministic_sign(
+        sec_share,
+        0,
+        bytes(66),
+        session_ctx.n,
+        session_ctx.t,
+        session_ctx.ids,
+        pub_shares[:2],
+        session_ctx.thresh_pk,
+        [],
+        [],
+        bytes(32),
+    )
+
+
+_SECRET_NONCES = ["bytes", "bytearray", "33 bytes", "30 bytes"]
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "nonce_gen": (
+        frost.nonce_gen,
+        ["0x hex string", "33 bytes", "30 bytes", "WIF"],
+    ),
+    "sign, secret share": (
+        lambda s: _secret_sign(bytearray(bytes.fromhex("01" * 64)), s),
+        REFUSED_OCTETS,
+    ),
+    "sign, wrong secret share": (
+        lambda s: _secret_sign(bytearray(bytes.fromhex("01" * 64)), s),
+        ["wrong key"],
+    ),
+    "sign, secret nonce": (
+        lambda s: _secret_sign(s, (1).to_bytes(32, "big")),
+        _SECRET_NONCES,
+    ),
+    "sign, secret nonce as a bytearray": (
+        lambda s: _secret_sign(bytearray(s), (1).to_bytes(32, "big")),
+        _SECRET_NONCES,
+    ),
+    "deterministic_sign": (_secret_deterministic_sign, REFUSED_OCTETS),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

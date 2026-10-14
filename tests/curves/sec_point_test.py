@@ -5,6 +5,7 @@
 """Tests for the `btclib_ecc.curves.sec_point` module."""
 
 from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -26,9 +27,14 @@ from btclib_ecc.curves import (
 )
 from btclib_ecc.curves.curve import CURVES
 from btclib_ecc.curves.sec_point import _mult_sec, mult_pub_key
-from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
-from tests import b58encode, needs_bindings
+from btclib_ecc.exceptions import (
+    BTClibEccException,
+    BTClibEccTypeError,
+    BTClibEccValueError,
+)
+from tests import REFUSED_SCALARS, b58encode, both_arms, needs_bindings, refused_secret
 from tests.curves.curve_test import secp112r2_order_4_point, secp128r2_order_4_point
+from tests.secret_free import assert_secret_free
 
 # test curves: very low cardinality
 # 13 % 4 = 1; 13 % 8 = 5
@@ -535,3 +541,31 @@ def test_a_public_key_is_a_point_or_its_octets_and_nothing_else() -> None:
         point_from_pub_key(
             b58encode(b"\x80" + q.to_bytes(32, "big") + b"\x01").decode()
         )
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "scalar_from_prv_key": (scalar_from_prv_key, REFUSED_SCALARS),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

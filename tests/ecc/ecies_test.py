@@ -20,6 +20,7 @@ in the block cipher `tests/__init__.py` holds.
 import base64
 import hashlib
 import string
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -28,17 +29,22 @@ from btclib_ecc.alias import Point
 from btclib_ecc.curves import bytes_from_point, curve, mult, secp256k1
 from btclib_ecc.ecc import ecies
 from btclib_ecc.exceptions import (
+    BTClibEccException,
     BTClibEccRuntimeError,
     BTClibEccTypeError,
     BTClibEccValueError,
 )
 from tests import (
+    REFUSED_SCALARS,
     aes_decrypt_block,
     aes_encrypt_block,
     aes_expand_key,
     aes_xor,
+    both_arms,
     needs_bindings,
+    refused_secret,
 )
+from tests.secret_free import assert_secret_free
 
 # --------------------------------------------------------------------------
 # AES-128-CBC with PKCS#7, for this file alone. The block cipher itself is
@@ -581,3 +587,74 @@ def test_b64decode_refuses_a_str_and_bytes_armor_alike(padding: str) -> None:
     position = len(padding) + len("SECRETab")
     expected = f"non-ascii character in base64 envelope at position {position}"
     assert refusals == [expected] * 3
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+
+def _secret_cipher(*_: object) -> bytes:  # pragma: no cover -- refused before it runs
+    raise AssertionError("a refused key reached the cipher")
+
+
+def _secret_envelope() -> ecies.Envelope:
+    armor = ecies.encrypt(b"m", bytes_from_point(mult(7)), aes_128_cbc_encrypt)
+    return ecies.Envelope.b64decode(armor)
+
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "derive_keys": (
+        lambda s: ecies.derive_keys(s, bytes_from_point(mult(7))),
+        REFUSED_SCALARS,
+    ),
+    "encrypt, ephemeral private key": (
+        lambda s: ecies.encrypt(
+            b"m", bytes_from_point(mult(7)), _secret_cipher, eph_prv_key=s
+        ),
+        REFUSED_SCALARS,
+    ),
+    "Envelope.mac_from_key": (
+        lambda s: _secret_envelope().mac_from_key(s),
+        ["int", "negative int", "0x hex string", "WIF"],
+    ),
+    "Envelope.assert_valid_mac": (
+        lambda s: _secret_envelope().assert_valid_mac(s),
+        ["bytes", "bytearray", "hex string", "33 bytes", "30 bytes"],
+    ),
+    "decrypt, wrong private key": (
+        lambda s: ecies.decrypt(
+            ecies.encrypt(b"m", bytes_from_point(mult(7)), aes_128_cbc_encrypt),
+            s,
+            _secret_cipher,
+        ),
+        ["wrong key"],
+    ),
+    "decrypt": (
+        lambda s: ecies.decrypt(
+            ecies.encrypt(b"m", bytes_from_point(mult(7)), aes_128_cbc_encrypt),
+            s,
+            _secret_cipher,
+        ),
+        REFUSED_SCALARS,
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)
