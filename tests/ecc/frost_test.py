@@ -31,7 +31,7 @@ from btclib_ecc.exceptions import (
     BTClibEccValueError,
     InvalidContributionError,
 )
-from tests import REFUSED_OCTETS, both_arms, load, refused_secret, vector_id
+from tests import REFUSED_AUX, REFUSED_EXTRA, REFUSED_OCTETS, both_arms, load, refused_secret, vector_id
 from tests.secret_free import assert_secret_free
 
 _ERRORS = (BTClibEccValueError, InvalidContributionError)
@@ -1399,7 +1399,7 @@ def _secret_sign(sec_nonce: Any, sec_share: Any) -> object:
     return frost.sign(sec_nonce, sec_share, 0, session_ctx)
 
 
-def _secret_deterministic_sign(sec_share: Any) -> object:
+def _secret_deterministic_sign(sec_share: Any, aux_rand: Any = None) -> object:
     session_ctx, _, _, pub_shares, _ = _two_of_three_session()
     return frost.deterministic_sign(
         sec_share,
@@ -1413,7 +1413,12 @@ def _secret_deterministic_sign(sec_share: Any) -> object:
         [],
         [],
         bytes(32),
+        aux_rand,
     )
+
+
+def _secret_deterministic_sign_aux(aux_rand: Any) -> object:
+    return _secret_deterministic_sign((1).to_bytes(32, "big"), aux_rand)
 
 
 _SECRET_NONCES = ["bytes", "bytearray", "33 bytes", "30 bytes"]
@@ -1435,11 +1440,17 @@ _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
         lambda s: _secret_sign(s, (1).to_bytes(32, "big")),
         _SECRET_NONCES,
     ),
-    "sign, secret nonce as a bytearray": (
+    "sign, secret nonce refused for its value or its pubshare": (
         lambda s: _secret_sign(bytearray(s), (1).to_bytes(32, "big")),
         _SECRET_NONCES,
     ),
     "deterministic_sign": (_secret_deterministic_sign, REFUSED_OCTETS),
+    "nonce_gen_, rand_": (
+        lambda s: frost.nonce_gen_(s, None, None, None),
+        REFUSED_AUX,
+    ),
+    "nonce_gen, extra_in": (lambda s: frost.nonce_gen(extra_in=s), REFUSED_EXTRA),
+    "deterministic_sign, aux_rand": (_secret_deterministic_sign_aux, REFUSED_EXTRA),
 }
 
 

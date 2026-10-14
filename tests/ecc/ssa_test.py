@@ -37,6 +37,7 @@ from btclib_ecc.exceptions import (
 from btclib_ecc.hashes import reduce_to_hlen
 from btclib_ecc.number_theory import mod_inv_var
 from tests import (
+    REFUSED_AUX,
     REFUSED_SCALARS,
     Sha256FirstByte,
     b58decode,
@@ -2207,6 +2208,8 @@ _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
         lambda s: ssa.anti_exfil_sign(_SECRET_MSG, s, bytes(32)),
         REFUSED_SCALARS,
     ),
+    "sign, aux": (lambda s: ssa.sign(_SECRET_MSG, 1, s), REFUSED_AUX),
+    "Signer.sign, aux": (lambda s: ssa.Signer(1).sign(_SECRET_MSG, s), REFUSED_AUX),
 }
 
 

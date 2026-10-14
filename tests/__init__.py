@@ -326,12 +326,12 @@ both_arms = pytest.mark.usefixtures("arm")
 
 
 # What a refusal of a secret is fed, section 7 of the organization's standard
-# (*A refusal carries no secret*): a fixed random value, in each spelling a
+# (*A refusal carries no secret*): a hand-picked constant, in each spelling a
 # caller passes where a private key, a nonce or a secret share belongs and
 # the library refuses it, with every spelling the refusal could print.
 #
 # The first 16 bytes are 0xff, which puts the integer above the group order;
-# the rest is random, because a run such as all zeros is a piece of clean
+# the rest is picked by hand, because a run such as all zeros is a piece of clean
 # messages too. A 33-byte value is an xprv's `00 || k` field, and a 30-byte
 # one is a key cut short.
 _REFUSED_RANDOM = bytes.fromhex("9f3a6c1e5b7d284a0c93e6f1d2b85a47")
@@ -388,6 +388,14 @@ REFUSED_SCALARS = [kind for kind in REFUSED_SECRETS if kind != "wrong key"]
 REFUSED_OCTETS = [
     kind for kind in REFUSED_SCALARS if kind not in {"int", "negative int"}
 ]
+
+# What a parameter of auxiliary randomness (`aux`, `rand_`: exactly 32 octets)
+# refuses of the secrets above, and what one of extra entropy (`extra_in`,
+# `extra_entropy`, `rand`: octets of any size) refuses. The 32 bytes, as
+# bytes, bytearray or hex string, are 32 octets and accepted; a 33- or
+# 30-byte value is accepted where the size is free.
+REFUSED_AUX = ["int", "negative int", "0x hex string", "33 bytes", "30 bytes", "WIF"]
+REFUSED_EXTRA = ["int", "negative int", "0x hex string", "WIF"]
 
 # What a test asking the flagged `btclib_secp256k1.zkp` extension for the right
 # answer is marked with. Issue btclib-org/btclib#1679 is the sentinel that

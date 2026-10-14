@@ -63,6 +63,8 @@ from btclib_ecc.exceptions import (
     InvalidContributionError,
 )
 from tests import (
+    REFUSED_AUX,
+    REFUSED_EXTRA,
     REFUSED_SCALARS,
     both_arms,
     load,
@@ -1489,7 +1491,7 @@ _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "sign, private key": (_secret_sign_key, REFUSED_SCALARS),
     "sign, wrong private key": (_secret_sign_key, ["wrong key"]),
     "sign, secret nonce": (_secret_sign_nonce, _SECRET_NONCES),
-    "sign, secret nonce as a bytearray": (
+    "sign, secret nonce refused for its value or its public key": (
         lambda s: _secret_sign_nonce(bytearray(s)),
         _SECRET_NONCES,
     ),
@@ -1499,6 +1501,20 @@ _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
             s, bytes(66), [musig2.individual_pub_key(1)], [], [], _SECRET_MSG
         ),
         REFUSED_SCALARS,
+    ),
+    "nonce_gen_, rand_": (
+        lambda s: musig2.nonce_gen_(s, 1, musig2.individual_pub_key(1)),
+        REFUSED_AUX,
+    ),
+    "nonce_gen, extra_in": (
+        lambda s: musig2.nonce_gen(1, musig2.individual_pub_key(1), extra_in=s),
+        REFUSED_EXTRA,
+    ),
+    "deterministic_sign, rand": (
+        lambda s: musig2.deterministic_sign(
+            1, bytes(66), [musig2.individual_pub_key(1)], [], [], _SECRET_MSG, s
+        ),
+        REFUSED_EXTRA,
     ),
 }
 

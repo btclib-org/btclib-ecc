@@ -23,7 +23,7 @@ from btclib_ecc.curves import mult, point_from_pub_key, secp256k1
 from btclib_ecc.ecc import dleq
 from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
-from tests import REFUSED_SCALARS, both_arms, load_csv, refused_secret, vector_id
+from tests import REFUSED_AUX, REFUSED_SCALARS, both_arms, load_csv, refused_secret, vector_id
 from tests.secret_free import assert_secret_free
 
 # what the generation file writes in the proof column of a case that must
@@ -318,6 +318,10 @@ _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "generate_proof": (
         lambda s: dleq.generate_proof(s, secp256k1.G),
         REFUSED_SCALARS,
+    ),
+    "generate_proof, aux": (
+        lambda s: dleq.generate_proof(1, secp256k1.G, s),
+        REFUSED_AUX,
     ),
 }
 

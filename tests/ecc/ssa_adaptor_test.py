@@ -21,7 +21,7 @@ from btclib_ecc.curves import CURVES, bytes_from_point, mult, point_from_pub_key
 from btclib_ecc.curves import secp256k1 as ec
 from btclib_ecc.ecc import ssa, ssa_adaptor
 from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
-from tests import REFUSED_SCALARS, both_arms, load, refused_secret, vector_id
+from tests import REFUSED_AUX, REFUSED_SCALARS, both_arms, load, refused_secret, vector_id
 from tests.secret_free import assert_secret_free
 
 _VECTORS: list[dict[str, Any]] = load(
@@ -254,6 +254,10 @@ _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
             ssa_adaptor.presign(_SECRET_MSG, 1, _SECRET_ADAPTOR), s
         ),
         REFUSED_SCALARS,
+    ),
+    "presign, aux": (
+        lambda s: ssa_adaptor.presign(_SECRET_MSG, 1, _SECRET_ADAPTOR, s),
+        REFUSED_AUX,
     ),
 }
 

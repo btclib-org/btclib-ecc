@@ -25,6 +25,7 @@ from btclib_ecc.ecc.rfc6979_nonce import _rfc6979_nonce_, challenge_, rfc6979_no
 from btclib_ecc.exceptions import BTClibEccException, BTClibEccRuntimeError
 from btclib_ecc.hashes import reduce_to_hlen
 from tests import (
+    REFUSED_EXTRA,
     REFUSED_SCALARS,
     Sha256FirstByte,
     both_arms,
@@ -450,6 +451,10 @@ def test_rfc6979_over_a_one_byte_hash() -> None:
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "rfc6979_nonce_": (lambda s: rfc6979_nonce_(bytes(32), s), REFUSED_SCALARS),
+    "rfc6979_nonce_, extra_entropy": (
+        lambda s: rfc6979_nonce_(bytes(32), 1, extra_entropy=s),
+        REFUSED_EXTRA,
+    ),
 }
 
 

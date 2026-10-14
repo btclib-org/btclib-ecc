@@ -29,6 +29,7 @@ from btclib_ecc.curves import CURVES, bytes_from_point, mult, secp256k1
 from btclib_ecc.ecc import dsa, ecdsa_adaptor
 from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
 from tests import (
+    REFUSED_AUX,
     REFUSED_SCALARS,
     both_arms,
     load,
@@ -448,6 +449,10 @@ _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
             ecdsa_adaptor.encrypt(_SECRET_MSG, 1, _SECRET_ENC_KEY), s
         ),
         REFUSED_SCALARS,
+    ),
+    "encrypt, aux": (
+        lambda s: ecdsa_adaptor.encrypt(_SECRET_MSG, 1, _SECRET_ENC_KEY, s),
+        REFUSED_AUX,
     ),
 }
 

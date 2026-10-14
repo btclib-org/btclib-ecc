@@ -21,7 +21,7 @@ from btclib_ecc.ecc import bip340_nonce, ssa
 from btclib_ecc.ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
 from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
-from tests import REFUSED_SCALARS, Sha256FirstByte, both_arms, refused_secret
+from tests import REFUSED_AUX, REFUSED_SCALARS, Sha256FirstByte, both_arms, refused_secret
 from tests.curves.curve_test import byte_boundary_curves
 from tests.secret_free import assert_secret_free
 
@@ -188,6 +188,7 @@ def test_the_key_is_refused_before_the_aux() -> None:
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "bip340_nonce_": (lambda s: bip340_nonce_(bytes(32), s), REFUSED_SCALARS),
+    "bip340_nonce_, aux": (lambda s: bip340_nonce_(bytes(32), 1, s), REFUSED_AUX),
 }
 
 
