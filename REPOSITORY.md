@@ -152,7 +152,8 @@ for Actions — so nothing else can satisfy one.
 
 ## Branch protection
 
-Classic protection carries the required checks with `strict`, one
+Classic protection carries the required checks with `strict` **off**
+(section 11 of the organization's standard has the ground), one
 approving review, `dismiss_stale_reviews`, linear history, no force
 pushes, no deletions, `required_conversation_resolution`, and
 `enforce_admins` **off**. The whole object is `PUT` once, here, on a
@@ -162,7 +163,7 @@ about, a partial `PUT` dropping the rest:
 ```shell
 gh api -X PUT repos/btclib-org/btclib-ecc/branches/main/protection \
   --input - <<'JSON'
-{"required_status_checks": {"strict": true, "checks": [
+{"required_status_checks": {"strict": false, "checks": [
    {"context": "test: every job passed", "app_id": 15368},
    {"context": "docs / Build the documentation", "app_id": 15368},
    {"context": "lint / Lint and type-check", "app_id": 15368},
@@ -205,7 +206,8 @@ gh api repos/btclib-org/btclib-ecc/branches/main/protection \
 #  "force_pushes":false,"linear":true,
 #  "reviews":{"dismiss_stale_reviews":true,
 #   "required_approving_review_count":1},
-#  "strict":true}
+#  "strict":false}
+# ("strict" read on 2026-10-13, after it was turned off.)
 ```
 
 Three rulesets sit beside it, additive — rules aggregate across rulesets
