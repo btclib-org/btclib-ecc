@@ -114,13 +114,13 @@ def test_nonce_gen_vectors(case: dict[str, Any]) -> None:
 def test_nonce_gen_refuses_a_signer_id_outside_the_participants(
     signer_id: int,
 ) -> None:
-    """`signer_id` is 0 to MAX_PARTICIPANTS - 1: one below and one above are refused."""
+    """`signer_id` is 0 to 127: one below and 128 and up are refused."""
     with pytest.raises(BTClibEccValueError, match="less than 128"):
         frost.nonce_gen(signer_id=signer_id)
 
 
 def test_nonce_gen_binds_the_signer_id() -> None:
-    """0 and MAX_PARTICIPANTS - 1 are ids, and each id, or none, gives its own nonce."""
+    """0 and 127 are ids, and each id, or none, gives its own nonce."""
     rand = bytes(32)
     nonces = {
         signer_id: frost.nonce_gen_(rand, None, signer_id, None)[1]
