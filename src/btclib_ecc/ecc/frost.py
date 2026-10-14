@@ -870,8 +870,8 @@ def sign(
 
     The lengths of the secnonce and the secshare are checked, and
     `session_values` runs, before the nonce is read, for the reason
-    `musig2.sign`'s own docstring gives: a call refused there leaves the
-    bytearray untouched, so it may be used for the corrected call.
+    `musig2.sign`'s own docstring gives: a call refused before the read
+    leaves the bytearray untouched, so it may be used again.
 
     `sec_nonce` is checked exactly `bytearray` first, for the reason
     `musig2.sign`'s own docstring gives (issue
@@ -1118,8 +1118,9 @@ def partial_sig_verify(
 
     `pub_shares` is required here where every other entry point takes it
     optionally: there is no other way to check a signature against a
-    key it was not given, `tests/_data/README.md`'s cited summary of the
-    vendored vectors makes the same point of BIP445's own reference.
+    key it was not given, and `siv2r/bip-frost-signing`'s
+    `python/vectors/test_vectors_summary.md` says the same of BIP445's
+    own reference.
     """
     ids = _ids(ids)
     i = _integer(i, "i")
