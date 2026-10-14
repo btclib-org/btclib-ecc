@@ -685,6 +685,33 @@ def test_det_sign_refuses_an_aux_rand_of_the_wrong_length(length: int) -> None:
         )
 
 
+@pytest.mark.parametrize("signer_id", [-1, 2, 2**32])
+def test_det_sign_refuses_a_signer_id_outside_the_ids(signer_id: int) -> None:
+    """An id the session lacks is the package's error, not an `OverflowError`.
+
+    -1 and 2**32 cannot be written as 4 bytes, so the nonce derivation
+    would overflow on them.
+    """
+    group = _two_of_three_det_sign_group()
+    _, other_nonce = frost.nonce_gen()
+    with pytest.raises(
+        BTClibEccValueError, match="^The signer's id is missing from the ids list.$"
+    ):
+        frost.deterministic_sign(
+            bytes.fromhex(group["secshares"][0]),
+            signer_id,
+            other_nonce,
+            group["n"],
+            group["t"],
+            [0, 1],
+            None,
+            bytes.fromhex(group["thresh_pk"]),
+            [],
+            [],
+            bytes(32),
+        )
+
+
 # --------------------------------------------------------------------
 # sig_agg_vectors.json
 # --------------------------------------------------------------------
