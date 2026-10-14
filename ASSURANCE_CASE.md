@@ -248,7 +248,11 @@ to, and what counters each.
   a key still does not allow.
 - **Error message containing sensitive information (CWE-209).** The
   rule is the organization's [*A refusal carries no
-  secret*](https://github.com/btclib-org/.github#a-refusal-carries-no-secret).
+  secret*](https://github.com/btclib-org/.github#a-refusal-carries-no-secret),
+  section 7 of its standard, which asks each such refusal for a test
+  calling `assert_secret_free`. `tests/secret_free/__init__.py` is that
+  helper, copied from `btclib-org/.github`, and `tests/secret_free_test.py`
+  tests it. No test of a refusal calls it yet.
   Here, an exception, its cause and its context do not repeat a key passed as a
   public key, a committed value, a blinding factor or a scalar operand; a
   modulus is printed. `str_from_string`'s refusal of a non-ASCII byte,
