@@ -518,7 +518,7 @@ path    python/vectors/sign_verify_vectors.json
 commit  762bd48c42eed9a00f6f62fb846f2826013664ac  2026-10-10
 blob    3f08e8e8a9a64f5c0c7f0d965541d0a8d0182c08
 ours    ddc130d13e418062be1cacfa123a262d4c6b7657
-pulled  2026-09-17, refreshed 2026-10-09, 2026-10-13
+pulled  2026-09-17, refreshed 2026-10-09, 2026-10-14
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -533,7 +533,7 @@ path    python/vectors/tweak_vectors.json
 commit  75318bc740428c435ec137842442879980fff1d5  2026-10-12
 blob    498fb90c755a9caf3a53b229e95cc1c4aed482fb
 ours    01290469e9946aa4d25cdca1c1dad66608395149
-pulled  2026-09-17, refreshed 2026-10-09, 2026-10-13
+pulled  2026-09-17, refreshed 2026-10-09, 2026-10-14
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -548,7 +548,7 @@ path    python/vectors/det_sign_vectors.json
 commit  762bd48c42eed9a00f6f62fb846f2826013664ac  2026-10-10
 blob    b2f0f62065b29c6fd779bdad4184af8cd2e773ea
 ours    def3867dbc84c8ee0249b5926e69bb63ef3c81c2
-pulled  2026-09-17, refreshed 2026-10-09, 2026-10-13
+pulled  2026-09-17, refreshed 2026-10-09, 2026-10-14
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -563,7 +563,7 @@ path    python/vectors/sig_agg_vectors.json
 commit  61f589f4f85b862ba7ce0e59b7dadea0f4bd98d3  2026-10-10
 blob    4d9c99a06b5c031d6055a0674c3fec3663b9fb53
 ours    a6d48f662ae05bd52837cd5274c08411a57b7675
-pulled  2026-09-17, refreshed 2026-10-09, 2026-10-13
+pulled  2026-09-17, refreshed 2026-10-09, 2026-10-14
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -578,7 +578,7 @@ path    python/vectors/threshold_info_vectors.json
 commit  762bd48c42eed9a00f6f62fb846f2826013664ac  2026-10-10
 blob    3d0904cab63830b0645a31176c325df9c653d6ef
 ours    f0a3cb4145ebe6372065b0ff1a979339edc75b8f
-pulled  2026-10-13
+pulled  2026-10-14
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -849,7 +849,7 @@ repo    C2SP/wycheproof
 path    testvectors_v1/ecdsa_secp256k1_sha256_bitcoin_test.json
 commit  12fd3aaf33eb5fa1f52e026912ee00c054f9d984  2026-10-06
 blob    d5c273b5d0f54c502616ae0c651696d56d91618c
-pulled  2026-08-13, refreshed 2026-08-25, 2026-10-13
+pulled  2026-08-13, refreshed 2026-08-25, 2026-10-14
 behind  0 revisions; that commit is the tip of the path
 ```
 
