@@ -189,6 +189,7 @@ _KEY_MATERIAL_MATCH_ERR = (
 _THRESH_PK_INF_ERR = "The threshold public key must not be the point at infinity."
 _NONCE_SIGNER_ID_ERR = "The optional signer_id must be a 4-byte integer."
 _SEC_SHARE_RANGE_ERR = "The secshare is out of range."
+_SIGNER_ID_MISSING_ERR = "The signer's id is missing from the ids list."
 _AGG_OTHER_NONCE_ABSENT_ERR = "The aggothernonce must be omitted when u = 1."
 _AGG_OTHER_NONCE_PRESENT_ERR = (
     "The aggothernonce must be present and a 66-byte array when u > 1."
@@ -898,7 +899,7 @@ def sign(
         raise BTClibEccValueError(_SEC_SHARE_RANGE_ERR)
     pub_share = _cbytes(mult(d_, ec=secp256k1))
     if signer_id not in session_ctx.ids:
-        raise BTClibEccValueError("The signer's id is missing from the ids list.")
+        raise BTClibEccValueError(_SIGNER_ID_MISSING_ERR)
     if session_ctx.pub_shares is not None:
         j = session_ctx.ids.index(signer_id)
         if session_ctx.pub_shares[j] != pub_share:
@@ -984,6 +985,8 @@ def deterministic_sign(
     _pub_shares_ = None if pub_shares is None else _pub_shares(pub_shares)
     thresh_pk_bytes = bytes_from_octets(thresh_pk, PK_SIZE)
     _validate_session_params(n, t, ids_, _pub_shares_, thresh_pk_bytes)
+    if signer_id not in ids_:
+        raise BTClibEccValueError(_SIGNER_ID_MISSING_ERR)
 
     agg_other = None if agg_other_nonce is None else bytes_from_octets(agg_other_nonce)
     if len(ids_) == 1:
@@ -1070,7 +1073,7 @@ def partial_sig_verify_(
     _integer(signer_id, "signer_id")
     values = session_values(session_ctx)
     if signer_id not in session_ctx.ids:
-        raise BTClibEccValueError("The signer's id is missing from the ids list.")
+        raise BTClibEccValueError(_SIGNER_ID_MISSING_ERR)
     psig_bytes = bytes_from_octets(psig, _SCALAR_SIZE)
     s = int.from_bytes(psig_bytes, "big")
     if s >= secp256k1.n:
