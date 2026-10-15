@@ -187,7 +187,7 @@ _KEY_MATERIAL_MATCH_ERR = (
     " the threshold public key."
 )
 _THRESH_PK_INF_ERR = "The threshold public key must not be the point at infinity."
-_NONCE_SIGNER_ID_ERR = "The optional signer_id must be a 4-byte integer."
+_NONCE_SIGNER_ID_ERR = f"The optional signer_id must be less than {MAX_PARTICIPANTS}."
 _SEC_SHARE_RANGE_ERR = "The secshare is out of range."
 _SIGNER_ID_MISSING_ERR = "The signer's id is missing from the ids list."
 _AGG_OTHER_NONCE_ABSENT_ERR = "The aggothernonce must be omitted when u = 1."
@@ -569,7 +569,7 @@ def nonce_gen_(
         signer_id_bytes = b""
     else:
         signer_id = _integer(signer_id, "signer_id")
-        if not 0 <= signer_id < 2 ** (8 * ID_SIZE):
+        if not 0 <= signer_id < MAX_PARTICIPANTS:
             raise BTClibEccValueError(_NONCE_SIGNER_ID_ERR)
         signer_id_bytes = signer_id.to_bytes(ID_SIZE, "big")
     if sec_share is None:

@@ -104,19 +104,21 @@ def test_nonce_gen_vectors(case: dict[str, Any]) -> None:
     assert pub_nonce == bytes.fromhex(expected_pub_nonce)
 
 
-@pytest.mark.parametrize("signer_id", [-1, 2**32])
-def test_nonce_gen_refuses_a_signer_id_outside_four_bytes(signer_id: int) -> None:
-    """`signer_id` is 0 to 2^32-1: one below and one above are refused."""
-    with pytest.raises(BTClibEccValueError, match="a 4-byte integer"):
+@pytest.mark.parametrize("signer_id", [-1, frost.MAX_PARTICIPANTS, 2**32 - 1])
+def test_nonce_gen_refuses_a_signer_id_outside_the_participants(
+    signer_id: int,
+) -> None:
+    """`signer_id` is 0 to 127: one below and 128 and up are refused."""
+    with pytest.raises(BTClibEccValueError, match="less than 128"):
         frost.nonce_gen(signer_id=signer_id)
 
 
 def test_nonce_gen_binds_the_signer_id() -> None:
-    """0 and 2^32-1 are ids, and each id, or none, gives its own nonce."""
+    """0 and 127 are ids, and each id, or none, gives its own nonce."""
     rand = bytes(32)
     nonces = {
         signer_id: frost.nonce_gen_(rand, None, signer_id, None)[1]
-        for signer_id in (None, 0, 1, 2**32 - 1)
+        for signer_id in (None, 0, 1, frost.MAX_PARTICIPANTS - 1)
     }
     assert len(set(nonces.values())) == len(nonces)
 
