@@ -208,10 +208,10 @@ _RING_STRIDE = 4
 def _assert_integers(**named: object) -> None:
     """Refuse an argument that is no integer, a bool not being one.
 
-    Each is compared, shifted or multiplied next. A `bytes`, a `str` or
-    None makes those raise a builtin error, while a bool or a float
-    passes some of them and is computed with. The refusal names the
-    argument and the type, never the value.
+    Each is compared, shifted or multiplied next. There a `bytes`, a
+    `str` or None raises a builtin error, a float raises one or is
+    computed with, and a bool passes as one or zero. The refusal names
+    the argument and the type, never the value.
     """
     for what, value in named.items():
         if not is_integer(value):
@@ -1454,16 +1454,18 @@ def verify(
     `_assert_structurally_valid_`.
 
     A `RangeProof` argument has no octets to be wrong, so what it is
-    asked is `assert_valid` and a state that refuses is False here and a
-    `BTClibEccValueError` from `assert_as_valid`. See `_proof_from`.
+    asked is `assert_valid`. A state it refuses as a value is False here
+    and a `BTClibEccValueError` from `assert_as_valid`; a header field
+    that is no integer is a `BTClibEccTypeError` from both. See
+    `_proof_from`.
     """
     parsed_proof = _assert_structurally_valid_(proof)
     # ValueError and BTClibEccRuntimeError: a well-formed proof that does
     # not hold for this commitment is False, and so is an `extra_commit`
-    # spelled in a way no octets are and a state `assert_valid` refuses
-    # in a `RangeProof` a caller built; a caller's own mistake in the
-    # proof's own octets is refused above rather than excluded from the
-    # except
+    # spelled in a way no octets are and a value-state `assert_valid`
+    # refuses in a `RangeProof` a caller built; a header field that is no
+    # integer is a BTClibEccTypeError and leaves, as does a caller's own
+    # mistake in the proof's own octets, refused above
     try:
         assert_as_valid(commitment, parsed_proof, gen, extra_commit=extra_commit)
     except (ValueError, BTClibEccRuntimeError):

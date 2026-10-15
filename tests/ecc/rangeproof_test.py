@@ -1187,7 +1187,7 @@ def _refusal(value: Any, what: str) -> str:
 @pytest.mark.parametrize("value", _NOT_INTEGERS, ids=repr)
 @pytest.mark.parametrize("what", ["value", "min_value", "exp", "min_bits"])
 def test_sign_refuses_an_argument_that_is_no_integer(what: str, value: Any) -> None:
-    """A builtin error leaves from underneath the exception contract."""
+    """No builtin error leaves from underneath the exception contract."""
     kwargs: dict[str, Any] = {"value": 7} | {what: value}
     with pytest.raises(BTClibEccTypeError, match=_refusal(value, what)):
         sign(_BLIND, kwargs.pop("value"), _NONCE, _GEN, **kwargs)
@@ -1211,12 +1211,20 @@ def test_a_proof_refuses_a_value_that_is_no_integer(value: Any) -> None:
         proof.nonce_chain(commitment, value, _NONCE, _GEN)
 
 
-@pytest.mark.parametrize("value", [v for v in _NOT_INTEGERS if v is not None], ids=repr)
-@pytest.mark.parametrize("what", ["exp", "mantissa", "min_value"])
+@pytest.mark.parametrize(
+    "what, value",
+    [
+        (what, value)
+        for what in ["exp", "mantissa", "min_value"]
+        for value in _NOT_INTEGERS
+        if not (what == "min_value" and value is None)
+    ],
+    ids=repr,
+)
 def test_a_proof_refuses_a_header_field_that_is_no_integer(
     what: str, value: Any
 ) -> None:
-    """None is left out: it is how `min_value` says the field is absent."""
+    """None is left out for `min_value`, which says the field is absent."""
     proof = sign(_BLIND, 7, _NONCE, _GEN)
     fields: dict[str, Any] = {
         "exp": proof.exp,
@@ -1233,6 +1241,25 @@ def test_a_proof_refuses_a_header_field_that_is_no_integer(
             proof.ring_commitments,
             proof.sig,
         )
+
+
+def test_verify_lets_a_header_field_that_is_no_integer_out() -> None:
+    """A type error is no state `verify` answers False to."""
+    proof = sign(_BLIND, 7, _NONCE, _GEN)
+    commitment = commit(_BLIND, 7, _GEN)
+    unchecked = RangeProof(
+        True,
+        proof.mantissa,
+        None,
+        proof.signs,
+        proof.ring_commitments,
+        proof.sig,
+        check_validity=False,
+    )
+    with pytest.raises(BTClibEccTypeError, match=_refusal(True, "exp")):
+        rangeproof.verify(commitment, unchecked, _GEN)
+    with pytest.raises(BTClibEccTypeError, match=_refusal(True, "exp")):
+        rangeproof.assert_as_valid(commitment, unchecked, _GEN)
 
 
 @pytest.mark.parametrize(
