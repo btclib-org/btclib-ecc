@@ -1445,7 +1445,7 @@ def test_a_tweak_needs_a_flag_and_a_flag_needs_a_tweak() -> None:
 # is said without it. The secret is fed in each spelling of
 # `tests.REFUSED_SECRETS` that the call refuses, on both arms.
 
-_SECRET_MSG = bytes(range(32))
+_MSG_32 = bytes(range(32))
 
 
 def _secret_session() -> tuple[musig2.SessionContext, bytearray]:
@@ -1457,7 +1457,7 @@ def _secret_session() -> tuple[musig2.SessionContext, bytearray]:
         [pub_key],
         [],
         [],
-        _SECRET_MSG,
+        _MSG_32,
         bytes_from_point(mult(5)),
     )
     return session_ctx, sec_nonce
@@ -1498,7 +1498,7 @@ _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "adapt": (_secret_adapt, REFUSED_SCALARS),
     "deterministic_sign": (
         lambda s: musig2.deterministic_sign(
-            s, bytes(66), [musig2.individual_pub_key(1)], [], [], _SECRET_MSG
+            s, bytes(66), [musig2.individual_pub_key(1)], [], [], _MSG_32
         ),
         REFUSED_SCALARS,
     ),
@@ -1512,7 +1512,7 @@ _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     ),
     "deterministic_sign, rand": (
         lambda s: musig2.deterministic_sign(
-            1, bytes(66), [musig2.individual_pub_key(1)], [], [], _SECRET_MSG, s
+            1, bytes(66), [musig2.individual_pub_key(1)], [], [], _MSG_32, s
         ),
         REFUSED_EXTRA,
     ),

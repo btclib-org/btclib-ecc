@@ -74,14 +74,14 @@ def test_invalid_nonce() -> None:
 # is said without it. The secret is fed in each spelling of
 # `tests.REFUSED_SECRETS` that the call refuses, on both arms.
 
-_SECRET_MSG = bytes(range(32))
+_MSG = bytes(range(32))
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "sign_, private key": (
-        lambda s: dlc_oracle.sign_(_SECRET_MSG, s, 3),
+        lambda s: dlc_oracle.sign_(_MSG, s, 3),
         REFUSED_SCALARS,
     ),
-    "sign_, nonce": (lambda s: dlc_oracle.sign_(_SECRET_MSG, 5, s), REFUSED_SCALARS),
+    "sign_, nonce": (lambda s: dlc_oracle.sign_(_MSG, 5, s), REFUSED_SCALARS),
 }
 
 

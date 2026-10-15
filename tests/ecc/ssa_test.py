@@ -2197,22 +2197,22 @@ def test_a_signer_built_without_bindings_uses_them_once_served(
 # is said without it. The secret is fed in each spelling of
 # `tests.REFUSED_SECRETS` that the call refuses, on both arms.
 
-_SECRET_MSG = bytes(range(32))
+_MSG = bytes(range(32))
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "gen_keys": (ssa.gen_keys, REFUSED_SCALARS),
-    "sign": (lambda s: ssa.sign(_SECRET_MSG, s), REFUSED_SCALARS),
+    "sign": (lambda s: ssa.sign(_MSG, s), REFUSED_SCALARS),
     "Signer": (ssa.Signer, REFUSED_SCALARS),
     "anti_exfil_signer_commit": (
-        lambda s: ssa.anti_exfil_signer_commit(_SECRET_MSG, s, bytes(32)),
+        lambda s: ssa.anti_exfil_signer_commit(_MSG, s, bytes(32)),
         REFUSED_SCALARS,
     ),
     "anti_exfil_sign": (
-        lambda s: ssa.anti_exfil_sign(_SECRET_MSG, s, bytes(32)),
+        lambda s: ssa.anti_exfil_sign(_MSG, s, bytes(32)),
         REFUSED_SCALARS,
     ),
-    "sign, aux": (lambda s: ssa.sign(_SECRET_MSG, 1, s), REFUSED_AUX),
-    "Signer.sign, aux": (lambda s: ssa.Signer(1).sign(_SECRET_MSG, s), REFUSED_AUX),
+    "sign, aux": (lambda s: ssa.sign(_MSG, 1, s), REFUSED_AUX),
+    "Signer.sign, aux": (lambda s: ssa.Signer(1).sign(_MSG, s), REFUSED_AUX),
 }
 
 

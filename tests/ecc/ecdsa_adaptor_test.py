@@ -432,26 +432,23 @@ def test_recover_matches_zkp(case: tuple[bytes, int, bytes, int, bytes, bytes]) 
 # is said without it. The secret is fed in each spelling of
 # `tests.REFUSED_SECRETS` that the call refuses, on both arms.
 
-_SECRET_MSG = bytes(range(32))
-_SECRET_ENC_KEY = bytes_from_point(mult(7))
+_ENC_KEY = bytes_from_point(mult(7))
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "encrypt, private key": (
-        lambda s: ecdsa_adaptor.encrypt(_SECRET_MSG, s, _SECRET_ENC_KEY),
+        lambda s: ecdsa_adaptor.encrypt(_MSG, s, _ENC_KEY),
         REFUSED_SCALARS,
     ),
     "encrypt, nonce": (
-        lambda s: ecdsa_adaptor.encrypt(_SECRET_MSG, 1, _SECRET_ENC_KEY, nonce=s),
+        lambda s: ecdsa_adaptor.encrypt(_MSG, 1, _ENC_KEY, nonce=s),
         REFUSED_SCALARS,
     ),
     "decrypt": (
-        lambda s: ecdsa_adaptor.decrypt(
-            ecdsa_adaptor.encrypt(_SECRET_MSG, 1, _SECRET_ENC_KEY), s
-        ),
+        lambda s: ecdsa_adaptor.decrypt(ecdsa_adaptor.encrypt(_MSG, 1, _ENC_KEY), s),
         REFUSED_SCALARS,
     ),
     "encrypt, aux": (
-        lambda s: ecdsa_adaptor.encrypt(_SECRET_MSG, 1, _SECRET_ENC_KEY, s),
+        lambda s: ecdsa_adaptor.encrypt(_MSG, 1, _ENC_KEY, s),
         REFUSED_AUX,
     ),
 }

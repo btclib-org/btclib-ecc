@@ -265,12 +265,13 @@ to, and what counters each.
   `Envelope.b64decode`'s of a non-ASCII str and `hex_string`'s of a negative
   integer print neither the input nor the number.
   The `repr` and `str` of the classes that hold a key or a nonce are checked
-  the same way: `dsa.Signer`, `ssa.Signer`, `_HmacDrbg`, `NonceChain` and
+  the same way. `tests/ecc/dsa_test.py` checks `dsa.Signer`,
+  `tests/ecc/ssa_test.py` `ssa.Signer`, `tests/ecc/rfc6979_test.py`
+  `_HmacDrbg`, and `tests/ecc/rangeproof_test.py` `NonceChain` and
   `Rewound`.
-  `tests/exception_echo_test.py`, `tests/curves/sec_point_test.py`,
-  `tests/ecc/dsa_test.py`, `tests/ecc/ecies_test.py` and
-  `tests/utils_test.py` hold this, and so do `tests/ecc/ssa_test.py`,
-  `tests/ecc/rfc6979_test.py` and `tests/ecc/rangeproof_test.py`.
+  The other exception tests are in `tests/exception_echo_test.py`,
+  `tests/curves/sec_point_test.py`, `tests/ecc/ecies_test.py` and
+  `tests/utils_test.py`.
 - **Type confusion (CWE-843).** mypy runs with `strict = true`
   (`pyproject.toml`) as a hook of the lint gate in
   `.pre-commit-config.yaml`, and `tests/integer_policy_test.py` refuses a

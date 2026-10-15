@@ -3132,30 +3132,30 @@ def test_a_hybrid_key_is_refused_on_both_arms(
 # is said without it. The secret is fed in each spelling of
 # `tests.REFUSED_SECRETS` that the call refuses, on both arms.
 
-_SECRET_MSG = bytes(range(32))
+_MSG = bytes(range(32))
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "gen_keys": (dsa.gen_keys, REFUSED_SCALARS),
-    "sign, private key": (lambda s: dsa.sign(_SECRET_MSG, s), REFUSED_SCALARS),
+    "sign, private key": (lambda s: dsa.sign(_MSG, s), REFUSED_SCALARS),
     "sign, nonce": (
-        lambda s: dsa.sign(_SECRET_MSG, 1, s, grind=False),
+        lambda s: dsa.sign(_MSG, 1, s, grind=False),
         REFUSED_SCALARS,
     ),
     "sign_recoverable, private key": (
-        lambda s: dsa.sign_recoverable(_SECRET_MSG, s),
+        lambda s: dsa.sign_recoverable(_MSG, s),
         REFUSED_SCALARS,
     ),
     "sign_recoverable, nonce": (
-        lambda s: dsa.sign_recoverable(_SECRET_MSG, 1, s),
+        lambda s: dsa.sign_recoverable(_MSG, 1, s),
         REFUSED_SCALARS,
     ),
     "Signer": (dsa.Signer, REFUSED_SCALARS),
     "anti_exfil_signer_commit": (
-        lambda s: dsa.anti_exfil_signer_commit(_SECRET_MSG, s, bytes(32)),
+        lambda s: dsa.anti_exfil_signer_commit(_MSG, s, bytes(32)),
         REFUSED_SCALARS,
     ),
     "anti_exfil_sign": (
-        lambda s: dsa.anti_exfil_sign(_SECRET_MSG, s, bytes(32)),
+        lambda s: dsa.anti_exfil_sign(_MSG, s, bytes(32)),
         REFUSED_SCALARS,
     ),
 }

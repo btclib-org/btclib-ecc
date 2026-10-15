@@ -1000,15 +1000,15 @@ def test_a_malformed_borromean_sig_field_is_refused_not_answered() -> None:
 # is said without it. The secret is fed in each spelling of
 # `tests.REFUSED_SECRETS` that the call refuses, on both arms.
 
-_SECRET_RINGS = [[mult(5), mult(7)]]
+_RINGS = [[mult(5), mult(7)]]
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "sign, nonce": (
-        lambda s: borromean.sign(bytes(32), [s], [0], [5], _SECRET_RINGS),
+        lambda s: borromean.sign(bytes(32), [s], [0], [5], _RINGS),
         REFUSED_SCALARS,
     ),
     "sign, private key": (
-        lambda s: borromean.sign(bytes(32), [1], [0], [s], _SECRET_RINGS),
+        lambda s: borromean.sign(bytes(32), [1], [0], [s], _RINGS),
         REFUSED_SCALARS,
     ),
 }

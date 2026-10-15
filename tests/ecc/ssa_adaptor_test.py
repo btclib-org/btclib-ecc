@@ -244,26 +244,23 @@ def test_extract_adaptor_refuses_what_is_not_an_adaptation() -> None:
 # is said without it. The secret is fed in each spelling of
 # `tests.REFUSED_SECRETS` that the call refuses, on both arms.
 
-_SECRET_MSG = bytes(range(32))
-_SECRET_ADAPTOR = bytes_from_point(mult(7))
+_ADAPTOR = bytes_from_point(mult(7))
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "presign, private key": (
-        lambda s: ssa_adaptor.presign(_SECRET_MSG, s, _SECRET_ADAPTOR),
+        lambda s: ssa_adaptor.presign(_MSG, s, _ADAPTOR),
         REFUSED_SCALARS,
     ),
     "presign, nonce": (
-        lambda s: ssa_adaptor.presign(_SECRET_MSG, 1, _SECRET_ADAPTOR, nonce=s),
+        lambda s: ssa_adaptor.presign(_MSG, 1, _ADAPTOR, nonce=s),
         REFUSED_SCALARS,
     ),
     "adapt": (
-        lambda s: ssa_adaptor.adapt(
-            ssa_adaptor.presign(_SECRET_MSG, 1, _SECRET_ADAPTOR), s
-        ),
+        lambda s: ssa_adaptor.adapt(ssa_adaptor.presign(_MSG, 1, _ADAPTOR), s),
         REFUSED_SCALARS,
     ),
     "presign, aux": (
-        lambda s: ssa_adaptor.presign(_SECRET_MSG, 1, _SECRET_ADAPTOR, s),
+        lambda s: ssa_adaptor.presign(_MSG, 1, _ADAPTOR, s),
         REFUSED_AUX,
     ),
 }
