@@ -1672,6 +1672,17 @@ def test_the_results_repr_and_str_carry_no_secret() -> None:
     assert_repr_secret_free(rewound, [*HELD_KEY_SPELLINGS, str(secret + 2)])
 
 
+def test_the_prove_params_repr_hides_the_value_and_its_digits() -> None:
+    """`v` and `sign_key_idx` (its base-four digits) are masked."""
+    params = rangeproof._prove_params(123456789, 0, 0, 0)
+    assert params.v == 123456789
+    assert repr(params) == (
+        f"_ProveParams(v=..., rsizes={params.rsizes!r}, sign_key_idx=..., "
+        f"min_value=0, mantissa={params.mantissa}, scale=1, exp=0)"
+    )
+    assert_repr_secret_free(params, ["123456789", str(params.sign_key_idx)])
+
+
 @pytest.mark.parametrize(
     "value, min_bits",
     [(3, 4), (100000, 8), (100000, 20), (2**32, 33)],
