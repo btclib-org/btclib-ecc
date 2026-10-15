@@ -219,8 +219,7 @@ gh api -X POST repos/btclib-org/btclib-ecc/rulesets --input - <<'JSON'
 {"name": "main-integrity", "target": "branch", "enforcement": "active",
  "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": []}},
  "bypass_actors": [],
- "rules": [{"type": "required_signatures"},
-           {"type": "required_linear_history"},
+ "rules": [{"type": "required_linear_history"},
            {"type": "non_fast_forward"},
            {"type": "deletion"}]}
 JSON
@@ -253,7 +252,7 @@ JSON
 `gh api users/fametrano --jq .id`.
 
 Classic protection's own copy of the signature rule is off, read on
-2026-09-27:
+2026-10-15:
 
 ```shell
 gh api repos/btclib-org/btclib-ecc/branches/main/protection \
@@ -261,8 +260,11 @@ gh api repos/btclib-org/btclib-ecc/branches/main/protection \
 # false
 ```
 
-`main-integrity` above is what requires a signature on `main`: [the
-standard states that value for every
+No ruleset over `main` carries `required_signatures`, so nothing refuses an
+unsigned commit at the push: `verified-signatures.yml` checks after each push
+that every commit pushed is `verified` on the forge, and a red run is read in
+the Actions tab. It is not a required check. [The standard states these values
+for every
 repository](https://github.com/btclib-org/.github#branch-protection-and-rulesets).
 
 ## Tag protection
@@ -295,8 +297,8 @@ for id in $(gh api repos/btclib-org/btclib-ecc/rulesets --jq '.[].id'); do
 done
 # {"bypass":[],"enforcement":"active","include":["refs/heads/main"],
 #  "methods":[],"name":"main-integrity",
-#  "rules":["required_signatures","required_linear_history",
-#   "non_fast_forward","deletion"],"target":"branch"}
+#  "rules":["required_linear_history","non_fast_forward","deletion"],
+#  "target":"branch"}
 # {"bypass":[[3296421,"pull_request"]],"enforcement":"active",
 #  "include":["refs/heads/main"],"methods":[["squash"]],
 #  "name":"main-self-merge","rules":["pull_request"],"target":"branch"}
