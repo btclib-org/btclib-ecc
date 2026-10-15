@@ -24,6 +24,7 @@ the package's own arithmetic is shared as a function instead, computed
 only when a caller invokes it.
 """
 
+import copy
 import csv
 import hashlib
 import importlib
@@ -37,6 +38,7 @@ from typing import Any, NamedTuple
 import pytest
 
 import btclib_ecc
+from tests.secret_free import assert_secret_free
 
 _TESTS_DIR = Path(__file__).parent
 
@@ -322,6 +324,100 @@ needs_bindings = pytest.mark.bindings
 
 # Runs a test once per arm: the `arm` fixture of `conftest.py`.
 both_arms = pytest.mark.usefixtures("arm")
+
+
+# What a refusal of a secret is fed, section 7 of the organization's standard
+# (*A refusal carries no secret*): a hand-picked constant, in each spelling a
+# caller passes where a private key, a nonce or a secret share belongs and
+# the library refuses it, with every spelling the refusal could print.
+#
+# The first 16 bytes are 0xff, which puts the integer above the group order;
+# the rest is picked by hand, because a run such as all zeros is a piece of
+# clean messages too. A 33-byte value is an xprv's `00 || k` field, and a
+# 30-byte one is a key cut short.
+_REFUSED_RANDOM = bytes.fromhex("9f3a6c1e5b7d284a0c93e6f1d2b85a47")
+_REFUSED_BYTES = b"\xff" * 16 + _REFUSED_RANDOM
+_REFUSED_INT = int.from_bytes(_REFUSED_BYTES, "big")
+_REFUSED_XPRV = b"\x00" + bytes.fromhex(
+    "5d0b8e3a71f2c946ae18d73b09c5f4e26a81b7d3c0958e4f1a27d6b39c80e5f4"
+)
+_REFUSED_SHORT = bytes.fromhex(
+    "c4a1e97b30d85f62a9170e4c8b3d6a25f1e09c7478b2d6530a1f9e8c4b7d"
+)
+# a private key that is a scalar and is not the one a call expects
+_REFUSED_WRONG_KEY = bytes.fromhex(
+    "3b8c1f6e2a97d4053c6e18fa9b2d7041e5a3c8f60d1b92a74e5f3086c1d9a27b"
+)
+_REFUSED_WIF = "L2hX7yQp9TnVbEa4cWm8sRjZ3uKdFgN5oPiBxYtC6vLwAeUr1HqD"
+
+
+def _spellings_of(secret: bytes) -> list[str | bytes]:
+    as_int = int.from_bytes(secret, "big")
+    return [secret, secret.hex(), str(as_int), hex(as_int)]
+
+
+REFUSED_SECRETS: dict[str, tuple[Any, list[str | bytes]]] = {
+    "int": (_REFUSED_INT, _spellings_of(_REFUSED_BYTES)),
+    "negative int": (-_REFUSED_INT, _spellings_of(_REFUSED_BYTES)),
+    "bytes": (_REFUSED_BYTES, _spellings_of(_REFUSED_BYTES)),
+    "bytearray": (bytearray(_REFUSED_BYTES), _spellings_of(_REFUSED_BYTES)),
+    "hex string": (_REFUSED_BYTES.hex(), _spellings_of(_REFUSED_BYTES)),
+    "0x hex string": (hex(_REFUSED_INT), _spellings_of(_REFUSED_BYTES)),
+    "33 bytes": (_REFUSED_XPRV, _spellings_of(_REFUSED_XPRV)),
+    "30 bytes": (_REFUSED_SHORT, _spellings_of(_REFUSED_SHORT)),
+    "WIF": (_REFUSED_WIF, [_REFUSED_WIF]),
+    "wrong key": (_REFUSED_WRONG_KEY, _spellings_of(_REFUSED_WRONG_KEY)),
+}
+
+
+def refused_secret(kind: str) -> tuple[Any, list[str | bytes]]:
+    """Return a copy of the secret of that kind, and its spellings.
+
+    A copy, because a `bytearray` secret nonce is zeroed by the call that
+    reads it, and the next test would be fed zeros.
+    """
+    value, spellings = REFUSED_SECRETS[kind]
+    return copy.copy(value), spellings
+
+
+# Which of them a parameter that takes an `Integer` and one that takes
+# `Octets` refuses: an integer is no octets.
+#
+# `wrong key` is no refusal of a scalar: it is what a call that checks a key
+# against another value is fed, so it is in neither list.
+REFUSED_SCALARS = [kind for kind in REFUSED_SECRETS if kind != "wrong key"]
+REFUSED_OCTETS = [
+    kind for kind in REFUSED_SCALARS if kind not in {"int", "negative int"}
+]
+
+# What a parameter of auxiliary randomness (`aux`, `rand_`: exactly 32 octets)
+# refuses of the secrets above, and what one of extra entropy (`extra_in`,
+# `extra_entropy`, `rand`: octets of any size) refuses. The 32 bytes, as
+# bytes, bytearray or hex string, are 32 octets and accepted; a 33- or
+# 30-byte value is accepted where the size is free.
+REFUSED_AUX = ["int", "negative int", "0x hex string", "33 bytes", "30 bytes", "WIF"]
+REFUSED_EXTRA = ["int", "negative int", "0x hex string", "WIF"]
+
+# A private key a constructor accepts, in each spelling it accepts: the one
+# valid scalar of the secrets above, which an object then holds.
+HELD_KEYS: dict[str, Any] = {
+    "int": int.from_bytes(_REFUSED_WRONG_KEY, "big"),
+    "bytes": _REFUSED_WRONG_KEY,
+    "bytearray": bytearray(_REFUSED_WRONG_KEY),
+    "hex string": _REFUSED_WRONG_KEY.hex(),
+}
+HELD_KEY_SPELLINGS = _spellings_of(_REFUSED_WRONG_KEY)
+
+
+def assert_repr_secret_free(
+    obj: object, secrets: list[str | bytes] = HELD_KEY_SPELLINGS
+) -> None:
+    """Assert that neither `repr(obj)` nor `str(obj)` holds a piece of a secret.
+
+    `assert_secret_free` reads an exception, so the two texts go in one.
+    """
+    assert_secret_free(Exception(repr(obj), str(obj)), secrets)
+
 
 # What a test asking the flagged `btclib_secp256k1.zkp` extension for the right
 # answer is marked with. Issue btclib-org/btclib#1679 is the sentinel that

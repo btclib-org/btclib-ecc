@@ -43,6 +43,7 @@ skip is visible in a test report rather than an absence nobody notices.
 """
 
 import secrets
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -56,11 +57,23 @@ from btclib_ecc.curves import (
 )
 from btclib_ecc.ecc import musig2, ssa
 from btclib_ecc.exceptions import (
+    BTClibEccException,
     BTClibEccTypeError,
     BTClibEccValueError,
     InvalidContributionError,
 )
-from tests import both_arms, load, needs_bindings, needs_zkp, vector_id
+from tests import (
+    REFUSED_AUX,
+    REFUSED_EXTRA,
+    REFUSED_SCALARS,
+    both_arms,
+    load,
+    needs_bindings,
+    needs_zkp,
+    refused_secret,
+    vector_id,
+)
+from tests.secret_free import assert_secret_free
 
 if INSTALLED:
     from btclib_secp256k1 import musig as libsecp256k1_musig
@@ -1423,3 +1436,100 @@ def test_a_tweak_needs_a_flag_and_a_flag_needs_a_tweak() -> None:
         musig2.key_agg_and_tweak(pub_keys, [tweak], [True, False])
     # and the pair that is a pair
     assert musig2.key_agg_and_tweak(pub_keys, [tweak], [True]).Q
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_MSG_32 = bytes(range(32))
+
+
+def _secret_session() -> tuple[musig2.SessionContext, bytearray]:
+    """Return a session of one signer, and that signer's secret nonce."""
+    pub_key = musig2.individual_pub_key(1)
+    sec_nonce, pub_nonce = musig2.nonce_gen(1, pub_key)
+    session_ctx = musig2.SessionContext(
+        musig2.nonce_agg([pub_nonce]),
+        [pub_key],
+        [],
+        [],
+        _MSG_32,
+        bytes_from_point(mult(5)),
+    )
+    return session_ctx, sec_nonce
+
+
+def _secret_adapt(t: Any) -> object:
+    session_ctx, sec_nonce = _secret_session()
+    psig = musig2.sign(sec_nonce, 1, session_ctx)
+    pre_sig = musig2.partial_sig_agg_adaptor([psig], session_ctx)
+    return musig2.adapt(pre_sig, t, session_ctx)
+
+
+def _secret_sign_nonce(sec_nonce: Any) -> object:
+    session_ctx, _ = _secret_session()
+    return musig2.sign(sec_nonce, 1, session_ctx)
+
+
+def _secret_sign_key(prv_key: Any) -> object:
+    session_ctx, sec_nonce = _secret_session()
+    return musig2.sign(sec_nonce, prv_key, session_ctx)
+
+
+_SECRET_NONCES = ["bytes", "bytearray", "33 bytes", "30 bytes"]
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "individual_pub_key": (musig2.individual_pub_key, REFUSED_SCALARS),
+    "nonce_gen": (
+        lambda s: musig2.nonce_gen(s, musig2.individual_pub_key(1)),
+        REFUSED_SCALARS,
+    ),
+    "sign, private key": (_secret_sign_key, REFUSED_SCALARS),
+    "sign, wrong private key": (_secret_sign_key, ["wrong key"]),
+    "sign, secret nonce": (_secret_sign_nonce, _SECRET_NONCES),
+    "sign, secret nonce refused for its value or its public key": (
+        lambda s: _secret_sign_nonce(bytearray(s)),
+        _SECRET_NONCES,
+    ),
+    "adapt": (_secret_adapt, REFUSED_SCALARS),
+    "deterministic_sign": (
+        lambda s: musig2.deterministic_sign(
+            s, bytes(66), [musig2.individual_pub_key(1)], [], [], _MSG_32
+        ),
+        REFUSED_SCALARS,
+    ),
+    "nonce_gen_, rand_": (
+        lambda s: musig2.nonce_gen_(s, 1, musig2.individual_pub_key(1)),
+        REFUSED_AUX,
+    ),
+    "nonce_gen, extra_in": (
+        lambda s: musig2.nonce_gen(1, musig2.individual_pub_key(1), extra_in=s),
+        REFUSED_EXTRA,
+    ),
+    "deterministic_sign, rand": (
+        lambda s: musig2.deterministic_sign(
+            1, bytes(66), [musig2.individual_pub_key(1)], [], [], _MSG_32, s
+        ),
+        REFUSED_EXTRA,
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

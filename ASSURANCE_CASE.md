@@ -252,16 +252,26 @@ to, and what counters each.
   section 7 of its standard, which asks each such refusal for a test
   calling `assert_secret_free`. `tests/secret_free/__init__.py` is that
   helper, copied from `btclib-org/.github`, and `tests/secret_free_test.py`
-  tests it. No test of a refusal calls it yet:
-  btclib-org/btclib-ecc#263 owes them.
+  tests it. `test_a_refusal_carries_no_secret`, in the test file of each
+  module that takes a private key, a nonce or a secret share, feeds a
+  secret to the refusal of each parameter that holds one: a private key, a
+  nonce, a secret share, auxiliary randomness or extra entropy. It passes
+  each refusal to `assert_secret_free`. A message and its hash are public and
+  have no case, and a `_` spelling whose refusal is its twin's has none of
+  its own.
   Here, an exception, its cause and its context do not repeat a key passed as a
   public key, a committed value, a blinding factor or a scalar operand; a
   modulus is printed. `str_from_string`'s refusal of a non-ASCII byte,
   `Envelope.b64decode`'s of a non-ASCII str and `hex_string`'s of a negative
   integer print neither the input nor the number.
-  `tests/exception_echo_test.py`, `tests/curves/sec_point_test.py`,
-  `tests/ecc/dsa_test.py`, `tests/ecc/ecies_test.py` and
-  `tests/utils_test.py` hold this.
+  The `repr` and `str` of the classes that hold a key or a nonce are checked
+  the same way. `tests/ecc/dsa_test.py` checks `dsa.Signer`,
+  `tests/ecc/ssa_test.py` `ssa.Signer`, `tests/ecc/rfc6979_test.py`
+  `_HmacDrbg`, and `tests/ecc/rangeproof_test.py` `NonceChain` and
+  `Rewound`.
+  The other exception tests are in `tests/exception_echo_test.py`,
+  `tests/curves/sec_point_test.py`, `tests/ecc/dsa_test.py`,
+  `tests/ecc/ecies_test.py` and `tests/utils_test.py`.
 - **Type confusion (CWE-843).** mypy runs with `strict = true`
   (`pyproject.toml`) as a hook of the lint gate in
   `.pre-commit-config.yaml`, and `tests/integer_policy_test.py` refuses a

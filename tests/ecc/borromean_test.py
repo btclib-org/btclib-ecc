@@ -10,6 +10,7 @@ import secrets
 from collections.abc import Callable
 from hashlib import sha256
 from io import BytesIO
+from typing import Any
 
 import pytest
 
@@ -26,11 +27,13 @@ from btclib_ecc.ecc import borromean, dsa
 from btclib_ecc.ecc.borromean import BorromeanSig, _get_msg_format, _hash
 from btclib_ecc.exceptions import (
     BorromeanRingError,
+    BTClibEccException,
     BTClibEccTypeError,
     BTClibEccValueError,
 )
-from tests import needs_zkp
+from tests import REFUSED_SCALARS, both_arms, needs_zkp, refused_secret
 from tests.curves.curve_test import low_card_curves
+from tests.secret_free import assert_secret_free
 
 # guarded module scope, the same shape `tests/ecc/pedersen_test.py` uses
 # and for its reason: this file is collected in every job, the
@@ -988,3 +991,40 @@ def test_a_malformed_borromean_sig_field_is_refused_not_answered() -> None:
     assert borromean.verify(msg, good, pubk_rings)
     assert not borromean.verify(msg, built(e0, [[secp256k1.n]]), pubk_rings)
     assert not borromean.verify(msg, built(bytes(32), s), pubk_rings)
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_RINGS = [[mult(5), mult(7)]]
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "sign, nonce": (
+        lambda s: borromean.sign(bytes(32), [s], [0], [5], _RINGS),
+        REFUSED_SCALARS,
+    ),
+    "sign, private key": (
+        lambda s: borromean.sign(bytes(32), [1], [0], [s], _RINGS),
+        REFUSED_SCALARS,
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

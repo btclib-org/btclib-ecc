@@ -8,6 +8,7 @@ The BIP340 vectors pin secp256k1 with sha256, in `tests/ecc/ssa_test.py`.
 These cover the other curves and hash functions.
 """
 
+from collections.abc import Callable
 from hashlib import sha256, sha512
 from typing import Any
 
@@ -18,10 +19,17 @@ from btclib_ecc.curves import mult, secp256k1
 from btclib_ecc.curves.curve import CURVES
 from btclib_ecc.ecc import bip340_nonce, ssa
 from btclib_ecc.ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
-from btclib_ecc.exceptions import BTClibEccValueError
+from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
-from tests import Sha256FirstByte
+from tests import (
+    REFUSED_AUX,
+    REFUSED_SCALARS,
+    Sha256FirstByte,
+    both_arms,
+    refused_secret,
+)
 from tests.curves.curve_test import byte_boundary_curves
+from tests.secret_free import assert_secret_free
 
 # a hash shorter than the curve order
 SHORT_HASH = [
@@ -175,3 +183,32 @@ def test_the_key_is_refused_before_the_aux() -> None:
     """With a bad key and a bad aux, the key is the one named."""
     with pytest.raises(BTClibEccValueError, match="private key not in"):
         bip340_nonce_(b"m", 0, b"\x01")
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "bip340_nonce_": (lambda s: bip340_nonce_(bytes(32), s), REFUSED_SCALARS),
+    "bip340_nonce_, aux": (lambda s: bip340_nonce_(bytes(32), 1, s), REFUSED_AUX),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

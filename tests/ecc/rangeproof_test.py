@@ -86,6 +86,7 @@ a proof written under it crosses in both directions and is refused at
 `h` by both sides.
 """
 
+from collections.abc import Callable
 from inspect import Parameter, signature
 from io import BytesIO
 from typing import Any
@@ -94,7 +95,7 @@ import pytest
 
 from btclib_ecc.alias import INF
 from btclib_ecc.curves import mult, secp256k1
-from btclib_ecc.ecc import rangeproof
+from btclib_ecc.ecc import pedersen, rangeproof
 from btclib_ecc.ecc.borromean import BorromeanSig
 from btclib_ecc.ecc.pedersen import (
     _RANGEPROOF_TAG,
@@ -108,11 +109,24 @@ from btclib_ecc.ecc.pedersen import (
 )
 from btclib_ecc.ecc.rangeproof import RangeProof, sign, sign_public_value
 from btclib_ecc.exceptions import (
+    BTClibEccException,
     BTClibEccRuntimeError,
     BTClibEccTypeError,
     BTClibEccValueError,
 )
-from tests import load, needs_zkp, replace_unchecked, vector_id
+from tests import (
+    HELD_KEY_SPELLINGS,
+    HELD_KEYS,
+    REFUSED_SCALARS,
+    assert_repr_secret_free,
+    both_arms,
+    load,
+    needs_zkp,
+    refused_secret,
+    replace_unchecked,
+    vector_id,
+)
+from tests.secret_free import assert_secret_free
 
 # guarded module scope, the same shape `tests/ecc/pedersen_test.py` uses:
 # this file is collected in every job, including the no-bindings one where
@@ -1649,6 +1663,15 @@ def test_the_results_repr_holds_none_of_their_values() -> None:
     assert repr(chain) == "NonceChain(blinding_factors=..., draws=...)"
 
 
+def test_the_results_repr_and_str_carry_no_secret() -> None:
+    """A blinding factor, a draw and a value are in neither text."""
+    secret = HELD_KEYS["int"]
+    chain = rangeproof.NonceChain((secret,), ((secret, secret + 1),))
+    assert_repr_secret_free(chain, [*HELD_KEY_SPELLINGS, str(secret + 1)])
+    rewound = rangeproof.Rewound(secret, secret + 2, HELD_KEYS["bytes"])
+    assert_repr_secret_free(rewound, [*HELD_KEY_SPELLINGS, str(secret + 2)])
+
+
 @pytest.mark.parametrize(
     "value, min_bits",
     [(3, 4), (100000, 8), (100000, 20), (2**32, 33)],
@@ -2368,3 +2391,53 @@ def test_a_proof_under_a_derived_generator_crosses_to_zkp() -> None:
     assert not rangeproof.verify(point, octets, _GEN)
     with pytest.raises(BTClibEccRuntimeError, match="verification failed"):
         rangeproof.rewind(point, octets, nonce, _GEN)
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_SECRET_NONCES = ["int", "negative int", "0x hex string", "33 bytes", "30 bytes", "WIF"]
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "sign, blinding factor": (
+        lambda s: rangeproof.sign(s, 5, bytes(32), secp256k1.G),
+        REFUSED_SCALARS,
+    ),
+    "sign, nonce": (
+        lambda s: rangeproof.sign(1, 5, s, secp256k1.G),
+        _SECRET_NONCES,
+    ),
+    "sign_public_value, blinding factor": (
+        lambda s: rangeproof.sign_public_value(s, 5, bytes(32), secp256k1.G),
+        REFUSED_SCALARS,
+    ),
+    "rewind, nonce": (
+        lambda s: rangeproof.rewind(
+            pedersen.commit(1, 5, secp256k1.G),
+            rangeproof.sign(1, 5, bytes(32), secp256k1.G),
+            s,
+            secp256k1.G,
+        ),
+        _SECRET_NONCES,
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

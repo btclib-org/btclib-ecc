@@ -19,7 +19,9 @@ the scheme needs.
 
 import random
 import struct
+from collections.abc import Callable
 from hashlib import sha1, sha256
+from typing import Any
 
 import pytest
 
@@ -43,13 +45,15 @@ from btclib_ecc.ecc.dsa import (
 from btclib_ecc.ecc.rfc6979_nonce import rfc6979_nonce_
 from btclib_ecc.ecc.ssa import _S2C_POINT_TAG as _SSA_POINT_TAG
 from btclib_ecc.exceptions import (
+    BTClibEccException,
     BTClibEccRuntimeError,
     BTClibEccTypeError,
     BTClibEccValueError,
 )
 from btclib_ecc.hashes import reduce_to_hlen
-from tests import needs_zkp
+from tests import REFUSED_SCALARS, both_arms, needs_zkp, refused_secret
 from tests.curves.curve_test import low_card_curves
+from tests.secret_free import assert_secret_free
 
 # guarded module scope, the same shape `btclib_ecc._libsecp256k1` uses: this
 # file is collected in every job, including the no-bindings one where
@@ -524,3 +528,34 @@ def test_the_python_tweaks_are_the_bindings_tweaks(
                 == delegated_point
             )
     assert parities == {0, 1}
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "commit_nonce_": (
+        lambda s: commit_nonce.commit_nonce_(bytes(32), s, b"tag"),
+        REFUSED_SCALARS,
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

@@ -10,14 +10,16 @@ of discreetlogcontracts/dlcspecs, vendored under `tests/ecc/_data/`;
 """
 
 import random
+from collections.abc import Callable
 from typing import Any
 
 import pytest
 
 from btclib_ecc.curves import bytes_from_point, mult, secp256k1
 from btclib_ecc.ecc import dlc_oracle, ssa
-from btclib_ecc.exceptions import BTClibEccValueError
-from tests import both_arms, load, vector_id
+from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
+from tests import REFUSED_SCALARS, both_arms, load, refused_secret, vector_id
+from tests.secret_free import assert_secret_free
 
 random.seed(42)
 
@@ -63,3 +65,37 @@ def test_invalid_nonce() -> None:
     for nonce in (0, secp256k1.n):
         with pytest.raises(BTClibEccValueError):
             dlc_oracle.sign_(b"", 1, nonce)
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_MSG = bytes(range(32))
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "sign_, private key": (
+        lambda s: dlc_oracle.sign_(_MSG, s, 3),
+        REFUSED_SCALARS,
+    ),
+    "sign_, nonce": (lambda s: dlc_oracle.sign_(_MSG, 5, s), REFUSED_SCALARS),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

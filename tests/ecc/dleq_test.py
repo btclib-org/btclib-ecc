@@ -14,13 +14,24 @@ differs from BIP374's is a proof no other implementation would have
 produced.
 """
 
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 
 from btclib_ecc.curves import mult, point_from_pub_key, secp256k1
 from btclib_ecc.ecc import dleq
-from btclib_ecc.exceptions import BTClibEccValueError
+from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
 from btclib_ecc.hashes import tagged_hash
-from tests import both_arms, load_csv, vector_id
+from tests import (
+    REFUSED_AUX,
+    REFUSED_SCALARS,
+    both_arms,
+    load_csv,
+    refused_secret,
+    vector_id,
+)
+from tests.secret_free import assert_secret_free
 
 # what the generation file writes in the proof column of a case that must
 # fail; the point at infinity, in its B column, is spelled INFINITY and
@@ -301,3 +312,38 @@ def test_verify_proof_tells_a_malformed_argument_from_one_that_fails() -> None:
     for size in (31, 33, 0):
         with pytest.raises(BTClibEccValueError, match="invalid size"):
             dleq.verify_proof(A, B, C, proof, msg="00" * size)
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "generate_proof": (
+        lambda s: dleq.generate_proof(s, secp256k1.G),
+        REFUSED_SCALARS,
+    ),
+    "generate_proof, aux": (
+        lambda s: dleq.generate_proof(1, secp256k1.G, s),
+        REFUSED_AUX,
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)

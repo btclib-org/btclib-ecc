@@ -20,14 +20,24 @@ inputs.
 """
 
 import random
+from collections.abc import Callable
 from typing import Any
 
 import pytest
 
 from btclib_ecc.curves import CURVES, bytes_from_point, mult, secp256k1
 from btclib_ecc.ecc import dsa, ecdsa_adaptor
-from btclib_ecc.exceptions import BTClibEccValueError
-from tests import both_arms, load, needs_zkp, vector_id
+from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
+from tests import (
+    REFUSED_AUX,
+    REFUSED_SCALARS,
+    both_arms,
+    load,
+    needs_zkp,
+    refused_secret,
+    vector_id,
+)
+from tests.secret_free import assert_secret_free
 
 # guarded module scope, the same shape `btclib_ecc._libsecp256k1` uses: this
 # file is collected in every job, including the no-bindings one and the one
@@ -413,3 +423,48 @@ def test_recover_matches_zkp(case: tuple[bytes, int, bytes, int, bytes, bytes]) 
         zkp_ecdsa_adaptor.recover(zkp_sig, adaptor_sig, other)
     with pytest.raises(BTClibEccValueError):
         ecdsa_adaptor.recover(adaptor_sig, sig, other)
+
+
+# --------------------------------------------------------------------
+# a refusal carries no secret
+# --------------------------------------------------------------------
+# Section 7 of the organization's standard: what a secret is refused for
+# is said without it. The secret is fed in each spelling of
+# `tests.REFUSED_SECRETS` that the call refuses, on both arms.
+
+_ENC_KEY = bytes_from_point(mult(7))
+
+_SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
+    "encrypt, private key": (
+        lambda s: ecdsa_adaptor.encrypt(_MSG, s, _ENC_KEY),
+        REFUSED_SCALARS,
+    ),
+    "encrypt, nonce": (
+        lambda s: ecdsa_adaptor.encrypt(_MSG, 1, _ENC_KEY, nonce=s),
+        REFUSED_SCALARS,
+    ),
+    "decrypt": (
+        lambda s: ecdsa_adaptor.decrypt(ecdsa_adaptor.encrypt(_MSG, 1, _ENC_KEY), s),
+        REFUSED_SCALARS,
+    ),
+    "encrypt, aux": (
+        lambda s: ecdsa_adaptor.encrypt(_MSG, 1, _ENC_KEY, s),
+        REFUSED_AUX,
+    ),
+}
+
+
+_SECRET_CASES = [
+    (name, kind) for name, (_, kinds) in _SECRET_CALLS.items() for kind in kinds
+]
+
+
+@pytest.mark.parametrize("name, kind", _SECRET_CASES)
+@both_arms
+def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
+    """No piece of the secret is in the exception or in anything it chains."""
+    call, _ = _SECRET_CALLS[name]
+    secret, spellings = refused_secret(kind)
+    with pytest.raises(BTClibEccException) as refused:
+        call(secret)
+    assert_secret_free(refused.value, spellings)
