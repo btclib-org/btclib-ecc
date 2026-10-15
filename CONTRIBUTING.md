@@ -971,6 +971,7 @@ them or passing them beside it on the same sha, which is the reliance
 | `test` | pull request, push | — |
 | `lint`, `docs` | pull request, push | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
+| `api-break` | pull request | — |
 | `codeql` | pull request, push, and weekly | the languages |
 | `os-ubuntu` | weekly, a release | images × interpreters |
 | `os-macos` | weekly, a release | images × interpreters |
@@ -996,7 +997,8 @@ not this file's to restate.
 
 The gates run one image on one interpreter: `ubuntu-latest`, and the
 version `.python-version` names. `claude-review` gates nothing: a review
-that gates a merge would make a model's judgement a branch rule. Why so
+that gates a merge would make a model's judgement a branch rule. `api-break`
+gates nothing either: it adds a label. Why so
 little gates is the ceiling on concurrent jobs the plan puts on the whole
 organization, and `REPOSITORY.md`'s *Plan-gated settings* is where that
 lives.

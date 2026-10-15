@@ -33,6 +33,10 @@ though: routing a report is the maintainers' job, not the reporter's,
 and a doubt about which project owns a flaw is not a reason to keep it to
 yourself.
 
+What a refusal may print about a value that could be a key is the
+organization's rule, [*A refusal carries no
+secret*](https://github.com/btclib-org/.github#a-refusal-carries-no-secret).
+
 ## Security review
 
 The latest security review is dated 2026-09-30.
