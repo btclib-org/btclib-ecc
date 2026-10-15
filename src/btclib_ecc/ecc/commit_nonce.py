@@ -64,7 +64,7 @@ from __future__ import annotations
 from hashlib import sha256
 
 from btclib_ecc._libsecp256k1 import keys as libsecp256k1_keys
-from btclib_ecc._utils import bytes_from_octets, int_from_bits
+from btclib_ecc._utils import _MAX_NONCE_ATTEMPTS, bytes_from_octets, int_from_bits
 from btclib_ecc.alias import HashF, Integer, Octets, Point
 from btclib_ecc.curves import (
     Curve,
@@ -101,7 +101,7 @@ def _tweak(
 ) -> int:
     """Return the tagged hash(receipt||commit_hash) tweak for the receipt."""
     t = bytes_from_point(receipt, ec) + bytes_from_octets(commit_hash)
-    while True:
+    for _ in range(_MAX_NONCE_ATTEMPTS):
         t = tagged_hash(tag, t, hf)
         # reducing the hash mod n -- whether the whole of it or its
         # leftmost nlen bits -- would introduce a bias, which is why
@@ -122,6 +122,8 @@ def _tweak(
         # candidate -- with nlen of 4 bits an out-of-range tweak is one
         # in three -- and a derivation that fails rather than drawing
         # again would refuse one commitment in three
+    reason = f"no tweak in 1..n-1 after {_MAX_NONCE_ATTEMPTS} candidates"
+    raise BTClibEccRuntimeError(reason)
 
 
 def commit_nonce_(
