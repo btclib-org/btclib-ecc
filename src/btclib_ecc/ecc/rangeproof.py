@@ -208,8 +208,9 @@ _RING_STRIDE = 4
 def _assert_integers(**named: object) -> None:
     """Refuse an argument that is no integer, a bool not being one.
 
-    Each is compared, shifted or multiplied next, and a `bytes`, a `str`
-    or a float leaves those as a builtin error. The refusal names the
+    Each is compared, shifted or multiplied next. A `bytes`, a `str` or
+    None makes those raise a builtin error, while a bool or a float
+    passes some of them and is computed with. The refusal names the
     argument and the type, never the value.
     """
     for what, value in named.items():
