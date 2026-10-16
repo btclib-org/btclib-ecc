@@ -4,9 +4,9 @@
 
 """The `gmpy2` extra, which puts the Python arm's field arithmetic on GMP.
 
-With gmpy2 installed every curve reduces by an mpz modulus, so its group
-law computes in mpz. A caller still gets int back, which the tests here
-ask of the functions that return a point or a coordinate.
+With gmpy2 installed on CPython, every curve reduces by an mpz modulus, so
+its group law computes in mpz. A caller still gets int back, which the
+tests here ask of the functions that return a point or a coordinate.
 
 The arm without the extra is asked of a child interpreter that cannot
 import gmpy2, the suite being one environment: it has to answer what this
@@ -47,6 +47,17 @@ _MSG_HASH = bytes(range(32))
 _AUX = bytes(32)
 
 
+def _importorskip_gmpy2() -> Any:
+    """Return gmpy2, skipping where it is absent or the package ignores it.
+
+    The package does not use gmpy2 off CPython, so there the tests of what it
+    does with gmpy2 have nothing to check, an installed gmpy2 or not.
+    """
+    if sys.implementation.name != "cpython":  # pragma: no cover -- PyPy only
+        pytest.skip("gmpy2 is not used off CPython")
+    return pytest.importorskip("gmpy2")
+
+
 def _is_int(*values: object) -> bool:
     """Return whether every value is an int, and not an int-like type."""
     return all(type(value) is int for value in values)
@@ -54,7 +65,7 @@ def _is_int(*values: object) -> bool:
 
 def test_each_curve_converts_its_modulus_once() -> None:
     """`_modulus` is p as an mpz, and `p` itself stays an int."""
-    mpz = pytest.importorskip("gmpy2").mpz
+    mpz = _importorskip_gmpy2().mpz
     for ec in CURVES.values():
         assert type(ec._modulus) is mpz
         assert ec._modulus == ec.p
@@ -63,7 +74,7 @@ def test_each_curve_converts_its_modulus_once() -> None:
 
 def test_number_theory_admits_an_mpz() -> None:
     """Each function answers an mpz what it answers the same int."""
-    mpz = pytest.importorskip("gmpy2").mpz
+    mpz = _importorskip_gmpy2().mpz
     p = _SECP256R1.p
     a = 0xABCDEF
     pz, az = mpz(p), mpz(a)
@@ -171,6 +182,8 @@ class RefuseGmpy2:
 
 
 sys.meta_path.insert(0, RefuseGmpy2())
+if {implementation!r}:
+    sys.implementation.name = {implementation!r}
 
 from btclib_ecc.curves import double_mult_var, mult, secp256k1
 from btclib_ecc.curves.curve import CURVES
@@ -191,9 +204,21 @@ print(json.dumps({{
 """
 
 
-def _run_child(refused: str) -> subprocess.CompletedProcess[str]:
-    """Run the child with the bindings off and one module refused."""
-    source = _CHILD.format(refused=refused, m=_M, msg_hash=_MSG_HASH, aux=_AUX)
+def _run_child(
+    refused: str, implementation: str = ""
+) -> subprocess.CompletedProcess[str]:
+    """Run the child with the bindings off and one module refused.
+
+    A non-empty implementation is the name the child's interpreter gives
+    itself, `sys.implementation.name`, before `btclib_ecc` is imported.
+    """
+    source = _CHILD.format(
+        refused=refused,
+        implementation=implementation,
+        m=_M,
+        msg_hash=_MSG_HASH,
+        aux=_AUX,
+    )
     return subprocess.run(  # noqa: S603
         [sys.executable, "-c", source],
         capture_output=True,
@@ -235,7 +260,15 @@ def test_the_arm_without_gmpy2_answers_the_same(
 
 def test_a_gmpy2_that_fails_to_import_is_not_read_as_absent() -> None:
     """A module missing inside gmpy2 raises, rather than falling back to int."""
-    pytest.importorskip("gmpy2")
+    _importorskip_gmpy2()
     completed = _run_child("gmpy2.gmpy2")
     assert completed.returncode != 0
     assert "ModuleNotFoundError: gmpy2.gmpy2 is out of reach" in completed.stderr
+
+
+def test_gmpy2_is_not_used_off_cpython() -> None:
+    """On PyPy gmpy2 is left unused: it breaks `pow(a, -1, m)` there."""
+    _importorskip_gmpy2()
+    completed = _run_child("", implementation="pypy")
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads(completed.stdout)["modulus"] == "int"

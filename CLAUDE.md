@@ -44,7 +44,7 @@ answer. `BTCLIB_ECC_NO_LIBSECP256K1` in the environment turns the
 switch off from the first call.
 
 `gmpy2` is the other optional extra, for that Python arithmetic. Where it
-is installed, each curve's `_modulus` is p as gmpy2's `mpz`, so the
+is installed on CPython, each curve's `_modulus` is p as gmpy2's `mpz`, so the
 Jacobian group law computes in `mpz`: the formulas are the private
 `_add_jac`, `_add_jac_aff` and `_double_jac`, which the multiplications
 call. A point or coordinate that leaves `curves/` is `int`, converted
