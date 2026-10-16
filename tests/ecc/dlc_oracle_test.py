@@ -43,7 +43,7 @@ def test_vectors(vector: dict[str, Any]) -> None:
     assert sig.serialize().hex() == vector["signature"]
     assert ssa.verify_(msg, vector["pubKey"], sig)
 
-    S = dlc_oracle.sig_point_(msg, vector["pubKey"], vector["pubNonce"])
+    S = dlc_oracle.sig_point_var_(msg, vector["pubKey"], vector["pubNonce"])
     assert bytes_from_point(S).hex() == vector["sigPoint"]
 
 
@@ -57,7 +57,7 @@ def test_sig_point_is_s_times_g() -> None:
         _, x_Q = ssa.gen_keys(prv_key)
         _, x_K = ssa.gen_keys(nonce)
         assert sig.r == x_K
-        assert dlc_oracle.sig_point_(msg, x_Q, x_K) == mult(sig.s)
+        assert dlc_oracle.sig_point_var_(msg, x_Q, x_K) == mult(sig.s)
 
 
 def test_invalid_nonce() -> None:

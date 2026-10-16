@@ -101,7 +101,7 @@ from btclib_ecc.ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
 from btclib_ecc.ecc.commit_nonce import (
     commit_entropy_,
     commit_nonce_,
-    commit_point_,
+    commit_point_var_,
 )
 from btclib_ecc.exceptions import (
     BTClibEccRuntimeError,
@@ -554,7 +554,7 @@ def _sign_commit_(
     c = challenge_(msg, x_Q, x_K, ec, hf)
 
     # the signature is checked and the receipt is not: what opens the
-    # commitment is `commit_point_` under the same r, which the caller
+    # commitment is `commit_point_var_` under the same r, which the caller
     # verifies with commit_hash and receipt in hand
     sig = _checked_sign_(c, _sign_(c, q, k, x_K, ec), x_Q, ec, verify)
     return sig, receipt
@@ -1008,7 +1008,7 @@ def _assert_commitment_(
         # sig.r is a field element, the x-coordinate itself and not a
         # scalar reduced modulo the group order, so the recomputed point
         # is compared as it comes
-        W = commit_point_(commit_hash, receipt, _S2C_POINT_TAG, sig.ec, hf)
+        W = commit_point_var_(commit_hash, receipt, _S2C_POINT_TAG, sig.ec, hf)
         if sig.r != W[0]:
             raise BTClibEccRuntimeError("commitment verification failed")
 

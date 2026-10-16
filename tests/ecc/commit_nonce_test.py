@@ -34,7 +34,7 @@ from btclib_ecc.ecc.commit_nonce import (
     _tweak,
     commit_entropy_,
     commit_nonce_,
-    commit_point_,
+    commit_point_var_,
 )
 from btclib_ecc.ecc.dsa import (
     _S2C_DATA_TAG,
@@ -160,7 +160,7 @@ def test_ssa_commitment() -> None:
                 )
                 # the receipt is the even-y point the tweak hashed
                 assert receipt[1] % 2 == 0
-                W = commit_point_(commit_hash, receipt, _SSA_POINT_TAG, ec, hf)
+                W = commit_point_var_(commit_hash, receipt, _SSA_POINT_TAG, ec, hf)
                 parities.add(W[1] % 2)
 
     assert parities == {0, 1}
@@ -191,7 +191,7 @@ def test_the_python_path_is_the_committing_one() -> None:
     assert tweaked_receipt == receipt
     assert sig == dsa.sign_(msg_hash, _PRV_KEY, tweaked_nonce, grind=False)
     # and the point a verifier recomputes is the tweaked nonce's
-    assert commit_point_(commit_hash, receipt, _S2C_POINT_TAG, ec, hf) == mult(
+    assert commit_point_var_(commit_hash, receipt, _S2C_POINT_TAG, ec, hf) == mult(
         tweaked_nonce, ec.G, ec
     )
 
@@ -199,7 +199,7 @@ def test_the_python_path_is_the_committing_one() -> None:
 def test_a_tag_that_is_no_bytes_is_refused_as_such() -> None:
     """A `str` tag used to leak a bare TypeError out of `tagged_hash`.
 
-    `commit_nonce_`, `commit_point_` and `commit_entropy_` all reach
+    `commit_nonce_`, `commit_point_var_` and `commit_entropy_` all reach
     `hashes.tagged_hash` with `tag` unconverted, so its own `bytes` check
     is what refuses this rather than a check of its own (issue
     btclib-org/btclib-ecc#11).
@@ -493,7 +493,7 @@ def test_commit_point_falls_back_at_infinity(monkeypatch: pytest.MonkeyPatch) ->
     k = 1 + random.randrange(ec.n - 1)
     receipt = mult(k, ec.G, ec)
     monkeypatch.setattr(commit_nonce, "_tweak", lambda *_: ec.n - k)
-    assert commit_point_(b"", receipt, _S2C_POINT_TAG, ec, sha256) == INF
+    assert commit_point_var_(b"", receipt, _S2C_POINT_TAG, ec, sha256) == INF
 
 
 def test_the_python_tweaks_are_the_bindings_tweaks(
@@ -502,7 +502,7 @@ def test_the_python_tweaks_are_the_bindings_tweaks(
     """Both halves, computed twice, are the same answer with the dispatch off.
 
     The bindings are the authority on the sum `commit_nonce_` computes
-    and the point `commit_point_` computes, and the Python arithmetic is
+    and the point `commit_point_var_` computes, and the Python arithmetic is
     the reference implementation of both -- so what has to hold is that
     the two agree, over both parities of the resulting point, the shape
     `30e2ec19` used for BIP32 and taproot.
@@ -515,7 +515,9 @@ def test_the_python_tweaks_are_the_bindings_tweaks(
         delegated_nonce, receipt = commit_nonce_(
             commit_hash, nonce, _S2C_POINT_TAG, ec, hf
         )
-        delegated_point = commit_point_(commit_hash, receipt, _S2C_POINT_TAG, ec, hf)
+        delegated_point = commit_point_var_(
+            commit_hash, receipt, _S2C_POINT_TAG, ec, hf
+        )
         parities.add(delegated_point[1] % 2)
         with monkeypatch.context() as no_bindings:
             no_bindings.setattr(commit_nonce, "_libsecp256k1_serves", lambda *_: False)
@@ -524,7 +526,7 @@ def test_the_python_tweaks_are_the_bindings_tweaks(
                 receipt,
             )
             assert (
-                commit_point_(commit_hash, receipt, _S2C_POINT_TAG, ec, hf)
+                commit_point_var_(commit_hash, receipt, _S2C_POINT_TAG, ec, hf)
                 == delegated_point
             )
     assert parities == {0, 1}

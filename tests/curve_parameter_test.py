@@ -92,7 +92,7 @@ from btclib_ecc.curves.sec_point import (
 )
 from btclib_ecc.ecc import borromean, dsa, ellswift, pedersen, ssa
 from btclib_ecc.ecc.bip340_nonce import bip340_nonce_
-from btclib_ecc.ecc.commit_nonce import commit_nonce_, commit_point_
+from btclib_ecc.ecc.commit_nonce import commit_nonce_, commit_point_var_
 from btclib_ecc.ecc.dh import diffie_hellman
 from btclib_ecc.ecc.rfc6979_nonce import challenge_, rfc6979_nonce_
 from btclib_ecc.exceptions import BTClibEccTypeError
@@ -279,8 +279,8 @@ _CASES = (
         {"commit_hash": _MSG_HASH, "nonce": _PRV_KEY, "tag": b"tag"},
     ),
     _Case(
-        "btclib_ecc.ecc.commit_nonce.commit_point_",
-        commit_point_,
+        "btclib_ecc.ecc.commit_nonce.commit_point_var_",
+        commit_point_var_,
         {"commit_hash": _MSG_HASH, "receipt": _PUB_KEY, "tag": b"tag"},
     ),
     _Case(

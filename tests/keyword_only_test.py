@@ -87,7 +87,7 @@ KEYWORD_ONLY: dict[str, list[str]] = {
     "btclib_ecc.ecc.rangeproof:RangeProof.__init__": ["check_validity"],
     "btclib_ecc.ecc.rangeproof:RangeProof.nonce_chain": ["check_validity"],
     "btclib_ecc.ecc.rangeproof:RangeProof.parse": ["check_validity"],
-    "btclib_ecc.ecc.rangeproof:RangeProof.pubk_rings": ["check_validity"],
+    "btclib_ecc.ecc.rangeproof:RangeProof.pubk_rings_var": ["check_validity"],
     "btclib_ecc.ecc.rangeproof:RangeProof.serialize": ["check_validity"],
     "btclib_ecc.ecc.rangeproof:assert_as_valid": ["extra_commit"],
     "btclib_ecc.ecc.rangeproof:rewind": ["extra_commit"],

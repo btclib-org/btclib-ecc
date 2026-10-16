@@ -79,11 +79,11 @@ from btclib_ecc.number_theory import (
 
 __all__ = [
     "assert_as_valid",
-    "bytes_from_commitment",
-    "bytes_from_generator",
+    "bytes_from_commitment_var",
+    "bytes_from_generator_var",
     "commit",
-    "commitment_from_octets",
-    "generator_from_octets",
+    "commitment_from_octets_var",
+    "generator_from_octets_var",
     "generator_from_seed",
     "second_generator",
     "verify",
@@ -529,7 +529,7 @@ def _point_from_octets_var(octets: Octets, tag: int, name: str) -> Point:
     return _point_from_x_var(x, bool(prefix & 1))
 
 
-def bytes_from_commitment(Q: Point) -> bytes:
+def bytes_from_commitment_var(Q: Point) -> bytes:
     """Return a commitment as libsecp256k1-zkp serializes one.
 
     `secp256k1_pedersen_commitment_serialize` hands back what
@@ -541,21 +541,21 @@ def bytes_from_commitment(Q: Point) -> bytes:
     return _bytes_from_point_var(Q, _COMMITMENT_TAG)
 
 
-def commitment_from_octets(octets: Octets) -> Point:
+def commitment_from_octets_var(octets: Octets) -> Point:
     """Return the commitment libsecp256k1-zkp's octets name.
 
     `secp256k1_pedersen_commitment_parse`. An Elements output carries
     these, and this is the lift a caller holding them makes before
     calling anything that takes the commitment as a point --
-    `ecc.rangeproof.RangeProof.pubk_rings`, `assert_as_valid`, `verify`.
+    `ecc.rangeproof.RangeProof.pubk_rings_var`, `assert_as_valid`, `verify`.
     """
     return _point_from_octets_var(octets, _COMMITMENT_TAG, "Pedersen commitment")
 
 
-def bytes_from_generator(Q: Point) -> bytes:
+def bytes_from_generator_var(Q: Point) -> bytes:
     """Return a generator as libsecp256k1-zkp serializes one.
 
-    `secp256k1_generator_serialize`, which is `bytes_from_commitment`'s
+    `secp256k1_generator_serialize`, which is `bytes_from_commitment_var`'s
     octet at another tag: `0a` for a y that is a quadratic residue and
     `0b` for one that is not. `second_generator` is the generator this
     library computes; a blinded asset generator is what else this format
@@ -564,7 +564,7 @@ def bytes_from_generator(Q: Point) -> bytes:
     return _bytes_from_point_var(Q, _GENERATOR_TAG)
 
 
-def generator_from_octets(octets: Octets) -> Point:
+def generator_from_octets_var(octets: Octets) -> Point:
     """Return the generator libsecp256k1-zkp's octets name.
 
     `secp256k1_generator_parse`, whose `(input[0] & 0xFE) != 10` refuses

@@ -54,7 +54,7 @@ def _adaptor_verify() -> bool:
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG32)
     adaptor = bytes_from_point(mult(12345, ec=secp256k1), secp256k1)
     ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce]), [pk_1], [], [], _MSG32, adaptor
+        musig2.nonce_agg_var([pub_nonce]), [pk_1], [], [], _MSG32, adaptor
     )
     psig = musig2.sign(sec_nonce, _SK_1, ctx)
     return musig2.partial_sig_verify_(psig, pub_nonce, pk_1, ctx)
