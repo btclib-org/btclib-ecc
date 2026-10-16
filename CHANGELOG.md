@@ -23,6 +23,45 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.10.17
+
+### `rangeproof` checks what it serializes
+
+`serialize` checks the header's widths and the counts of sign bits and ring
+commitments at `check_validity=False` too, and `assert_valid` refuses a sign
+bit that is no bool (closes #279).
+
+### The low-R grind stops at 256 signatures
+
+`dsa`'s grind raises `BTClibEccRuntimeError` after 256 signatures with a high
+r, where a hash function that ignores its input kept it looping (closes #278).
+
+### The ellswift inverse test draws enough pairs
+
+It draws 100 pairs where 20 could all miss, as they did once on secp192k1 in
+CI (closes #291).
+
+### `verified-signatures.yml` checks the signatures on `main`
+
+After each push to `main` it reports whether every commit pushed is verified
+on the forge. It replaces the `required_signatures` rule, which the ruleset no
+longer carries (issue btclib-org/.github#1738).
+
+### A merge queues `api-break` instead of cancelling it
+
+The `closed` run of a merged pull request waits for the walk in flight, and a
+close without a merge still cancels it (issue btclib-org/.github#1744).
+
+### `uv.lock` takes pydantic 2.14.0
+
+Its pydantic-core has cp315 wheels, so the pyroma hook builds nothing from
+source on Python 3.15 (issue btclib-org/btclib#2685).
+
+### Dependabot's bumps
+
+`actions/download-artifact` 8.0.2, `actions/upload-artifact` 7.0.2,
+hypothesis 6.168.5, uv-build 0.12.24 and a new digest of the fuzz base image.
+
 ## v2026.10.16
 
 ### `_var` names follow the algorithm

@@ -9,6 +9,32 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.10.17
+
+- **`rangeproof` refuses more malformed proofs** (closes #279).
+  `RangeProof.assert_valid`, which the constructor runs by default, refuses a
+  sign bit that is no bool as `BTClibEccTypeError`; it took `0` and `1`.
+  `serialize(check_validity=False)` refuses as `BTClibEccValueError` an
+  exponent outside 0..31 beside a nonzero mantissa, a `min_value` outside
+  0..2**64-1, sign bits or ring commitments the mantissa does not ask for, and
+  a ring commitment wider than the curve's field. It returned octets for an
+  exponent from 32 to 255, too few sign bits or a wrong count of ring
+  commitments; it raised `IndexError` for too many sign bits, `ValueError` for
+  any other exponent, and `OverflowError` for the rest. A sign bit that is no
+  bool is refused there too, as `BTClibEccTypeError`. `assert_valid` and
+  `serialize` no longer quote a `min_value` they refuse.
+
+  Act on it if you build a `RangeProof` by hand: pass bools as sign bits, and
+  catch `BTClibEccValueError` where you caught `OverflowError` or
+  `IndexError`.
+- **The low-R grind of `dsa` refuses after 256 signatures** (closes #278).
+  With `grind=True`, the default, `dsa.sign`, `dsa.sign_` and `dsa.Signer`'s
+  `sign` and `sign_` raise `BTClibEccRuntimeError` where 256 signatures in a
+  row have a high r. They looped for ever, as a hash function that ignores its
+  input makes them.
+
+  Act on it if you sign with such a hash function: pass `grind=False`.
+
 ## v2026.10.16
 
 - **Two functions are renamed, with no alias** (closes #232).
