@@ -299,10 +299,14 @@ def test_the_inverse_is_the_reference_inverse(curve_name: str) -> None:
 
     The answers are counted: a test of squareness that refused every case
     would still agree on the cases the reference refuses.
+
+    A draw of (x, u) has no answering case about 56% of the time, so 100
+    draws all miss with probability under 0.6**100, below 1e-22: the count
+    cannot fail by chance.
     """
     ec = CURVES[curve_name]
     answers = 0
-    for _ in range(20):
+    for _ in range(100):
         x = mult(secrets.randbelow(ec.n - 1) + 1, ec.G, ec)[0]
         u = secrets.randbelow(ec.p - 1) + 1
         for case in range(8):
