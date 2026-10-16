@@ -645,6 +645,10 @@ def _is_low_r(r: int, ec: Curve) -> bool:
     return r.bit_length() < 8 * ec.n_size
 
 
+# Signatures `_grind_low_r` makes before it refuses, the first included.
+_MAX_GRIND_ATTEMPTS = 256
+
+
 def _grind_entropy(counter: int) -> bytes | None:
     # None, not 32 zero bytes, for the first attempt: the entropy is
     # appended to the key and the message, so zeros are additional data
@@ -685,20 +689,26 @@ def _grind_low_r(attempt: Callable[[int], Sig], grind: bool, ec: Curve) -> Sig:
     holding the two to the same signature, and not either of them being
     in C.
 
-    No attempt cap. Core has none, and one would answer an event of
-    probability 2**-k with an error a caller can do nothing about; embit
-    breaks its loop at 200, which is a 2**-200 signature that is not low-R
-    rather than a refusal. BIP461 fails at counter 2**32, after 2**32
-    high draws in a row.
+    The loop stops after `_MAX_GRIND_ATTEMPTS` signatures and raises
+    `BTClibEccRuntimeError`. A hash function behaving as a random oracle
+    gives a high r that many times in a row with probability about 2 to the
+    minus that many, so the bound is never reached in practice. It turns a
+    caller's hash function that ignores its input, and so gives the same
+    nonce for every counter, from a hang into a refusal. Core has no cap;
+    embit breaks its loop at 200, which is a signature that is not low-R
+    rather than a refusal; BIP461 fails at counter 2**32.
     """
     sig = attempt(0)
     if not grind:
         return sig
 
-    counter = 0
+    counter = 1
     while not _is_low_r(sig.r, ec):
-        counter += 1
+        if counter == _MAX_GRIND_ATTEMPTS:
+            reason = f"no low-R signature after {_MAX_GRIND_ATTEMPTS} attempts"
+            raise BTClibEccRuntimeError(reason)
         sig = attempt(counter)
+        counter += 1
     return sig
 
 
