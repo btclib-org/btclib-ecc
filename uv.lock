@@ -305,7 +305,7 @@ dependencies = [
 
 [package.optional-dependencies]
 gmpy2 = [
-    { name = "gmpy2" },
+    { name = "gmpy2", marker = "implementation_name == 'cpython'" },
 ]
 secp256k1 = [
     { name = "btclib-secp256k1" },
@@ -329,7 +329,7 @@ dev = [
     { name = "cosmic-ray" },
     { name = "coverage" },
     { name = "furo", marker = "python_full_version >= '3.12'" },
-    { name = "gmpy2" },
+    { name = "gmpy2", marker = "implementation_name == 'cpython'" },
     { name = "hypothesis" },
     { name = "mypy" },
     { name = "myst-parser", marker = "python_full_version >= '3.12'" },
@@ -354,7 +354,7 @@ fuzz = [
     { name = "uv-build" },
 ]
 gmpy2 = [
-    { name = "gmpy2" },
+    { name = "gmpy2", marker = "implementation_name == 'cpython'" },
 ]
 harness = [
     { name = "coverage" },
@@ -376,7 +376,7 @@ mutation = [
 test = [
     { name = "btclib-secp256k1" },
     { name = "coverage" },
-    { name = "gmpy2" },
+    { name = "gmpy2", marker = "implementation_name == 'cpython'" },
     { name = "hypothesis" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -387,7 +387,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "btclib-secp256k1", marker = "extra == 'secp256k1'", specifier = ">=0.8.0.8" },
-    { name = "gmpy2", marker = "extra == 'gmpy2'", specifier = ">=2.3.2" },
+    { name = "gmpy2", marker = "implementation_name == 'cpython' and extra == 'gmpy2'", specifier = ">=2.3.2" },
     { name = "typing-extensions", specifier = ">=4.10" },
 ]
 provides-extras = ["secp256k1", "gmpy2"]
@@ -408,7 +408,7 @@ dev = [
     { name = "cosmic-ray", specifier = ">=8.7.0" },
     { name = "coverage", specifier = ">=7.16.1" },
     { name = "furo", marker = "python_full_version >= '3.12'", specifier = ">=2025.12.19" },
-    { name = "gmpy2", specifier = ">=2.3.2" },
+    { name = "gmpy2", marker = "implementation_name == 'cpython'", specifier = ">=2.3.2" },
     { name = "hypothesis", specifier = ">=6.168.1" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "myst-parser", marker = "python_full_version >= '3.12'", specifier = ">=5.1.0" },
@@ -430,7 +430,7 @@ docs = [
     { name = "sphinx", marker = "python_full_version >= '3.12'", specifier = ">=9.1.0" },
 ]
 fuzz = [{ name = "uv-build", specifier = ">=0.12.0,<0.13" }]
-gmpy2 = [{ name = "gmpy2", specifier = ">=2.3.2" }]
+gmpy2 = [{ name = "gmpy2", marker = "implementation_name == 'cpython'", specifier = ">=2.3.2" }]
 harness = [
     { name = "coverage", specifier = ">=7.16.1" },
     { name = "hypothesis", specifier = ">=6.168.1" },
@@ -449,7 +449,7 @@ mutation = [{ name = "cosmic-ray", specifier = ">=8.7.0" }]
 test = [
     { name = "btclib-secp256k1", specifier = ">=0.8.0.8" },
     { name = "coverage", specifier = ">=7.16.1" },
-    { name = "gmpy2", specifier = ">=2.3.2" },
+    { name = "gmpy2", marker = "implementation_name == 'cpython'", specifier = ">=2.3.2" },
     { name = "hypothesis", specifier = ">=6.168.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
