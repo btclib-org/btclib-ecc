@@ -108,8 +108,8 @@ _SMALL_CURVE = dict(
     )
 )
 
-_KEY_AGG = musig2.key_agg([_SEC, _SEC_2])
-_FROST_TWEAK_CTX = frost.tweak_ctx_init(_SEC)
+_KEY_AGG = musig2.key_agg_var([_SEC, _SEC_2])
+_FROST_TWEAK_CTX = frost.tweak_ctx_init_var(_SEC)
 
 
 @dataclass(frozen=True)
@@ -217,15 +217,15 @@ _KINDS = (
         {"msg": _MSG},
     ),
     _Case(
-        "btclib_ecc.ecc.musig2.apply_tweak",
+        "btclib_ecc.ecc.musig2.apply_tweak_var",
         "is_xonly",
-        musig2.apply_tweak,
+        musig2.apply_tweak_var,
         {"key_agg_ctx": _KEY_AGG, "tweak": b"\x01" * 32},
     ),
     _Case(
-        "btclib_ecc.ecc.frost.apply_tweak",
+        "btclib_ecc.ecc.frost.apply_tweak_var",
         "is_xonly",
-        frost.apply_tweak,
+        frost.apply_tweak_var,
         {"tweak_ctx": _FROST_TWEAK_CTX, "tweak": b"\x01" * 32},
     ),
     # `serving` chooses which implementation every later call reaches, so

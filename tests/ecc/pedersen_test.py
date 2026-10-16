@@ -349,8 +349,11 @@ def test_a_generator_from_a_seed_is_not_the_second_generator() -> None:
     """
     gen = pedersen.generator_from_seed(bytes(32))
     assert gen != _H
-    assert pedersen.bytes_from_generator(gen)[0] in {0x0A, 0x0B}
-    assert pedersen.generator_from_octets(pedersen.bytes_from_generator(gen)) == gen
+    assert pedersen.bytes_from_generator_var(gen)[0] in {0x0A, 0x0B}
+    assert (
+        pedersen.generator_from_octets_var(pedersen.bytes_from_generator_var(gen))
+        == gen
+    )
 
     r, v = 3, 7
     assert not pedersen.verify(r, v, pedersen.commit(r, v, gen), _H)
@@ -496,12 +499,12 @@ def test_the_upstream_fixed_vectors_name_one_point_at_two_tags() -> None:
     minus_two_g = secp256k1.negate(two_g)
 
     generator = bytes.fromhex(_ZKP_GENERATOR_VECTOR)
-    assert pedersen.generator_from_octets(generator) == minus_two_g
-    assert pedersen.bytes_from_generator(minus_two_g) == generator
+    assert pedersen.generator_from_octets_var(generator) == minus_two_g
+    assert pedersen.bytes_from_generator_var(minus_two_g) == generator
 
     commitment = bytes.fromhex(_ZKP_COMMITMENT_VECTOR)
-    assert pedersen.commitment_from_octets(commitment) == minus_two_g
-    assert pedersen.bytes_from_commitment(minus_two_g) == commitment
+    assert pedersen.commitment_from_octets_var(commitment) == minus_two_g
+    assert pedersen.bytes_from_commitment_var(minus_two_g) == commitment
 
 
 @pytest.mark.parametrize("vector", _VECTORS, ids=_IDS)
@@ -516,9 +519,9 @@ def test_a_vendored_commitment_goes_back_out_as_it_came_in(
     serialization this tree did not write.
     """
     octets = bytes.fromhex(vector["commitment"])
-    commitment = pedersen.commitment_from_octets(octets)
+    commitment = pedersen.commitment_from_octets_var(octets)
     assert secp256k1.is_on_curve(commitment)
-    assert pedersen.bytes_from_commitment(commitment) == octets
+    assert pedersen.bytes_from_commitment_var(commitment) == octets
 
 
 def test_the_leading_octet_is_residuosity_and_not_parity() -> None:
@@ -539,7 +542,7 @@ def test_the_leading_octet_is_residuosity_and_not_parity() -> None:
     for vector in _VECTORS:
         octets = bytes.fromhex(vector["commitment"])
         by_parity = point_from_octets_var(bytes([0x02 | octets[0] & 1]) + octets[1:])
-        commitment = pedersen.commitment_from_octets(octets)
+        commitment = pedersen.commitment_from_octets_var(octets)
         assert by_parity[0] == commitment[0]
         agrees = by_parity == commitment
         assert agrees == (secp256k1.y_quadratic_residue_var(commitment[0]) % 2 == 0)
@@ -559,7 +562,7 @@ def test_a_commitment_refuses_a_leading_octet_outside_its_pair(prefix: int) -> N
     """
     octets = bytes([prefix]) + bytes.fromhex(_ZKP_COMMITMENT_VECTOR)[1:]
     with pytest.raises(BTClibEccValueError, match="not a Pedersen commitment"):
-        pedersen.commitment_from_octets(octets)
+        pedersen.commitment_from_octets_var(octets)
 
 
 @pytest.mark.parametrize("prefix", [0x02, 0x03, 0x08, 0x09, 0x0C])
@@ -571,7 +574,7 @@ def test_a_generator_refuses_a_leading_octet_outside_its_pair(prefix: int) -> No
     """
     octets = bytes([prefix]) + bytes.fromhex(_ZKP_GENERATOR_VECTOR)[1:]
     with pytest.raises(BTClibEccValueError, match="not a generator"):
-        pedersen.generator_from_octets(octets)
+        pedersen.generator_from_octets_var(octets)
 
 
 def test_a_commitment_refuses_an_x_no_point_of_the_curve_has() -> None:
@@ -582,10 +585,10 @@ def test_a_commitment_refuses_an_x_no_point_of_the_curve_has() -> None:
     """
     err_msg = r"x-coordinate not in 0\.\.p-1"
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        pedersen.commitment_from_octets(b"\x08" + secp256k1.p.to_bytes(32, "big"))
+        pedersen.commitment_from_octets_var(b"\x08" + secp256k1.p.to_bytes(32, "big"))
 
     with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
-        pedersen.commitment_from_octets(b"\x08" + bytes(32))
+        pedersen.commitment_from_octets_var(b"\x08" + bytes(32))
 
 
 def test_a_commitment_is_as_many_octets_as_it_is() -> None:
@@ -594,11 +597,11 @@ def test_a_commitment_is_as_many_octets_as_it_is() -> None:
     with pytest.raises(
         BTClibEccValueError, match="invalid size: 32 bytes instead of 33"
     ):
-        pedersen.commitment_from_octets(octets[:-1])
+        pedersen.commitment_from_octets_var(octets[:-1])
 
 
 @pytest.mark.parametrize(
-    "write", [pedersen.bytes_from_commitment, pedersen.bytes_from_generator]
+    "write", [pedersen.bytes_from_commitment_var, pedersen.bytes_from_generator_var]
 )
 def test_writing_refuses_what_has_no_x_to_write(
     write: Callable[[Point], bytes],
@@ -643,10 +646,10 @@ def test_second_generator_matches_zkp() -> None:
     `test_commit_matches_zkp` below is where the two conventions part.
     """
     H = pedersen.second_generator(secp256k1, sha256)
-    assert pedersen.bytes_from_generator(H) == zkp_generator.h()
-    assert pedersen.generator_from_octets(zkp_generator.h()) == H
+    assert pedersen.bytes_from_generator_var(H) == zkp_generator.h()
+    assert pedersen.generator_from_octets_var(zkp_generator.h()) == H
     # and not a codec that answers h() for whatever it is handed
-    assert pedersen.bytes_from_generator(secp256k1.G) != zkp_generator.h()
+    assert pedersen.bytes_from_generator_var(secp256k1.G) != zkp_generator.h()
 
 
 @needs_zkp  # pragma: no cover -- no zkp.generator.pedersen_commit to compare against
@@ -658,7 +661,7 @@ def test_commit_matches_zkp() -> None:
     below is what each does at the edges and why they are left out.
 
     A writer reading `y & 1` instead answers the same octet as
-    `bytes_from_commitment` wherever y's parity and its quadratic
+    `bytes_from_commitment_var` wherever y's parity and its quadratic
     residuosity agree, so a sample carrying only those cases would
     report agreement about the wrong convention. Both octets have to
     turn up, which is what the assertion after the loop asks for.
@@ -668,8 +671,12 @@ def test_commit_matches_zkp() -> None:
         r = 1 + secrets.randbelow(secp256k1.n - 1)
         v = secrets.randbelow(2**64)
         commitment = zkp_generator.pedersen_commit(r, v)
-        assert pedersen.bytes_from_commitment(pedersen.commit(r, v, _H)) == commitment
-        assert pedersen.commitment_from_octets(commitment) == pedersen.commit(r, v, _H)
+        assert (
+            pedersen.bytes_from_commitment_var(pedersen.commit(r, v, _H)) == commitment
+        )
+        assert pedersen.commitment_from_octets_var(commitment) == pedersen.commit(
+            r, v, _H
+        )
         octets_seen.add(commitment[0])
         # another value under the same blinding factor is another point:
         # the agreement above is not a comparison against a constant
@@ -693,7 +700,7 @@ def test_commit_outside_the_zkp_intersection() -> None:
     err_msg = r"invalid \(unblinded\) commitment"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         pedersen.commit(0, 7, _H)
-    assert zkp_generator.pedersen_commit(0, 7) == pedersen.bytes_from_commitment(
+    assert zkp_generator.pedersen_commit(0, 7) == pedersen.bytes_from_commitment_var(
         mult(7, _H, secp256k1)
     )
 
@@ -724,7 +731,7 @@ def test_zkp_rangeproof_over_this_package_s_commitment() -> None:
     for _ in range(64):
         r = 1 + secrets.randbelow(secp256k1.n - 1)
         v = secrets.randbelow(2**64)
-        commitment = pedersen.bytes_from_commitment(pedersen.commit(r, v, _H))
+        commitment = pedersen.bytes_from_commitment_var(pedersen.commit(r, v, _H))
         octets_seen.add(commitment[0])
         nonce = secrets.token_bytes(32)
         proof = zkp_rangeproof.sign(commitment, r, nonce, v)
@@ -761,7 +768,7 @@ def test_zkp_rangeproof_refuses_a_wrong_opening() -> None:
     """
     r = 1 + secrets.randbelow(secp256k1.n - 1)
     v = secrets.randbelow(2**64)
-    commitment = pedersen.bytes_from_commitment(pedersen.commit(r, v, _H))
+    commitment = pedersen.bytes_from_commitment_var(pedersen.commit(r, v, _H))
     nonce = secrets.token_bytes(32)
     proof = zkp_rangeproof.sign(commitment, r, nonce, v)
     assert zkp_rangeproof.verify(commitment, proof) is not None
@@ -803,15 +810,15 @@ def test_a_generator_from_a_seed_matches_zkp() -> None:
         seed = secrets.token_bytes(32)
         gen = pedersen.generator_from_seed(seed)
         octets = zkp_generator.generate(seed)
-        assert pedersen.bytes_from_generator(gen) == octets
-        assert pedersen.generator_from_octets(octets) == gen
+        assert pedersen.bytes_from_generator_var(gen) == octets
+        assert pedersen.generator_from_octets_var(octets) == gen
         octets_seen.add(octets[0])
 
         blind = secrets.randbelow(secp256k1.n)
         blinded = pedersen.generator_from_seed(seed, blind)
         blinded_octets = zkp_generator.generate_blinded(seed, blind)
-        assert pedersen.bytes_from_generator(blinded) == blinded_octets
-        assert pedersen.generator_from_octets(blinded_octets) == blinded
+        assert pedersen.bytes_from_generator_var(blinded) == blinded_octets
+        assert pedersen.generator_from_octets_var(blinded_octets) == blinded
         octets_seen.add(blinded_octets[0])
     assert octets_seen == _GENERATOR_OCTETS
 
@@ -833,7 +840,7 @@ def test_a_blinding_factor_past_n_is_refused_on_both_sides() -> None:
     with pytest.raises(BTClibEccValueError, match="blinding factor not in 0..n-1"):
         pedersen.generator_from_seed(seed, blind)
 
-    assert pedersen.bytes_from_generator(
+    assert pedersen.bytes_from_generator_var(
         pedersen.generator_from_seed(seed)
     ) == zkp_generator.generate(seed)
 

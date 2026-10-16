@@ -161,7 +161,7 @@ def key_agg_valid_vectors() -> list[Any]:
 @both_arms
 def test_key_agg_vectors(pub_keys: list[bytes], expected: bytes) -> None:
     """Reproduce the valid cases of BIP327's key_agg_vectors.json."""
-    assert musig2.key_agg(pub_keys).x_only_pub_key == expected
+    assert musig2.key_agg_var(pub_keys).x_only_pub_key == expected
 
 
 def key_agg_error_vectors() -> list[Any]:
@@ -187,7 +187,7 @@ def test_key_agg_error_vectors(
 ) -> None:
     """Reproduce the error cases of BIP327's key_agg_vectors.json."""
     with pytest.raises(_ERRORS) as excinfo:
-        musig2.key_agg_and_tweak(pub_keys, tweaks, is_xonly)
+        musig2.key_agg_and_tweak_var(pub_keys, tweaks, is_xonly)
     assert_error(error, excinfo.value)
 
 
@@ -236,7 +236,7 @@ def nonce_agg_valid_vectors() -> list[Any]:
 @both_arms
 def test_nonce_agg_vectors(pub_nonces: list[bytes], expected: bytes) -> None:
     """Reproduce the valid cases of BIP327's nonce_agg_vectors.json."""
-    assert musig2.nonce_agg(pub_nonces) == expected
+    assert musig2.nonce_agg_var(pub_nonces) == expected
 
 
 def nonce_agg_error_vectors() -> list[Any]:
@@ -257,7 +257,7 @@ def nonce_agg_error_vectors() -> list[Any]:
 def test_nonce_agg_error_vectors(pub_nonces: list[bytes], error: Any) -> None:
     """Reproduce the error cases of BIP327's nonce_agg_vectors.json."""
     with pytest.raises(_ERRORS) as excinfo:
-        musig2.nonce_agg(pub_nonces)
+        musig2.nonce_agg_var(pub_nonces)
     assert_error(error, excinfo.value)
 
 
@@ -279,8 +279,10 @@ def test_sign_verify_vectors_consistency() -> None:
     # the aggregate of the first three public nonces is at index 0, and
     # the aggregate of the first and the fourth -- the infinity point in
     # both halves -- at index 1
-    assert _SV_AGG_NONCES[0] == musig2.nonce_agg(_SV_PUB_NONCES[:3])
-    assert _SV_AGG_NONCES[1] == musig2.nonce_agg([_SV_PUB_NONCES[0], _SV_PUB_NONCES[3]])
+    assert _SV_AGG_NONCES[0] == musig2.nonce_agg_var(_SV_PUB_NONCES[:3])
+    assert _SV_AGG_NONCES[1] == musig2.nonce_agg_var(
+        [_SV_PUB_NONCES[0], _SV_PUB_NONCES[3]]
+    )
 
 
 def sign_verify_valid_vectors() -> list[Any]:
@@ -298,7 +300,7 @@ def test_sign_verify_valid_vectors(case: dict[str, Any]) -> None:
     pub_keys = [_SV_PUB_KEYS[i] for i in case["key_indices"]]
     pub_nonces = [_SV_PUB_NONCES[i] for i in case["nonce_indices"]]
     agg_nonce = _SV_AGG_NONCES[case["aggnonce_index"]]
-    assert musig2.nonce_agg(pub_nonces) == agg_nonce
+    assert musig2.nonce_agg_var(pub_nonces) == agg_nonce
     msg = _SV_MSGS[case["msg_index"]]
     expected = bytes.fromhex(case["expected"])
 
@@ -413,7 +415,7 @@ def test_tweak_vectors_consistency() -> None:
     """The file's own cross-references, as the reference checks them."""
     assert _TW_PUB_KEYS[0] == musig2.individual_pub_key(_TW_SK)
     assert _TW_PUB_NONCES[0] == _pub_nonce_of(_TW_SEC_NONCE)
-    assert musig2.nonce_agg(_TW_PUB_NONCES[:3]) == _TW_AGG_NONCE
+    assert musig2.nonce_agg_var(_TW_PUB_NONCES[:3]) == _TW_AGG_NONCE
 
 
 def tweak_valid_vectors() -> list[Any]:
@@ -509,7 +511,7 @@ def test_det_sign_valid_vectors(case: dict[str, Any]) -> None:
     assert pub_nonce == expected[0]
     assert psig == expected[1]
 
-    agg_nonce = musig2.nonce_agg([agg_other_nonce, pub_nonce])
+    agg_nonce = musig2.nonce_agg_var([agg_other_nonce, pub_nonce])
     session_ctx = musig2.SessionContext(agg_nonce, pub_keys, tweaks, is_xonly, msg)
     assert musig2.partial_sig_verify_(
         psig, pub_nonce, pub_keys[case["signer_index"]], session_ctx
@@ -564,7 +566,7 @@ def test_sig_agg_valid_vectors(case: dict[str, Any]) -> None:
     """Reproduce the valid cases of BIP327's sig_agg_vectors.json."""
     pub_nonces = [_SA_PUB_NONCES[i] for i in case["nonce_indices"]]
     agg_nonce = bytes.fromhex(case["aggnonce"])
-    assert agg_nonce == musig2.nonce_agg(pub_nonces)
+    assert agg_nonce == musig2.nonce_agg_var(pub_nonces)
 
     pub_keys = [_SA_PUB_KEYS[i] for i in case["key_indices"]]
     tweaks = [_SA_TWEAKS[i] for i in case["tweak_indices"]]
@@ -576,7 +578,7 @@ def test_sig_agg_valid_vectors(case: dict[str, Any]) -> None:
     assert sig.serialize() == bytes.fromhex(case["expected"])
     # the aggregate is an ordinary BIP340 signature, and this package's own
     # verifier is what says so
-    agg_pk = musig2.key_agg_and_tweak(pub_keys, tweaks, is_xonly).x_only_pub_key
+    agg_pk = musig2.key_agg_and_tweak_var(pub_keys, tweaks, is_xonly).x_only_pub_key
     assert ssa.verify_(_SA_MSG, agg_pk, sig)
 
 
@@ -598,7 +600,7 @@ def test_sig_agg_error_vectors(case: dict[str, Any]) -> None:
     psigs = [_SA_PSIGS[i] for i in case["psig_indices"]]
 
     session_ctx = musig2.SessionContext(
-        musig2.nonce_agg(pub_nonces), pub_keys, tweaks, case["is_xonly"], _SA_MSG
+        musig2.nonce_agg_var(pub_nonces), pub_keys, tweaks, case["is_xonly"], _SA_MSG
     )
     with pytest.raises(_ERRORS) as excinfo:
         musig2.partial_sig_agg(psigs, session_ctx)
@@ -614,10 +616,10 @@ def test_sig_agg_error_vectors(case: dict[str, Any]) -> None:
 @needs_bindings
 @pytest.mark.parametrize("pub_keys, expected", key_agg_valid_vectors())
 def test_key_agg_matches_bindings(pub_keys: list[bytes], expected: bytes) -> None:
-    """key_agg answers the same Q as musig_pubkey_agg, byte for byte."""
+    """key_agg_var answers the same Q as musig_pubkey_agg, byte for byte."""
     cache = libsecp256k1_musig.KeyAggCache(pub_keys)
     assert cache.agg_pubkey == expected
-    assert musig2.key_agg(pub_keys).x_only_pub_key == cache.agg_pubkey
+    assert musig2.key_agg_var(pub_keys).x_only_pub_key == cache.agg_pubkey
 
 
 def tweak_pub_keys_and_tweaks_vectors() -> list[Any]:
@@ -640,19 +642,19 @@ def tweak_pub_keys_and_tweaks_vectors() -> list[Any]:
 def test_apply_tweak_matches_bindings(
     pub_keys: list[bytes], tweaks: list[bytes], is_xonly: list[bool]
 ) -> None:
-    """apply_tweak answers the same Q as the matching *_tweak_add call.
+    """apply_tweak_var answers the same Q as the matching *_tweak_add call.
 
-    Applied one tweak at a time, over the same sequence key_agg_and_tweak
+    Applied one tweak at a time, over the same sequence key_agg_and_tweak_var
     would run, so this is that entry point's oracle as well as
-    apply_tweak's own: there is no separate C call to aggregate and tweak
+    apply_tweak_var's own: there is no separate C call to aggregate and tweak
     in one step, `musig.KeyAggCache` accumulating both the same way
     `KeyAggContext` does.
     """
-    ctx = musig2.key_agg(pub_keys)
+    ctx = musig2.key_agg_var(pub_keys)
     cache = libsecp256k1_musig.KeyAggCache(pub_keys)
     assert ctx.x_only_pub_key == cache.agg_pubkey
     for tweak, xonly in zip(tweaks, is_xonly, strict=True):
-        ctx = musig2.apply_tweak(ctx, tweak, xonly)
+        ctx = musig2.apply_tweak_var(ctx, tweak, xonly)
         tweak_add = cache.pubkey_xonly_tweak_add if xonly else cache.pubkey_ec_tweak_add
         assert tweak_add(tweak) == bytes_from_point(ctx.Q, secp256k1)
 
@@ -660,9 +662,9 @@ def test_apply_tweak_matches_bindings(
 @needs_bindings
 @pytest.mark.parametrize("pub_nonces, expected", nonce_agg_valid_vectors())
 def test_nonce_agg_matches_bindings(pub_nonces: list[bytes], expected: bytes) -> None:
-    """nonce_agg answers the same 66-byte aggnonce as musig_nonce_agg."""
+    """nonce_agg_var answers the same 66-byte aggnonce as musig_nonce_agg."""
     assert libsecp256k1_musig.nonce_agg(pub_nonces) == expected
-    assert musig2.nonce_agg(pub_nonces) == expected
+    assert musig2.nonce_agg_var(pub_nonces) == expected
 
 
 def _msg32_gated(cases: list[dict[str, Any]], msgs: list[bytes]) -> list[Any]:
@@ -809,13 +811,13 @@ def test_session(tweaks: list[bytes], is_xonly: list[bool]) -> None:
     pk_1 = musig2.individual_pub_key(_SK_1)
     pk_2 = musig2.individual_pub_key(_SK_2)
     pub_keys = musig2.key_sort([pk_2, pk_1])
-    agg_pk = musig2.key_agg_and_tweak(pub_keys, tweaks, is_xonly).x_only_pub_key
+    agg_pk = musig2.key_agg_and_tweak_var(pub_keys, tweaks, is_xonly).x_only_pub_key
 
     # round 1: signer 1 draws its nonce, signer 2 derives one instead
     sec_nonce_1, pub_nonce_1 = musig2.nonce_gen(
         _SK_1, pk_1, agg_pk, _MSG, (1).to_bytes(4, "big")
     )
-    agg_other_nonce = musig2.nonce_agg([pub_nonce_1])
+    agg_other_nonce = musig2.nonce_agg_var([pub_nonce_1])
     pub_nonce_2, psig_2 = musig2.deterministic_sign(
         _SK_2, agg_other_nonce, pub_keys, tweaks, is_xonly, _MSG, bytes(32)
     )
@@ -826,7 +828,7 @@ def test_session(tweaks: list[bytes], is_xonly: list[bool]) -> None:
     # signer i from signer j is not
     nonce_of = {pk_1: pub_nonce_1, pk_2: pub_nonce_2}
     pub_nonces = [nonce_of[pk] for pk in pub_keys]
-    agg_nonce = musig2.nonce_agg(pub_nonces)
+    agg_nonce = musig2.nonce_agg_var(pub_nonces)
     session_ctx = musig2.SessionContext(agg_nonce, pub_keys, tweaks, is_xonly, _MSG)
     psig_1 = musig2.sign(sec_nonce_1, _SK_1, session_ctx)
     psig_of = {pk_1: psig_1, pk_2: psig_2}
@@ -883,7 +885,7 @@ def test_partial_sig_verify_reuses_the_bindings_session() -> None:
     pub_keys = musig2.key_sort([pk_1, pk_2])
     sk_of = {pk_1: _SK_1, pk_2: _SK_2}
     nonces = {pk: musig2.nonce_gen(sk_of[pk], pk, None, _MSG32) for pk in pub_keys}
-    agg_nonce = musig2.nonce_agg([nonces[pk][1] for pk in pub_keys])
+    agg_nonce = musig2.nonce_agg_var([nonces[pk][1] for pk in pub_keys])
     session_ctx = musig2.SessionContext(agg_nonce, pub_keys, [], [], _MSG32)
     psigs = {pk: musig2.sign(nonces[pk][0], sk_of[pk], session_ctx) for pk in pub_keys}
 
@@ -901,7 +903,7 @@ def test_partial_sig_verify_refuses_a_malformed_own_pub_nonce() -> None:
     """The delegated arm refuses a bad own nonce with BTClibEccValueError.
 
     No BIP327 vector reaches this path directly: sign_verify_vectors.json's
-    own invalid-pubnonce case is caught by `nonce_agg`, inside
+    own invalid-pubnonce case is caught by `nonce_agg_var`, inside
     `partial_sig_verify`, before `partial_sig_verify_` ever parses the
     signer's own nonce (`test_verify_error_vectors` above). Calling the
     trailing-underscore spelling directly, with a 66-byte value that is not
@@ -911,7 +913,7 @@ def test_partial_sig_verify_refuses_a_malformed_own_pub_nonce() -> None:
     pk_1 = musig2.individual_pub_key(_SK_1)
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG32)
     session_ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce]), [pk_1], [], [], _MSG32
+        musig2.nonce_agg_var([pub_nonce]), [pk_1], [], [], _MSG32
     )
     psig = musig2.sign(sec_nonce, _SK_1, session_ctx)
     with pytest.raises(BTClibEccValueError, match="invalid pubnonce or pubkey"):
@@ -935,7 +937,7 @@ def test_partial_sig_verify_refuses_a_foreign_pub_key() -> None:
     pk_2 = musig2.individual_pub_key(_SK_2)  # never joins the session
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG32)
     session_ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce]), [pk_1], [], [], _MSG32
+        musig2.nonce_agg_var([pub_nonce]), [pk_1], [], [], _MSG32
     )
     psig = musig2.sign(sec_nonce, _SK_1, session_ctx)
     with pytest.raises(BTClibEccValueError, match="must be included in the list"):
@@ -960,7 +962,7 @@ def test_partial_sig_verify_takes_the_py_arm_for_an_adaptor_session() -> None:
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG32)
     adaptor = bytes_from_point(mult(12345, ec=secp256k1), secp256k1)
     session_ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce]), [pk_1], [], [], _MSG32, adaptor
+        musig2.nonce_agg_var([pub_nonce]), [pk_1], [], [], _MSG32, adaptor
     )
     psig = musig2.sign(sec_nonce, _SK_1, session_ctx)
     assert musig2.partial_sig_verify_(psig, pub_nonce, pk_1, session_ctx)
@@ -988,7 +990,7 @@ def test_adapt_and_extract_adaptor_round_trip() -> None:
     pk_1 = musig2.individual_pub_key(_SK_1)
     pk_2 = musig2.individual_pub_key(_SK_2)
     pub_keys = musig2.key_sort([pk_1, pk_2])
-    agg_pk = musig2.key_agg(pub_keys).x_only_pub_key
+    agg_pk = musig2.key_agg_var(pub_keys).x_only_pub_key
     sk_of = {pk_1: _SK_1, pk_2: _SK_2}
 
     parities_seen: set[int] = set()
@@ -1000,7 +1002,7 @@ def test_adapt_and_extract_adaptor_round_trip() -> None:
         pub_nonce_of = {}
         for pk, sk in ((pk_1, _SK_1), (pk_2, _SK_2)):
             sec_nonce_of[pk], pub_nonce_of[pk] = musig2.nonce_gen(sk, pk, agg_pk, _MSG)
-        agg_nonce = musig2.nonce_agg([pub_nonce_of[pk] for pk in pub_keys])
+        agg_nonce = musig2.nonce_agg_var([pub_nonce_of[pk] for pk in pub_keys])
         session_ctx = musig2.SessionContext(agg_nonce, pub_keys, [], [], _MSG, adaptor)
         parities_seen.add(musig2.session_values(session_ctx).R[1] % 2)
 
@@ -1023,14 +1025,14 @@ def test_a_pre_signature_needs_the_matching_adaptor() -> None:
     """Verify adapt with the wrong secret answers a signature that fails."""
     pk_1 = musig2.individual_pub_key(_SK_1)
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
-    agg_nonce = musig2.nonce_agg([pub_nonce])
+    agg_nonce = musig2.nonce_agg_var([pub_nonce])
     t = 1 + secrets.randbelow(secp256k1.n - 1)
     adaptor = bytes_from_point(mult(t, ec=secp256k1), secp256k1)
     session_ctx = musig2.SessionContext(agg_nonce, [pk_1], [], [], _MSG, adaptor)
     psig = musig2.sign(sec_nonce, _SK_1, session_ctx)
     pre_sig = musig2.partial_sig_agg_adaptor([psig], session_ctx)
 
-    agg_pk = musig2.key_agg([pk_1]).x_only_pub_key
+    agg_pk = musig2.key_agg_var([pk_1]).x_only_pub_key
     wrong_t = 1 + secrets.randbelow(secp256k1.n - 1)
     sig = musig2.adapt(pre_sig, wrong_t, session_ctx)
     assert not ssa.verify_(_MSG, agg_pk, sig)
@@ -1049,7 +1051,7 @@ def test_partial_sig_agg_and_its_adaptor_twin_refuse_each_others_sessions() -> N
     pk_1 = musig2.individual_pub_key(_SK_1)
     sec_nonce_plain, pub_nonce_plain = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
     plain_ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce_plain]), [pk_1], [], [], _MSG
+        musig2.nonce_agg_var([pub_nonce_plain]), [pk_1], [], [], _MSG
     )
     psig_plain = musig2.sign(sec_nonce_plain, _SK_1, plain_ctx)
     with pytest.raises(BTClibEccValueError, match="call partial_sig_agg instead"):
@@ -1059,7 +1061,7 @@ def test_partial_sig_agg_and_its_adaptor_twin_refuse_each_others_sessions() -> N
     t = 1 + secrets.randbelow(secp256k1.n - 1)
     adaptor = bytes_from_point(mult(t, ec=secp256k1), secp256k1)
     adaptor_ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce_adp]), [pk_1], [], [], _MSG, adaptor
+        musig2.nonce_agg_var([pub_nonce_adp]), [pk_1], [], [], _MSG, adaptor
     )
     psig_adp = musig2.sign(sec_nonce_adp, _SK_1, adaptor_ctx)
     with pytest.raises(
@@ -1079,7 +1081,7 @@ def test_adaptor_must_be_a_valid_point() -> None:
     pk_1 = musig2.individual_pub_key(_SK_1)
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
     del sec_nonce
-    agg_nonce = musig2.nonce_agg([pub_nonce])
+    agg_nonce = musig2.nonce_agg_var([pub_nonce])
     session_ctx = musig2.SessionContext(agg_nonce, [pk_1], [], [], _MSG, bytes(33))
     with pytest.raises(InvalidContributionError) as exc_info:
         musig2.session_values(session_ctx)
@@ -1111,7 +1113,7 @@ def test_musig2_matches_zkp_with_no_adaptor() -> None:
     pub_keys = musig2.key_sort([pk_1, pk_2])
     sk_of = {pk_1: _SK_1, pk_2: _SK_2}
     nonces = {pk: musig2.nonce_gen(sk_of[pk], pk, None, _MSG32) for pk in pub_keys}
-    agg_nonce = musig2.nonce_agg([nonces[pk][1] for pk in pub_keys])
+    agg_nonce = musig2.nonce_agg_var([nonces[pk][1] for pk in pub_keys])
     session_ctx = musig2.SessionContext(agg_nonce, pub_keys, [], [], _MSG32)
     psigs = [musig2.sign(nonces[pk][0], sk_of[pk], session_ctx) for pk in pub_keys]
     sig = musig2.partial_sig_agg(psigs, session_ctx)
@@ -1160,7 +1162,7 @@ def test_musig2_adaptor_matches_zkp() -> None:
         adaptor = bytes_from_point(mult(t, ec=secp256k1), secp256k1)
 
         nonces = {pk: musig2.nonce_gen(sk_of[pk], pk, None, _MSG32) for pk in pub_keys}
-        agg_nonce = musig2.nonce_agg([nonces[pk][1] for pk in pub_keys])
+        agg_nonce = musig2.nonce_agg_var([nonces[pk][1] for pk in pub_keys])
         session_ctx = musig2.SessionContext(
             agg_nonce, pub_keys, [], [], _MSG32, adaptor
         )
@@ -1203,7 +1205,7 @@ def test_sec_nonce_signs_once() -> None:
     pk_1 = musig2.individual_pub_key(_SK_1)
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
     session_ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce]), [pk_1], [], [], _MSG
+        musig2.nonce_agg_var([pub_nonce]), [pk_1], [], [], _MSG
     )
     musig2.sign(sec_nonce, _SK_1, session_ctx)
     # the bytearray has been zeroed, which is the whole defence
@@ -1222,7 +1224,7 @@ def test_sec_nonce_second_half_out_of_range() -> None:
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
     sec_nonce[32:64] = bytes(32)
     session_ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce]), [pk_1], [], [], _MSG
+        musig2.nonce_agg_var([pub_nonce]), [pk_1], [], [], _MSG
     )
     with pytest.raises(
         BTClibEccValueError, match="second secnonce value is out of range"
@@ -1243,7 +1245,7 @@ def test_sec_nonce_second_half_at_the_bottom_of_its_range() -> None:
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
     sec_nonce[32:64] = (1).to_bytes(32, "big")
     session_ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce]), [pk_1], [], [], _MSG
+        musig2.nonce_agg_var([pub_nonce]), [pk_1], [], [], _MSG
     )
     assert len(musig2.sign(sec_nonce, _SK_1, session_ctx)) == 32
 
@@ -1254,7 +1256,7 @@ def test_sec_nonce_of_another_key() -> None:
     pk_2 = musig2.individual_pub_key(_SK_2)
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
     session_ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce]), [pk_1, pk_2], [], [], _MSG
+        musig2.nonce_agg_var([pub_nonce]), [pk_1, pk_2], [], [], _MSG
     )
     with pytest.raises(BTClibEccValueError, match="does not match nonce_gen argument"):
         musig2.sign(sec_nonce, _SK_2, session_ctx)
@@ -1265,7 +1267,7 @@ def test_session_context_normalizes() -> None:
     pk_1 = musig2.individual_pub_key(_SK_1)
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
     del sec_nonce
-    agg_nonce = musig2.nonce_agg([pub_nonce])
+    agg_nonce = musig2.nonce_agg_var([pub_nonce])
     from_octets = musig2.SessionContext(
         agg_nonce.hex(), [pk_1.hex()], [], [], _MSG.hex()
     )
@@ -1285,7 +1287,7 @@ def test_session_values_cache_is_invisible_to_equality() -> None:
     """
     pk_1 = musig2.individual_pub_key(_SK_1)
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
-    agg_nonce = musig2.nonce_agg([pub_nonce])
+    agg_nonce = musig2.nonce_agg_var([pub_nonce])
     session_ctx = musig2.SessionContext(agg_nonce, [pk_1], [], [], _MSG)
     twin = musig2.SessionContext(agg_nonce, [pk_1], [], [], _MSG)
     hash_before = hash(session_ctx)
@@ -1315,7 +1317,7 @@ def test_key_agg_coeff_cache_is_invisible_to_equality() -> None:
     pub_keys = musig2.key_sort([pk_1, pk_2])
     sk_of = {pk_1: _SK_1, pk_2: _SK_2}
     nonces = {pk: musig2.nonce_gen(sk_of[pk], pk, None, _MSG) for pk in pub_keys}
-    agg_nonce = musig2.nonce_agg([nonces[pk][1] for pk in pub_keys])
+    agg_nonce = musig2.nonce_agg_var([nonces[pk][1] for pk in pub_keys])
     session_ctx = musig2.SessionContext(agg_nonce, pub_keys, [], [], _MSG)
     twin = musig2.SessionContext(agg_nonce, pub_keys, [], [], _MSG)
     hash_before = hash(session_ctx)
@@ -1332,7 +1334,7 @@ def test_tweaks_and_is_xonly_pair_up() -> None:
     """Verify tweaks and is_xonly of unequal lengths are refused."""
     pk_1 = musig2.individual_pub_key(_SK_1)
     with pytest.raises(BTClibEccValueError, match="must have the same length"):
-        musig2.key_agg_and_tweak([pk_1], [bytes(32)], [])
+        musig2.key_agg_and_tweak_var([pk_1], [bytes(32)], [])
     with pytest.raises(BTClibEccValueError, match="must have the same length"):
         musig2.SessionContext(bytes(66), [pk_1], [bytes(32)], [], _MSG)
 
@@ -1348,11 +1350,11 @@ def test_the_kind_of_a_tweak_is_a_bool(not_a_flag: Any) -> None:
     carry a sequence of them.
     """
     pk_1 = musig2.individual_pub_key(_SK_1)
-    key_agg_ctx = musig2.key_agg([pk_1])
+    key_agg_ctx = musig2.key_agg_var([pk_1])
     with pytest.raises(BTClibEccTypeError, match="invalid is_xonly type"):
-        musig2.apply_tweak(key_agg_ctx, bytes(32), not_a_flag)
+        musig2.apply_tweak_var(key_agg_ctx, bytes(32), not_a_flag)
     with pytest.raises(BTClibEccTypeError, match="invalid is_xonly type"):
-        musig2.key_agg_and_tweak([pk_1], [bytes(32)], [not_a_flag])
+        musig2.key_agg_and_tweak_var([pk_1], [bytes(32)], [not_a_flag])
     with pytest.raises(BTClibEccTypeError, match="invalid is_xonly type"):
         musig2.SessionContext(bytes(66), [pk_1], [bytes(32)], [not_a_flag], _MSG)
 
@@ -1365,19 +1367,19 @@ def test_the_two_kinds_of_tweak_differ_on_an_odd_key() -> None:
     tweaks the same either way, which is why the refusal cannot be left
     to the arithmetic to notice.
     """
-    key_agg_ctx = musig2.key_agg([musig2.individual_pub_key(_SK_1)])
+    key_agg_ctx = musig2.key_agg_var([musig2.individual_pub_key(_SK_1)])
     assert key_agg_ctx.Q[1] % 2
-    plain = musig2.apply_tweak(key_agg_ctx, bytes(32), False)
-    x_only = musig2.apply_tweak(key_agg_ctx, bytes(32), True)
+    plain = musig2.apply_tweak_var(key_agg_ctx, bytes(32), False)
+    x_only = musig2.apply_tweak_var(key_agg_ctx, bytes(32), True)
     assert plain != x_only
 
 
 def test_tweak_size() -> None:
     """Verify a tweak that is not 32 bytes is refused."""
     pk_1 = musig2.individual_pub_key(_SK_1)
-    key_agg_ctx = musig2.key_agg([pk_1])
+    key_agg_ctx = musig2.key_agg_var([pk_1])
     with pytest.raises(BTClibEccValueError, match="must be a 32-byte array"):
-        musig2.apply_tweak(key_agg_ctx, bytes(31), False)
+        musig2.apply_tweak_var(key_agg_ctx, bytes(31), False)
 
 
 def test_a_nonce_per_key() -> None:
@@ -1431,11 +1433,11 @@ def test_a_tweak_needs_a_flag_and_a_flag_needs_a_tweak() -> None:
     tweak = bytes(range(1, 33))
     err_msg = "must have the same length"
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        musig2.key_agg_and_tweak(pub_keys, [tweak, tweak], [True])
+        musig2.key_agg_and_tweak_var(pub_keys, [tweak, tweak], [True])
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        musig2.key_agg_and_tweak(pub_keys, [tweak], [True, False])
+        musig2.key_agg_and_tweak_var(pub_keys, [tweak], [True, False])
     # and the pair that is a pair
-    assert musig2.key_agg_and_tweak(pub_keys, [tweak], [True]).Q
+    assert musig2.key_agg_and_tweak_var(pub_keys, [tweak], [True]).Q
 
 
 # --------------------------------------------------------------------
@@ -1453,7 +1455,7 @@ def _secret_session() -> tuple[musig2.SessionContext, bytearray]:
     pub_key = musig2.individual_pub_key(1)
     sec_nonce, pub_nonce = musig2.nonce_gen(1, pub_key)
     session_ctx = musig2.SessionContext(
-        musig2.nonce_agg([pub_nonce]),
+        musig2.nonce_agg_var([pub_nonce]),
         [pub_key],
         [],
         [],

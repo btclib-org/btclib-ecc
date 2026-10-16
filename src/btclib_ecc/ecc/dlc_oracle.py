@@ -10,7 +10,7 @@ A DLC oracle announces the x-only point R = k*G of a nonce k before an
 event, and signs the outcome with k once the event happens. The
 signature is an ordinary BIP340 one, which `ssa.verify_` accepts.
 Before the oracle signs, anyone holding its public key and R computes
-the signature point s*G of each possible outcome with `sig_point_`, and
+the signature point s*G of each possible outcome with `sig_point_var_`, and
 a DLC encrypts each outcome's transaction under it.
 
 **A nonce signs one message.** Two signatures with one k reveal the
@@ -24,7 +24,7 @@ The curve, secp256k1, and the hash, sha256, are not arguments, as in
 `btclib_ecc.ecc.ecdsa_adaptor`.
 
 **Timing.** The key and the nonce go through `mult` and integer
-products, as in `ssa`'s Python path; what `sig_point_` handles is
+products, as in `ssa`'s Python path; what `sig_point_var_` handles is
 public and uses the `_var` arithmetic. Python here is not constant-time.
 """
 
@@ -38,7 +38,7 @@ from btclib_ecc.curves import double_mult_var, scalar_from_prv_key, secp256k1
 from btclib_ecc.ecc import ssa
 
 __all__ = [
-    "sig_point_",
+    "sig_point_var_",
     "sign_",
 ]
 
@@ -60,7 +60,7 @@ def sign_(msg: Octets, prv_key: Integer, nonce: Integer) -> ssa.Sig:
     return ssa._checked_sign_(c, sig, x_Q, secp256k1, True)
 
 
-def sig_point_(
+def sig_point_var_(
     msg: Octets, pub_key: ssa.BIP340PubKey, pub_nonce: ssa.BIP340PubKey
 ) -> Point:
     """Return s*G for the signature of msg that pub_nonce commits to.

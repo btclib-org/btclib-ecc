@@ -148,7 +148,7 @@ def _musig2_session() -> tuple[Callable[[], musig2.SessionContext], list[Any]]:
     pks = musig2.key_sort([musig2.individual_pub_key(sk) for sk in _SK])
     sk_of = {musig2.individual_pub_key(sk): sk for sk in _SK}
     nonces = {pk: musig2.nonce_gen(sk_of[pk], pk, None, _MSG32) for pk in pks}
-    agg_nonce = musig2.nonce_agg([nonces[pk][1] for pk in pks])
+    agg_nonce = musig2.nonce_agg_var([nonces[pk][1] for pk in pks])
 
     def fresh() -> musig2.SessionContext:
         return musig2.SessionContext(agg_nonce, pks, [], [], _MSG32)

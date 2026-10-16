@@ -1355,7 +1355,7 @@ def _sum_var(points: Sequence[Point], ec: Curve) -> Point:
     compressed one would be a field square root a term.
 
     A sequence and not a pair, because the callers are sums: BIP352's
-    `pub_key_sum` over the eligible inputs and MuSig2's `nonce_agg` over
+    `pub_key_sum` over the eligible inputs and MuSig2's `nonce_agg_var` over
     the signers, where one `keys.pubkey_sum` of all the terms takes the
     place of a running total crossing the boundary at every step, and is
     worth better than half of both. The measurement per term count, and at

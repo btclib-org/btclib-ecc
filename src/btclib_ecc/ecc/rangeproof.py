@@ -14,7 +14,7 @@ header, the mantissa decides the rings and the value's digits which key
 of each one the prover opens, and `_borromean_sign` closes them.
 `sign_public_value` is that walk at an `exp` of -1, where
 the value is stated in the clear and the single ring holds the key the
-commitment itself gives. `RangeProof.pubk_rings`
+commitment itself gives. `RangeProof.pubk_rings_var`
 rebuilds, from a proof and the value commitment it was written against,
 the rings `secp256k1_borromean_verify_impl` is handed, and
 `RangeProof.sign_key_idx` says which key of each ring a value's own
@@ -46,8 +46,8 @@ change with it and the chain behind them does not.
 `zkp.rangeproof`'s `gen_bytes`, is the generator the commitment was
 made under, and every entry point below takes it: it enters the
 octets hashed into the message every ring is signed over, the weight
-each ring's keys step down by in `_pub_expand`, and the `min_value`
-offset `pubk_rings` subtracts. `ecc.pedersen.commit` takes it too, so
+each ring's keys step down by in `_pub_expand_var`, and the `min_value`
+offset `pubk_rings_var` subtracts. `ecc.pedersen.commit` takes it too, so
 a caller holding one generator per asset commits and proves under
 each of them.
 
@@ -109,13 +109,13 @@ ring after it. The last ring states no commitment of its own --
 less `min_value` times the generator and less every ring commitment
 before it, which is the digit a prover does not have to send. So the
 value commitment is what the whole structure hangs from, and it is
-`pubk_rings`'s argument.
+`pubk_rings_var`'s argument.
 
 An x is an integer of the width the format fixes wherever a proof is
 parsed, serialized or held against itself: `assert_valid` refuses the
 headers `secp256k1_rangeproof_getheader_impl` refuses, and a body this
 object could not write the octets of, and an x naming no point on the
-curve is neither. `pubk_rings` is where an x has to name a point, and
+curve is neither. `pubk_rings_var` is where an x has to name a point, and
 is what turns down one that does not. Whether the signature over those
 rings verifies, this module does not ask.
 """
@@ -504,7 +504,7 @@ def _prove_params(value: int, min_value: int, exp: int, min_bits: int) -> _Prove
     return _ProveParams(v, rsizes, sign_key_idx, min_value, mantissa, scale, exp)
 
 
-def _pub_expand(
+def _pub_expand_var(
     ring_commitments: Sequence[Point],
     gen: Point,
     exp: int,
@@ -821,7 +821,7 @@ class RangeProof:
                 err_msg = f"ring commitment {i} does not fit in {p_size} octets"
                 raise BTClibEccValueError(err_msg)
 
-    def pubk_rings(
+    def pubk_rings_var(
         self, commitment: Point, gen: Point, *, check_validity: bool = True
     ) -> tuple[PubkeyRing, ...]:
         """Return the rings of keys this proof's signature is over.
@@ -830,12 +830,12 @@ class RangeProof:
         those rings to `secp256k1_borromean_verify_impl`: every ring
         commitment the proof states, resolved against the residuosity
         convention the module docstring gives; the one it does not state,
-        recovered from `commitment`; and `_pub_expand` over all of them.
+        recovered from `commitment`; and `_pub_expand_var` over all of them.
         Nothing here reads `e0` or an `s`, so a proof whose signature is
         wrong answers the same rings as one whose signature is right.
 
         `gen` is the generator that commitment was made under, and both
-        the `min_value` offset below and `_pub_expand`'s own weights are
+        the `min_value` offset below and `_pub_expand_var`'s own weights are
         multiples of it.
 
         `commitment` is the Pedersen commitment the proof was written
@@ -875,7 +875,7 @@ class RangeProof:
             err_msg = "rangeproof last ring commitment is the point at infinity"
             raise BTClibEccValueError(err_msg)
 
-        return _pub_expand([*stated, last], gen, self.exp, self.rsizes)
+        return _pub_expand_var([*stated, last], gen, self.exp, self.rsizes)
 
     def nonce_chain(
         self,
@@ -900,7 +900,7 @@ class RangeProof:
         chain drew it.
 
         `commitment` is the Pedersen commitment the proof was written
-        against, `pubk_rings`'s argument of that name, `gen` the
+        against, `pubk_rings_var`'s argument of that name, `gen` the
         generator it was made under, and `value` what it commits to.
         The value is read for more than the digits: wherever the last
         ring holds more than one key, one of them carries the value
@@ -908,7 +908,7 @@ class RangeProof:
         header alone. A value this proof has no digit for is refused,
         `sign_key_idx`'s own refusal.
 
-        A commitment at infinity is refused too, where `pubk_rings`
+        A commitment at infinity is refused too, where `pubk_rings_var`
         answers rings for one: the seed carries the octets
         `secp256k1_rangeproof_serialize_point` writes, and infinity
         has no x to write. The `require_on_curve` above lets it through,
@@ -1276,7 +1276,7 @@ def sign(
     m = sha256(prefix + b"".join(stated) + extra_commit_bytes).digest()
     sig = _borromean_sign(
         m,
-        _pub_expand(heads, gen, params.exp, params.rsizes),
+        _pub_expand_var(heads, gen, params.exp, params.rsizes),
         ks,
         secs,
         params.sign_key_idx,
@@ -1395,7 +1395,7 @@ def _verify_rings(
     """Return the challenge behind every key of a proof that holds.
 
     `secp256k1_rangeproof_verify_impl`, assembled from what this module
-    already has: `RangeProof.pubk_rings` rebuilds the rings that
+    already has: `RangeProof.pubk_rings_var` rebuilds the rings that
     function hands to `secp256k1_borromean_verify_impl`,
     `_ring_message_var` the message they are signed over, and
     `_borromean_verify` walks them.
@@ -1408,7 +1408,7 @@ def _verify_rings(
     """
     return _borromean_verify(
         _ring_message_var(commitment, proof, gen, extra_commit),
-        proof.pubk_rings(commitment, gen),
+        proof.pubk_rings_var(commitment, gen),
         proof.sig,
     )
 
@@ -1424,7 +1424,7 @@ def _proof_from(proof: RangeProof | Octets) -> RangeProof:
     octets of is one a caller can hold and one this has to refuse
     (issue btclib-org/btclib#2182).
 
-    Here rather than at the `assert_valid` inside `pubk_rings`, which
+    Here rather than at the `assert_valid` inside `pubk_rings_var`, which
     `_verify_rings` reaches second: `_ring_message_var` runs first and packs
     `min_value` into the eight octets that field has and every ring
     commitment into the curve's own width, so a number neither holds
@@ -1448,7 +1448,7 @@ def assert_as_valid(
 
     `commitment` is the Pedersen commitment the proof was written
     against and `gen` the generator it was made under, both
-    `RangeProof.pubk_rings`'s arguments of those names: a proof written
+    `RangeProof.pubk_rings_var`'s arguments of those names: a proof written
     under one generator does not hold under another, the whole
     structure hanging from it. The range
     proven is the proof's own `min_value` and `max_value`, which the

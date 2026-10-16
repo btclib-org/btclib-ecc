@@ -176,7 +176,7 @@ def nonce_agg_valid_vectors() -> list[Any]:
 @both_arms
 def test_nonce_agg_vectors(pub_nonces: list[bytes], expected: bytes) -> None:
     """Reproduce the valid cases of BIP445's nonce_agg_vectors.json."""
-    assert frost.nonce_agg(pub_nonces) == expected
+    assert frost.nonce_agg_var(pub_nonces) == expected
 
 
 def nonce_agg_error_vectors() -> list[Any]:
@@ -197,7 +197,7 @@ def nonce_agg_error_vectors() -> list[Any]:
 def test_nonce_agg_error_vectors(pub_nonces: list[bytes], error: Any) -> None:
     """Reproduce the error cases of BIP445's nonce_agg_vectors.json."""
     with pytest.raises(_ERRORS) as excinfo:
-        frost.nonce_agg(pub_nonces)
+        frost.nonce_agg_var(pub_nonces)
     assert_error(error, excinfo.value)
 
 
@@ -262,7 +262,7 @@ def test_sign_verify_valid_vectors(group: dict[str, Any], case: dict[str, Any]) 
     )
     pub_nonces_case = [pub_nonces[i] for i in case["pubnonce_indices"]]
     agg_nonce = bytes.fromhex(case["aggnonce"])
-    assert frost.nonce_agg(pub_nonces_case) == agg_nonce
+    assert frost.nonce_agg_var(pub_nonces_case) == agg_nonce
     msg = bytes.fromhex(case["msg"])
     signer_id = case["signer_id"]
     signer_index = ids.index(signer_id)
@@ -431,7 +431,7 @@ def test_tweak_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> Non
     pub_shares_case = [pub_shares[i] for i in case["pubshare_indices"]]
     pub_nonces_case = [pub_nonces[i] for i in case["pubnonce_indices"]]
     agg_nonce = bytes.fromhex(case["aggnonce"])
-    assert frost.nonce_agg(pub_nonces_case) == agg_nonce
+    assert frost.nonce_agg_var(pub_nonces_case) == agg_nonce
     msg = bytes.fromhex(case["msg"])
     tweaks_case = [tweaks[i] for i in case["tweak_indices"]]
     is_xonly = case["is_xonly"]
@@ -543,7 +543,7 @@ def test_det_sign_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> 
     assert psig == expected[1]
 
     agg_nonce = (
-        frost.nonce_agg([pub_nonce, agg_other_nonce])
+        frost.nonce_agg_var([pub_nonce, agg_other_nonce])
         if agg_other_nonce is not None
         else pub_nonce
     )
@@ -640,14 +640,14 @@ def test_det_sign_nonce_differs_for_a_key_and_its_negation() -> None:
         ids,
         None,
         thresh_pk,
-        frost.nonce_agg([pub_nonce, other_nonce]),
+        frost.nonce_agg_var([pub_nonce, other_nonce]),
         [],
         [],
         msg,
     )
     values = frost.session_values(session_ctx)
     g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
-    factor = 2 * values.e * frost._derive_interpolating_value(ids, signer_id) * g
+    factor = 2 * values.e * frost._derive_interpolating_value_var(ids, signer_id) * g
     recovered = (
         (int.from_bytes(psig, "big") - int.from_bytes(negated_psig, "big"))
         * pow(factor, -1, secp256k1.n)
@@ -759,7 +759,7 @@ def test_sig_agg_valid_vectors(group: dict[str, Any], case: dict[str, Any]) -> N
     assert sig.serialize() == expected
     # the aggregate is an ordinary BIP340 signature, and this package's own
     # verifier is what says so
-    tweaked_pk = frost.thresh_pubkey_and_tweak(
+    tweaked_pk = frost.thresh_pubkey_and_tweak_var(
         thresh_pk, tweaks_case, is_xonly
     ).x_only_pub_key
     assert ssa.verify_(msg, tweaked_pk, sig)
@@ -922,7 +922,7 @@ def _two_of_three_session() -> tuple[
         case["ids"],
         [pub_shares[i] for i in case["pubshare_indices"]],
         bytes.fromhex(group["thresh_pk"]),
-        frost.nonce_agg(nonces),
+        frost.nonce_agg_var(nonces),
         [],
         [],
         bytes.fromhex(case["msg"]),
@@ -1100,7 +1100,7 @@ def test_tweak_context_plain_pub_key() -> None:
     """`plain_pub_key` is the compressed point behind `x_only_pub_key`."""
     group = _TWEAK["test_groups"][0]
     thresh_pk = bytes.fromhex(group["thresh_pk"])
-    tweak_ctx = frost.tweak_ctx_init(thresh_pk)
+    tweak_ctx = frost.tweak_ctx_init_var(thresh_pk)
     assert tweak_ctx.plain_pub_key == thresh_pk
     assert tweak_ctx.plain_pub_key[1:] == tweak_ctx.x_only_pub_key
 
@@ -1119,7 +1119,15 @@ def test_sec_nonce_signs_once() -> None:
     sec_share = bytes.fromhex(group["secshares"][0])
     sec_nonce, pub_nonce = frost.nonce_gen(sec_share, pub_share=pub_shares[0])
     session_ctx = frost.SessionContext(
-        n, t, [0], pub_shares[:1], thresh_pk, frost.nonce_agg([pub_nonce]), [], [], b"m"
+        n,
+        t,
+        [0],
+        pub_shares[:1],
+        thresh_pk,
+        frost.nonce_agg_var([pub_nonce]),
+        [],
+        [],
+        b"m",
     )
     frost.sign(sec_nonce, sec_share, 0, session_ctx)
     # the bytearray has been zeroed in place, which is the whole defence:
@@ -1149,7 +1157,7 @@ def test_threshold_info_refuses_pub_shares_that_is_not_a_sequence_of_them() -> N
 # `partial_sig_verify_`'s own two parse failures: unreachable through
 # the convenience `partial_sig_verify`, which validates every pubshare
 # before this is ever called and aggregates every pubnonce through
-# `nonce_agg`, which raises `InvalidContributionError` on a malformed
+# `nonce_agg_var`, which raises `InvalidContributionError` on a malformed
 # one before this function sees it either -- `musig2_test.py`'s own
 # "the bindings have no C equivalent" shape, here with no bindings arm
 # to reach it from at all. Called directly, as `sign`'s own module
@@ -1164,7 +1172,7 @@ def test_partial_sig_verify_internal_refuses_a_malformed_pub_nonce() -> None:
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_shares = _hex_all(group["pubshares"])[:n]
     pub_nonces = _hex_all(group["pubnonces"])
-    agg_nonce = frost.nonce_agg(pub_nonces[:2])
+    agg_nonce = frost.nonce_agg_var(pub_nonces[:2])
     session_ctx = frost.SessionContext(
         n, t, [0, 1], pub_shares[:2], thresh_pk, agg_nonce, [], [], b"m"
     )
@@ -1181,7 +1189,7 @@ def test_partial_sig_verify_internal_refuses_a_malformed_pub_share() -> None:
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_shares = _hex_all(group["pubshares"])[:n]
     pub_nonces = _hex_all(group["pubnonces"])
-    agg_nonce = frost.nonce_agg(pub_nonces[:2])
+    agg_nonce = frost.nonce_agg_var(pub_nonces[:2])
     session_ctx = frost.SessionContext(
         n, t, [0, 1], pub_shares[:2], thresh_pk, agg_nonce, [], [], b"m"
     )
@@ -1211,7 +1219,7 @@ def _one_signer_session(
     pub_share = bytes_from_point(mult(int.from_bytes(sec_share, "big")))
     sec_nonce, pub_nonce = frost.nonce_gen(sec_share, pub_share=pub_share)
     session_ctx = frost.SessionContext(
-        1, 1, [0], [pub_share], pub_share, frost.nonce_agg([pub_nonce]), [], [], msg
+        1, 1, [0], [pub_share], pub_share, frost.nonce_agg_var([pub_nonce]), [], [], msg
     )
     return session_ctx, sec_nonce, pub_nonce
 
@@ -1313,7 +1321,7 @@ def test_session_values_accepts_128_participants() -> None:
     session_ctx = frost.SessionContext(
         128, 1, [0], None, thresh_pk, bytes(66), [], [], b"msg"
     )
-    assert frost.session_values(session_ctx).Q == frost.tweak_ctx_init(thresh_pk).Q
+    assert frost.session_values(session_ctx).Q == frost.tweak_ctx_init_var(thresh_pk).Q
 
 
 def test_partial_sig_verify_refuses_more_pub_nonces_than_ids() -> None:
@@ -1345,7 +1353,7 @@ def test_apply_tweak_refuses_a_tweak_of_the_wrong_size_or_range(
     """A tweak is 32 bytes and below the group order: n itself is out."""
     thresh_pk = bytes.fromhex(_SIGN_VERIFY["test_groups"][0]["thresh_pk"])
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        frost.apply_tweak(frost.tweak_ctx_init(thresh_pk), tweak, False)
+        frost.apply_tweak_var(frost.tweak_ctx_init_var(thresh_pk), tweak, False)
 
 
 def test_apply_tweak_accumulates_residues_of_the_group_order() -> None:
@@ -1359,13 +1367,13 @@ def test_apply_tweak_accumulates_residues_of_the_group_order() -> None:
     """
     n = secp256k1.n
     group = next(g for g in _SIGN_VERIFY["test_groups"] if g["thresh_pk"][:2] == "03")
-    tweak_ctx = frost.tweak_ctx_init(bytes.fromhex(group["thresh_pk"]))
+    tweak_ctx = frost.tweak_ctx_init_var(bytes.fromhex(group["thresh_pk"]))
     assert (tweak_ctx.gacc, tweak_ctx.tacc) == (1, 0)
 
-    tweak_ctx = frost.apply_tweak(tweak_ctx, (7).to_bytes(32, "big"), True)
+    tweak_ctx = frost.apply_tweak_var(tweak_ctx, (7).to_bytes(32, "big"), True)
     assert (tweak_ctx.gacc, tweak_ctx.tacc) == (n - 1, 7)
 
-    tweak_ctx = frost.apply_tweak(tweak_ctx, (n - 1).to_bytes(32, "big"), False)
+    tweak_ctx = frost.apply_tweak_var(tweak_ctx, (n - 1).to_bytes(32, "big"), False)
     assert (tweak_ctx.gacc, tweak_ctx.tacc) == (n - 1, 6)
 
 
@@ -1381,7 +1389,7 @@ def test_a_session_context_is_replaced_and_not_carried_over() -> None:
     n, t = group["n"], group["t"]
     thresh_pk = bytes.fromhex(group["thresh_pk"])
     pub_shares = _hex_all(group["pubshares"])[:2]
-    agg_nonce = frost.nonce_agg(_hex_all(group["pubnonces"])[:2])
+    agg_nonce = frost.nonce_agg_var(_hex_all(group["pubnonces"])[:2])
     session_ctx = frost.SessionContext(
         n, t, [0, 1], pub_shares, thresh_pk, agg_nonce, [], [], b"m"
     )

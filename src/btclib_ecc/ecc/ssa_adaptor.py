@@ -6,8 +6,8 @@
 
 A pre-signature is made for an adaptor point T = t*G. Whoever knows t
 `adapt`s it into an ordinary BIP340 signature, and whoever holds both
-the pre-signature and that signature recovers t with `extract_adaptor`.
-`extract` returns the T a pre-signature is for.
+the pre-signature and that signature recovers t with `extract_adaptor_var`.
+`extract_var` returns the T a pre-signature is for.
 
 The functions follow the `schnorr_adaptor` module that
 BlockstreamResearch/secp256k1-zkp#299 proposes
@@ -15,13 +15,13 @@ BlockstreamResearch/secp256k1-zkp#299 proposes
 unmerged, so it is a reference and not an authority: its encoding and
 its nonce can still change.
 
-One name and its argument order depart from it: `extract_adaptor(sig,
-pre_sig)` is PR 299's `extract_sec(pre_sig, sig)`. The name and the
-order are those of `musig2.extract_adaptor`, as in secp256k1-zkp's MuSig2
-module.
+Apart from the `_var` suffix, one name and its argument order depart from
+it: `extract_adaptor_var(sig, pre_sig)` is PR 299's `extract_sec(pre_sig,
+sig)`. The name and the order are those of `musig2.extract_adaptor`, as in
+secp256k1-zkp's MuSig2 module.
 
 The reference has no pre-signature verification: its `extract` returns
-the adaptor point instead. `verify` here is that `extract` compared with
+the adaptor point instead. `verify` here is that `extract_var` compared with
 the expected T.
 
 **The wire format** is 65 octets, `R' || s`. R' = k*G + T is a 33-octet
@@ -38,7 +38,7 @@ draws a fresh `aux` when it is not given. Passing `nonce` fixes k
 instead: one k used for two pre-signatures reveals the private key.
 
 **Timing.** k and d go through `mult`, and k, d and t through integer
-arithmetic. What `extract` handles is public and uses the `_var`
+arithmetic. What `extract_var` handles is public and uses the `_var`
 arithmetic. As everywhere in Python here, that is not constant-time.
 """
 
@@ -66,8 +66,8 @@ from btclib_ecc.hashes import tagged_hash
 __all__ = [
     "adapt",
     "assert_as_valid",
-    "extract",
-    "extract_adaptor",
+    "extract_adaptor_var",
+    "extract_var",
     "presign",
     "verify",
 ]
@@ -158,7 +158,7 @@ def _parse_var(pre_sig: Octets) -> tuple[Point, int]:
     return R1, s
 
 
-def extract(pre_sig: Octets, msg: Octets, pub_key: ssa.BIP340PubKey) -> Point:
+def extract_var(pre_sig: Octets, msg: Octets, pub_key: ssa.BIP340PubKey) -> Point:
     """Return the adaptor point of a pre-signature of msg by pub_key.
 
     Any pre-signature that parses yields a point. Where the
@@ -193,7 +193,7 @@ def assert_as_valid(
     why.
     """
     T = point_from_pub_key(adaptor)
-    if extract(pre_sig, msg, pub_key) != T:
+    if extract_var(pre_sig, msg, pub_key) != T:
         raise BTClibEccValueError("pre-signature is not for this adaptor point")
 
 
@@ -238,7 +238,7 @@ def adapt(pre_sig: Octets, sec_adaptor: Integer) -> ssa.Sig:
     return ssa.Sig(R1[0], (s + t) % secp256k1.n)
 
 
-def extract_adaptor(sig: ssa.Sig | Octets, pre_sig: Octets) -> int:
+def extract_adaptor_var(sig: ssa.Sig | Octets, pre_sig: Octets) -> int:
     """Return the adaptor secret, from a pre-signature and its adaptation.
 
     `sig` is an `ssa.Sig` or its 64 octets. A BTClibEccValueError where

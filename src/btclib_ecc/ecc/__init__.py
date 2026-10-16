@@ -41,7 +41,7 @@ spelling, as `btclib_ecc.ecc.dsa` is.
 
 What is *not* here is a module's own functions, plain or prepared:
 `dsa.sign` and `dsa.sign_` are both in `dsa.__all__` and neither is in
-this one, and nor are `musig2.key_agg`, `ecies.encrypt` or
+this one, and nor are `musig2.key_agg_var`, `ecies.encrypt` or
 `ellswift.decode_var`. The loose helpers ``__all__`` names above are the whole
 of the exception. So the trailing underscore is no part of the
 decision, and for some names there is no decision to make: dsa and ssa
