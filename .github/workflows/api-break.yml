@@ -23,8 +23,9 @@ on:
     # ready_for_review so a pull request marked ready gets the walk the
     # callee's draft condition withheld. closed too: the group below is at
     # the workflow level, so a closed run enters it when the run is
-    # created and cancels a walk nobody is going to read; the callee's own
-    # job-level `if:` declines the walk itself
+    # created: a close cancels a walk nobody is going to read, a merge
+    # queues behind it. The callee's own job-level `if:` declines the walk
+    # itself
     types: [opened, reopened, synchronize, ready_for_review, closed]
   workflow_dispatch:
 
@@ -35,10 +36,11 @@ permissions:
 
 # named literally rather than through github.workflow, as everywhere else
 # here, and by the pull request's number, so that a push supersedes the
-# walk it overtakes
+# walk it overtakes. There is no push trigger, so the walk in flight is
+# the only reading a merged pull request gets
 concurrency:
   group: api-break-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !(github.event.action == 'closed' && github.event.pull_request.merged) }}
 
 jobs:
   api-break:
