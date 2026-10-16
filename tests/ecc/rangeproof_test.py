@@ -297,6 +297,91 @@ def test_parse_refuses_an_exponent_past_the_cap() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "what, value, error",
+    [
+        ("exp", -1, BTClibEccValueError),
+        ("exp", 32, BTClibEccValueError),
+        ("exp", 300, BTClibEccValueError),
+        ("mantissa", 1, BTClibEccValueError),
+        ("min_value", -1, BTClibEccValueError),
+        ("min_value", 2**64, BTClibEccValueError),
+        ("min_value", 2**70, BTClibEccValueError),
+        ("ring_commitments", -1, BTClibEccValueError),
+        ("ring_commitments", 2**256, BTClibEccValueError),
+        ("ring_commitments", 2**300, BTClibEccValueError),
+        ("signs", "a", BTClibEccTypeError),
+        ("signs", 2, BTClibEccTypeError),
+    ],
+)
+def test_unchecked_serialization_refuses_fields_with_no_octets(
+    what: str, value: Any, error: type[BTClibEccException]
+) -> None:
+    """Skipping semantic validation still refuses an unwritable field."""
+    proof = RangeProof.parse(_octets("odd mantissa"))
+    if what in {"ring_commitments", "signs"}:
+        value = (value, *getattr(proof, what)[1:])
+    unchecked = replace_unchecked(proof, **{what: value})
+    with pytest.raises(error):
+        unchecked.serialize(check_validity=False)
+
+
+@pytest.mark.parametrize("what", ["signs", "ring_commitments"])
+@pytest.mark.parametrize("delta", [-1, 1])
+def test_unchecked_serialization_refuses_a_body_with_the_wrong_ring_count(
+    what: str, delta: int
+) -> None:
+    """The mantissa fixes how many sign bits and commitments are written."""
+    proof = RangeProof.parse(_octets("odd mantissa"))
+    values = getattr(proof, what)
+    changed = values[:-1] if delta < 0 else (*values, values[-1])
+    unchecked = replace_unchecked(proof, **{what: changed})
+    with pytest.raises(BTClibEccValueError):
+        unchecked.serialize(check_validity=False)
+
+
+@pytest.mark.parametrize("min_value", [-1, 2**64, 2**70])
+def test_unchecked_nonce_chain_refuses_a_minimum_with_no_octets(
+    min_value: int,
+) -> None:
+    """The nonce seed writes the same bounded minimum as serialization."""
+    vector = _vector("odd mantissa")
+    proof = RangeProof.parse(_octets("odd mantissa"))
+    unchecked = replace_unchecked(proof, min_value=min_value)
+    commitment = commit(vector["blind"], vector["value"], _GEN)
+    with pytest.raises(BTClibEccValueError):
+        unchecked.nonce_chain(
+            commitment, vector["value"], vector["nonce"], _GEN, check_validity=False
+        )
+
+
+def test_unchecked_serialization_keeps_fields_that_fit_but_do_not_validate() -> None:
+    """Wire widths do not impose the proof's semantic validity checks."""
+    proof = RangeProof.parse(_octets("odd mantissa"))
+    unchecked = replace_unchecked(
+        proof,
+        exp=31,
+        min_value=2**64 - 1,
+        ring_commitments=(2**256 - 1, *proof.ring_commitments[1:]),
+    )
+    octets = unchecked.serialize(check_validity=False)
+    reparsed = RangeProof.parse(octets, check_validity=False)
+    assert reparsed == unchecked
+    assert reparsed.serialize(check_validity=False) == octets
+
+
+@pytest.mark.parametrize("what", ["exp", "min_value", "signs"])
+def test_unchecked_serialization_does_not_quote_a_refused_field(what: str) -> None:
+    """A secret in the wrong field leaves no spelling in the refusal."""
+    proof = RangeProof.parse(_octets("odd mantissa"))
+    value = HELD_KEYS["int"]
+    changed = (value, *proof.signs[1:]) if what == "signs" else value
+    unchecked = replace_unchecked(proof, **{what: changed})
+    with pytest.raises(BTClibEccException) as refused:
+        unchecked.serialize(check_validity=False)
+    assert_secret_free(refused.value, [str(value), *HELD_KEY_SPELLINGS])
+
+
 def test_parse_refuses_a_range_that_overflows_its_own_width() -> None:
     """Scaling by the exponent is where zkp checks `UINT64_MAX`, and so is this.
 
@@ -428,7 +513,7 @@ def test_assert_valid_refuses_a_header_no_proof_carries() -> None:
     with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(proof, mantissa=65).assert_valid()
 
-    err_msg = "rangeproof min value not in 0..2\\*\\*64-1: 18446744073709551616"
+    err_msg = "rangeproof min value not in 0..2\\*\\*64-1"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(public, min_value=2**64).assert_valid()
 

@@ -131,6 +131,7 @@ from typing_extensions import override
 
 from btclib_ecc._utils import (
     assert_no_trailing,
+    assert_type,
     bytes_from_octets,
     bytesio_from_binarydata,
     int_from_bits,
@@ -298,6 +299,12 @@ def _max_value(exp: int, mantissa: int, min_value: int) -> int:
     return value + min_value
 
 
+def _assert_valid_min_value(min_value: int | None) -> None:
+    """Refuse a minimum that does not fit the header's eight octets."""
+    if min_value is not None and not 0 <= min_value <= _UINT64_MAX:
+        raise BTClibEccValueError("rangeproof min value not in 0..2**64-1")
+
+
 def _assert_valid_header(exp: int, mantissa: int, min_value: int | None) -> None:
     """Refuse a header this format has no octets for.
 
@@ -321,10 +328,7 @@ def _assert_valid_header(exp: int, mantissa: int, min_value: int | None) -> None
         err_msg = f"rangeproof exponent of a public value is not -1: {exp}"
         raise BTClibEccValueError(err_msg)
 
-    if min_value is not None and not 0 <= min_value <= _UINT64_MAX:
-        err_msg = f"rangeproof min value not in 0..2**64-1: {min_value}"
-        raise BTClibEccValueError(err_msg)
-
+    _assert_valid_min_value(min_value)
     _ = _max_value(exp, mantissa, min_value or 0)
 
 
@@ -345,6 +349,9 @@ def _header_octets(exp: int, mantissa: int, min_value: int | None) -> bytes:
     """
     if mantissa:
         _assert_valid_mantissa(mantissa)
+        if not 0 <= exp <= _EXP_MASK:
+            raise BTClibEccValueError("rangeproof exponent not in 0..31")
+    _assert_valid_min_value(min_value)
     flags = _HAS_NZ_RANGE | exp if mantissa else 0
     if min_value is not None:
         flags |= _HAS_MIN
@@ -751,7 +758,17 @@ class RangeProof:
         not write the octets of.
         """
         _assert_valid_header(self.exp, self.mantissa, self.min_value)
+        self._assert_serializable_body()
 
+        self.sig.assert_valid()
+        sig_rsizes = tuple(len(ring) for ring in self.sig.s)
+        if sig_rsizes != self.rsizes:
+            err_msg = f"borromean rings {sig_rsizes} are not the mantissa's"
+            err_msg += f" {self.rsizes}"
+            raise BTClibEccValueError(err_msg)
+
+    def _assert_serializable_body(self) -> None:
+        """Refuse sign bits or commitments the mantissa has no octets for."""
         rings = len(self.rsizes)
         if len(self.signs) != rings - 1:
             err_msg = f"rangeproof has {len(self.signs)} sign bits"
@@ -762,18 +779,13 @@ class RangeProof:
             err_msg += f" where the mantissa asks for {rings - 1}"
             raise BTClibEccValueError(err_msg)
 
+        for sign in self.signs:
+            assert_type(sign, bool, "rangeproof sign bit")
         p_size = self.sig.ec.p_size
         for i, x in enumerate(self.ring_commitments):
             if not 0 <= x < 256**p_size:
                 err_msg = f"ring commitment {i} does not fit in {p_size} octets"
                 raise BTClibEccValueError(err_msg)
-
-        self.sig.assert_valid()
-        sig_rsizes = tuple(len(ring) for ring in self.sig.s)
-        if sig_rsizes != self.rsizes:
-            err_msg = f"borromean rings {sig_rsizes} are not the mantissa's"
-            err_msg += f" {self.rsizes}"
-            raise BTClibEccValueError(err_msg)
 
     def pubk_rings(
         self, commitment: Point, gen: Point, *, check_validity: bool = True
@@ -936,6 +948,8 @@ class RangeProof:
             self.assert_valid()
 
         out = _header_octets(self.exp, self.mantissa, self.min_value)
+        if not check_validity:
+            self._assert_serializable_body()
 
         signs = bytearray(_sign_octets(len(self.rsizes)))
         for i, sign in enumerate(self.signs):
