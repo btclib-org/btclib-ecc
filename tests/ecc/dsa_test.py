@@ -486,6 +486,96 @@ def test_grinding_retries_at_the_byte_boundary() -> None:
     assert unchanged
 
 
+class _ConstantHash:
+    """A hashlib-like object whose digest is always 32 octets of 0x06.
+
+    It ignores its input, so RFC6979 gives the same nonce for every grind
+    counter, and on secp256k1 the r of that nonce is high. It counts its
+    digests and raises past `LIMIT`, so that a grind without a bound fails
+    the test instead of hanging it.
+    """
+
+    digest_size = 32
+    block_size = 64
+    name = "constant"
+    LIMIT = 100_000
+    digests = 0
+
+    def __init__(self, data: bytes = b"") -> None:
+        """Start from data, as hashlib's constructors do."""
+
+    def update(self, data: Any, /) -> None:
+        """Absorb more data, which changes nothing."""
+
+    def digest(self) -> bytes:
+        """Return 32 octets of 0x06, or fail once the limit is passed."""
+        type(self).digests += 1
+        if type(self).digests > self.LIMIT:
+            msg = f"more than {self.LIMIT} digests: the grind does not stop"
+            raise AssertionError(msg)
+        return b"\x06" * 32
+
+    def hexdigest(self) -> str:
+        """Return the digest as a hex string."""
+        return self.digest().hex()
+
+    def copy(self) -> "_ConstantHash":
+        """Return a clone, which absorbs nothing either."""
+        return _ConstantHash()
+
+
+_GRIND_PRV_KEY = 0x627C441A68796AE62B120FC21936CF4C5FB18ED38FC73B1D0473B3C994C033EA
+_GRIND_MSG_HASH = bytes(32)
+
+
+def test_a_hash_that_ignores_its_input_cannot_be_ground() -> None:
+    """The grind refuses after its bound, where every counter gives one r."""
+    _ConstantHash.digests = 0
+    # grind=False returns: the nonce is valid and its r is high
+    plain = dsa.sign_(_GRIND_MSG_HASH, _GRIND_PRV_KEY, hf=_ConstantHash, grind=False)
+    assert not dsa._is_low_r(plain.r, secp256k1)
+
+    signer = dsa.Signer(_GRIND_PRV_KEY, hf=_ConstantHash)
+    calls: dict[str, Callable[[], object]] = {
+        "sign_": lambda: dsa.sign_(_GRIND_MSG_HASH, _GRIND_PRV_KEY, hf=_ConstantHash),
+        "Signer.sign_": lambda: signer.sign_(_GRIND_MSG_HASH),
+    }
+    for name, call in calls.items():
+        before = _ConstantHash.digests
+        with pytest.raises(BTClibEccRuntimeError, match="no low-R signature") as e:
+            call()
+        assert str(dsa._MAX_GRIND_ATTEMPTS) in str(e.value), name
+        assert _ConstantHash.digests - before > dsa._MAX_GRIND_ATTEMPTS, name
+        assert_secret_free(
+            e.value, [_GRIND_PRV_KEY.to_bytes(32, "big"), str(_GRIND_PRV_KEY)]
+        )
+
+
+def test_the_grind_counts_from_zero_to_the_bound() -> None:
+    """The grind makes `_MAX_GRIND_ATTEMPTS` signatures, counters 0 up."""
+    high = dsa.sign_(_GRIND_MSG_HASH, _GRIND_PRV_KEY, hf=_ConstantHash, grind=False)
+    counters: list[int] = []
+
+    def attempt(counter: int) -> dsa.Sig:
+        counters.append(counter)
+        return high
+
+    with pytest.raises(BTClibEccRuntimeError):
+        dsa._grind_low_r(attempt, True, secp256k1)
+    assert counters == list(range(dsa._MAX_GRIND_ATTEMPTS))
+
+
+def test_the_counting_hash_stops_a_grind_that_does_not(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Past its limit the counting hash raises, which is what ends a hang."""
+    monkeypatch.setattr(_ConstantHash, "LIMIT", _ConstantHash.digests + 2)
+    assert _ConstantHash().digest() == b"\x06" * 32
+    assert _ConstantHash().hexdigest() == "06" * 32
+    with pytest.raises(AssertionError, match="does not stop"):
+        _ConstantHash().digest()
+
+
 def test_pub_key_recovery() -> None:
     """Recover four keys on secp112r2, all verifying the signature."""
     ec = CURVES["secp112r2"]
