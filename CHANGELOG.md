@@ -23,6 +23,127 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.10.16
+
+### `_var` names follow the algorithm
+
+`sec_point.point_from_octets` and `ssa.point_from_bip340pub_key` are
+`point_from_octets_var` and `point_from_bip340pub_key_var`, with no alias,
+and so is the re-export `curves.point_from_octets` (closes #232).
+
+### The bare inversions are `mod_inv_var`
+
+The bare `pow(x, -1, n)` over public operands is spelled `mod_inv_var`
+(closes #221).
+
+### `rangeproof` refuses an argument that is no integer
+
+It raises `BTClibEccTypeError` for a bool, a float or another type where an
+integer is due (closes #270).
+
+### `frost` refuses a `signer_id` out of range
+
+`nonce_gen` refuses one of 128 or more (closes #261), and `deterministic_sign`
+one outside `ids` (closes #262).
+
+### `frost` refuses an input of the wrong length
+
+`sign` refuses a `secnonce` that is not 64 bytes, and `deterministic_sign` an
+`aux_rand` that is not 32, as BIP445 0.12.1 says (issue #252).
+
+### `ssa.batch_verify` raises for an empty batch
+
+`batch_verify` and `batch_verify_` raise where they answered False
+(closes #222).
+
+### Refusals carry no input
+
+`str_from_string` of non-ASCII bytes, `Envelope.b64decode` of a non-ASCII
+envelope and `hex_string` of a negative integer refuse without the input
+(closes #254, closes #256, closes #246).
+
+### `BTCLIB_ECC_NO_LIBSECP256K1` is an initial state
+
+`set_libsecp256k1_serving(serving=True)` reverses it, and the docstring and
+`SECURITY.md` say so (closes #226, closes #238).
+
+### A required binding
+
+`set_libsecp256k1_serving(serving=True, required=True)` makes a call the
+bindings decline raise `BTClibEccRuntimeError` (closes #224).
+
+### gmpy2
+
+The Python arithmetic runs on gmpy2's mpz where the optional extra
+`btclib-ecc[gmpy2]` is installed (closes #213).
+
+### The gmpy2 extra is off PyPy
+
+The extra and its group carry the marker `implementation_name == 'cpython'`, so
+PyPy runs the int arithmetic (closes #288).
+
+### `mod_inv` redraws a zero divisor
+
+On a composite modulus, a blinding factor that is a zero divisor is redrawn
+(closes #225).
+
+### The BIP340 signers negate without branching
+
+The nonce and the key are negated without a branch on the y parity
+(closes #220).
+
+### The performance page
+
+A page on the performance of the arithmetic reads the census (closes #212).
+
+### Vectors behind upstream
+
+The BIP445 and Wycheproof vectors are refreshed (closes #252), and `frost`
+points at the open issue for key generation (closes #244).
+
+### Key recovery is held to outside vectors
+
+Bitcoin Core's and libsecp256k1's vectors hold key recovery (closes #229).
+
+### Fuzzing and concurrency tests
+
+The wire inputs of `musig2`, `frost`, `dleq` and the two adaptors are fuzzed
+(closes #228). The tables built on first use are tested under concurrent first
+use (closes #214).
+
+### Secret-free refusals and reprs
+
+`assert_secret_free` tests them (closes #263, closes #268).
+
+### `_ProveParams` masks the committed value
+
+Its repr prints `...` for the committed value and for its base-four digits
+(closes #271).
+
+### The adaptor proof's `e`
+
+A docstring says that `e` is reduced modulo n (closes #227).
+
+### A local command for the py-arm authority re-derivation
+
+`CONTRIBUTING.md` gives its command and says when to run it (closes #245).
+
+### The actionlint fork, `api-break` and the secret-free helper
+
+They are ported (issue btclib-org/.github#1698, issue
+btclib-org/.github#1674, issue btclib-org/.github#1697), and the review call
+sets `cache-mode: none` (closes #265).
+
+### `REPOSITORY.md` records the bypass
+
+Strict is off on `main`, a merge through the bypass waits for no required
+check, and the maintainer's bypass is everyday practice (issue
+btclib-org/.github#1712, issue btclib-org/.github#1695).
+
+### The second tier's algorithm
+
+`CONTRIBUTING.md` says that it closes a channel, not its name (closes #248).
+
 ## v2026.10.10
 
 ### FROST's deterministic nonce tells a key from its negation

@@ -9,6 +9,57 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.10.16
+
+- **Two functions are renamed, with no alias** (closes #232).
+  `sec_point.point_from_octets` is `point_from_octets_var`, and so is its
+  re-export `curves.point_from_octets`. `ssa.point_from_bip340pub_key` is
+  `point_from_bip340pub_key_var`. The suffix says that the time follows the
+  key. Code that uses an old name fails with `ImportError` or
+  `AttributeError`.
+
+  Act on it if you call either: rename the import and the call, and hand it a
+  public key only. btclib 2026.9.29 to 2026.10.9 and btclib-wallet 2026.9.30
+  to 2026.10.9 import the old names, so `import btclib.key` and
+  `import btclib_wallet.bip32` fail with this release. Use a release of each
+  that names the new ones. Until then, keep btclib-ecc 2026.10.10.
+- **`rangeproof` refuses an argument that is no integer as
+  `BTClibEccTypeError`** (closes #270). `sign` took a bool `min_value`, `exp`
+  or `min_bits`, a float `exp` and a `min_bits` of 0.0.
+  `RangeProof.sign_key_idx` and `RangeProof.nonce_chain` took a bool `value`.
+  `RangeProof` took a bool `exp` or `mantissa`, and a bool or float
+  `min_value`. `verify` of a `RangeProof` built with `check_validity=False`
+  raises where it answered False for a bool `exp` or `mantissa` or a `None`
+  `mantissa`.
+
+  Act on it if you passed one of these: pass an int.
+- **`frost` refuses more inputs** (closes #261, closes #262, closes #252). `nonce_gen`
+  refuses a `signer_id` of 128 or more. `deterministic_sign` refuses a
+  `signer_id` outside `ids` as `BTClibEccValueError`, where -1 and 2**32 and
+  above were a bare `OverflowError`. `sign` refuses a `secnonce` that is not 64
+  bytes, and `deterministic_sign` an `aux_rand` that is not 32.
+
+  Act on it if you passed one of these at another length or value: pass one
+  BIP445 accepts.
+- **`ssa.batch_verify` and `batch_verify_` raise for an empty batch**
+  (closes #222). They answered False.
+
+  Act on it if you may pass an empty batch: test for it first.
+- **The messages of some refusals change** (closes #254, closes #256,
+  closes #246). `str_from_string` of non-ASCII bytes and `Envelope.b64decode`
+  of a non-ASCII envelope say `non-ascii character in <what> at position
+  <n>`, and `hex_string` of a negative integer says `negative integer`. None of
+  them quotes the input, and none chains the codec's error.
+
+  Act on it if you match the old text: match the new one.
+- **On PyPy, part of the Python arithmetic raises `TypeError` where gmpy2 is
+  installed** (issue #290). The Python arithmetic uses gmpy2 wherever gmpy2
+  imports, and PyPy's `pow(a, -1, m)` refuses gmpy2's integers
+  (pypy/pypy#5207): `Curve.aff_from_jac_var` raises where v2026.10.10
+  returned the point. The `gmpy2` extra does not install gmpy2 on PyPy.
+
+  Act on it if you run PyPy with gmpy2 installed: uninstall gmpy2.
+
 ## v2026.10.10
 
 - **In v2026.10.8 and earlier, FROST's `deterministic_sign` could leak a
