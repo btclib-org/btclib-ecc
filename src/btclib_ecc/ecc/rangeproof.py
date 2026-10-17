@@ -209,9 +209,9 @@ _RING_STRIDE = 4
 def _assert_integers(**named: object) -> None:
     """Refuse an argument that is no integer, a bool not being one.
 
-    Each is compared, shifted or multiplied next. There a `bytes`, a
-    `str` or None raises a builtin error, a float raises one or is
-    computed with, and a bool passes as one or zero. The refusal names
+    Each is computed with, compared or written as octets next. There a
+    `bytes`, a `str` or None raises a builtin error, a float raises one
+    or is computed with, and a bool passes as one or zero. The refusal names
     the argument and the type, never the value.
     """
     for what, value in named.items():
@@ -251,7 +251,11 @@ def _rsizes(mantissa: int) -> tuple[int, ...]:
     `secp256k1_borromean_verify_impl`, so a `BorromeanSig` inside a proof is
     read against the mantissa where a free-standing one is read against
     a caller's `rsizes`.
+
+    A mantissa that is no integer is a `BTClibEccTypeError`, a zero
+    that is not an integer included.
     """
+    _assert_integers(mantissa=mantissa)
     if mantissa:
         _assert_valid_mantissa(mantissa)
     if mantissa == 0:
@@ -284,7 +288,11 @@ def _max_value(exp: int, mantissa: int, min_value: int) -> int:
     and a negative mantissa shifts the whole width away for a ceiling
     of zero that is no header's. Zero is the public-value header, whose
     range is `min_value` alone.
+
+    An `exp`, `mantissa` or `min_value` that is no integer is a
+    `BTClibEccTypeError`, before any of them is compared.
     """
+    _assert_integers(exp=exp, mantissa=mantissa, min_value=min_value)
     if mantissa:
         _assert_valid_mantissa(mantissa)
     value = _UINT64_MAX >> (64 - mantissa) if mantissa else 0
@@ -732,7 +740,8 @@ class RangeProof:
 
         A header this format has no ring structure for is refused here
         too: `check_validity=False` leaves a caller holding such a
-        proof, and there is no ring count to answer for one.
+        proof, and there is no ring count to answer for one. A mantissa
+        that is no integer is a `BTClibEccTypeError`.
         """
         return _rsizes(self.mantissa)
 
@@ -743,9 +752,33 @@ class RangeProof:
         A header this format has no octets for is refused here, in the
         spelling `assert_valid` refuses it in: `check_validity=False`
         leaves a caller holding such a proof, and there is no largest
-        value to answer for one.
+        value to answer for one. A header field that is no integer, an
+        absent `min_value` aside, is a `BTClibEccTypeError`.
         """
-        return _max_value(self.exp, self.mantissa, self.min_value or 0)
+        min_value = 0 if self.min_value is None else self.min_value
+        return _max_value(self.exp, self.mantissa, min_value)
+
+    def _assert_integer_header(self) -> None:
+        """Refuse a header field that is no integer.
+
+        `check_validity=False` leaves a caller holding such a proof.
+        `serialize`, `pubk_rings` and `_mantissa_value` call this before
+        they read a header field. An absent `min_value` is None and is no
+        refusal.
+        """
+        _assert_integers(exp=self.exp, mantissa=self.mantissa)
+        if self.min_value is not None:
+            _assert_integers(min_value=self.min_value)
+
+    def _assert_integer_rings(self) -> None:
+        """Refuse a ring commitment that is no integer.
+
+        Asked by `serialize` and `pubk_rings`, which read the ring
+        commitments, and not by `nonce_chain` and `sign_key_idx`, which
+        do not.
+        """
+        for i, x in enumerate(self.ring_commitments):
+            _assert_integers(**{f"ring commitment {i}": x})
 
     def assert_valid(self) -> None:
         """Refuse a header no proof carries, or a body it does not describe.
@@ -783,6 +816,7 @@ class RangeProof:
             assert_type(sign, bool, "rangeproof sign bit")
         p_size = self.sig.ec.p_size
         for i, x in enumerate(self.ring_commitments):
+            _assert_integers(**{f"ring commitment {i}": x})
             if not 0 <= x < 256**p_size:
                 err_msg = f"ring commitment {i} does not fit in {p_size} octets"
                 raise BTClibEccValueError(err_msg)
@@ -823,6 +857,8 @@ class RangeProof:
         """
         if check_validity:
             self.assert_valid()
+        self._assert_integer_header()
+        self._assert_integer_rings()
         secp256k1.require_on_curve(commitment)
 
         stated = [
@@ -905,6 +941,7 @@ class RangeProof:
         no value of this proof and is refused.
         """
         _assert_integers(value=value)
+        self._assert_integer_header()
         min_value = self.min_value or 0
         if not min_value <= value <= self.max_value:
             err_msg = f"rangeproof value not in {min_value}..{self.max_value}"
@@ -942,10 +979,14 @@ class RangeProof:
 
         A header this format has no octets for is refused too, by
         `_header_octets` below rather than by `check_validity`: at
-        `False` there is still no octet to hand back for it.
+        `False` there is still no octet to hand back for it. A header
+        field or ring commitment that is no integer is a
+        `BTClibEccTypeError`.
         """
         if check_validity:
             self.assert_valid()
+        self._assert_integer_header()
+        self._assert_integer_rings()
 
         out = _header_octets(self.exp, self.mantissa, self.min_value)
         if not check_validity:
@@ -1482,16 +1523,16 @@ def verify(
     A `RangeProof` argument has no octets to be wrong, so what it is
     asked is `assert_valid`. A state it refuses as a value is False here
     and a `BTClibEccValueError` from `assert_as_valid`; a header field
-    that is no integer is a `BTClibEccTypeError` from both. See
-    `_proof_from`.
+    or ring commitment that is no integer is a `BTClibEccTypeError` from
+    both. See `_proof_from`.
     """
     parsed_proof = _assert_structurally_valid_(proof)
     # ValueError and BTClibEccRuntimeError: a well-formed proof that does
     # not hold for this commitment is False, and so is an `extra_commit`
     # spelled in a way no octets are and a value-state `assert_valid`
-    # refuses in a `RangeProof` a caller built; a header field that is no
-    # integer is a BTClibEccTypeError and leaves, as does a caller's own
-    # mistake in the proof's own octets, refused above
+    # refuses in a `RangeProof` a caller built; a header field or ring
+    # commitment that is no integer is a BTClibEccTypeError and leaves, as
+    # does a caller's own mistake in the proof's own octets, refused above
     try:
         assert_as_valid(commitment, parsed_proof, gen, extra_commit=extra_commit)
     except (ValueError, BTClibEccRuntimeError):

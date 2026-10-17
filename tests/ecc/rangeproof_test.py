@@ -1342,6 +1342,76 @@ def test_a_proof_refuses_a_header_field_that_is_no_integer(
         )
 
 
+_LAST_RING = "ring commitment 2"
+
+
+@pytest.mark.parametrize(
+    "method, what, value",
+    [
+        (method, what, value)
+        for method in ["serialize", "pubk_rings", "nonce_chain", "sign_key_idx"]
+        for what in ["exp", "mantissa", "min_value", "ring commitment 0", _LAST_RING]
+        for value in _NOT_INTEGERS
+        if not (what == "min_value" and value is None)
+        # the last two do not read the ring commitments
+        if not (method in ("nonce_chain", "sign_key_idx") and "ring" in what)
+    ],
+    ids=repr,
+)
+def test_the_methods_refuse_a_field_that_is_no_integer_unchecked(
+    method: str, what: str, value: Any
+) -> None:
+    """At `check_validity=False` a field read that is no integer is refused.
+
+    None is left out for `min_value`, which says the field is absent.
+    """
+    proof = sign(_BLIND, 7, _NONCE, _GEN, min_bits=8)
+    commitment = commit(_BLIND, 7, _GEN)
+    unchecked = replace_unchecked(proof, **_changed(proof, what, value))
+    calls = {
+        "serialize": lambda: unchecked.serialize(check_validity=False),
+        "pubk_rings": lambda: unchecked.pubk_rings(
+            commitment, _GEN, check_validity=False
+        ),
+        "nonce_chain": lambda: unchecked.nonce_chain(
+            commitment, 7, _NONCE, _GEN, check_validity=False
+        ),
+        "sign_key_idx": lambda: unchecked.sign_key_idx(7),
+    }
+    with pytest.raises(BTClibEccTypeError, match=_refusal(value, what)):
+        calls[method]()
+
+
+def _changed(proof: RangeProof, what: str, value: Any) -> dict[str, Any]:
+    """Return the change that puts `value` in the field `what` names."""
+    if what.startswith("ring commitment "):
+        i = int(what.rsplit(" ", 1)[1])
+        rings = list(proof.ring_commitments)
+        rings[i] = value
+        return {"ring_commitments": tuple(rings)}
+    return {what: value}
+
+
+def test_the_last_ring_commitment_is_the_one_the_test_names() -> None:
+    """`_LAST_RING` is the last index, so a check of a prefix is caught."""
+    proof = sign(_BLIND, 7, _NONCE, _GEN, min_bits=8)
+    assert f"ring commitment {len(proof.ring_commitments) - 1}" == _LAST_RING
+
+
+@pytest.mark.parametrize("value", _NOT_INTEGERS, ids=repr)
+def test_nonce_chain_and_sign_key_idx_do_not_read_the_ring_commitments(
+    value: Any,
+) -> None:
+    """What they do not read is no reason to refuse them."""
+    proof = sign(_BLIND, 7, _NONCE, _GEN, min_bits=8)
+    commitment = commit(_BLIND, 7, _GEN)
+    unchecked = replace_unchecked(proof, **_changed(proof, "ring commitment 0", value))
+    assert unchecked.sign_key_idx(7) == proof.sign_key_idx(7)
+    assert unchecked.nonce_chain(
+        commitment, 7, _NONCE, _GEN, check_validity=False
+    ) == proof.nonce_chain(commitment, 7, _NONCE, _GEN)
+
+
 def test_verify_lets_a_header_field_that_is_no_integer_out() -> None:
     """A type error is no state `verify` answers False to."""
     proof = sign(_BLIND, 7, _NONCE, _GEN)
@@ -1359,6 +1429,55 @@ def test_verify_lets_a_header_field_that_is_no_integer_out() -> None:
         rangeproof.verify(commitment, unchecked, _GEN)
     with pytest.raises(BTClibEccTypeError, match=_refusal(True, "exp")):
         rangeproof.assert_as_valid(commitment, unchecked, _GEN)
+
+
+@pytest.mark.parametrize("value", _NOT_INTEGERS, ids=repr)
+def test_a_proof_refuses_a_ring_commitment_that_is_no_integer(value: Any) -> None:
+    """A bool or a float is no x, and a str or None is no number to compare."""
+    proof = sign(_BLIND, 7, _NONCE, _GEN, min_bits=8)
+    commitments = (value, *proof.ring_commitments[1:])
+    with pytest.raises(BTClibEccTypeError, match=_refusal(value, "ring commitment 0")):
+        RangeProof(
+            proof.exp,
+            proof.mantissa,
+            proof.min_value,
+            proof.signs,
+            commitments,
+            proof.sig,
+        )
+    unchecked = replace_unchecked(proof, ring_commitments=commitments)
+    with pytest.raises(BTClibEccTypeError, match=_refusal(value, "ring commitment 0")):
+        unchecked.assert_valid()
+
+
+# 0.0 and the empty str are falsy, so a truthiness test lets them by
+_NOT_INTEGER_FIELDS = [*_NOT_INTEGERS, 0.0, ""]
+
+
+@pytest.mark.parametrize(
+    "what, value",
+    [
+        (what, value)
+        for what in ["exp", "mantissa", "min_value"]
+        for value in _NOT_INTEGER_FIELDS
+        if not (what == "min_value" and value is None)
+    ],
+    ids=repr,
+)
+def test_the_properties_refuse_a_header_field_that_is_no_integer(
+    what: str, value: Any
+) -> None:
+    """`check_validity=False` leaves no builtin error to come out of them.
+
+    None is left out for `min_value`, which says the field is absent.
+    """
+    proof = sign(_BLIND, 7, _NONCE, _GEN, min_bits=8)
+    unchecked = replace_unchecked(proof, **{what: value})
+    with pytest.raises(BTClibEccTypeError, match=_refusal(value, what)):
+        _ = unchecked.max_value
+    if what == "mantissa":
+        with pytest.raises(BTClibEccTypeError, match=_refusal(value, what)):
+            _ = unchecked.rsizes
 
 
 @pytest.mark.parametrize(
