@@ -28,9 +28,9 @@ from btclib_ecc._utils import hex_string, is_integer
 from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
 
 # the `gmpy2` extra, which a plain install does not have. A gmpy2 that is
-# installed and fails to import is not absent, and raises. On PyPy gmpy2 is
-# not used even where installed: `pow(a, -1, m)` over an mpz modulus raises
-# TypeError there (https://github.com/pypy/pypy/issues/5207)
+# installed and fails to import is not absent, and raises. Off CPython gmpy2
+# is not used even where installed, for the reason pyproject.toml gives at the
+# extra
 if sys.implementation.name == "cpython":
     try:
         from gmpy2 import mpz  # type: ignore[import-untyped]

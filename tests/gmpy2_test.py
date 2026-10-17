@@ -267,7 +267,7 @@ def test_a_gmpy2_that_fails_to_import_is_not_read_as_absent() -> None:
 
 
 def test_gmpy2_is_not_used_off_cpython() -> None:
-    """On PyPy gmpy2 is left unused: it breaks `pow(a, -1, m)` there."""
+    """A child that names itself PyPy keeps its modulus an int."""
     _importorskip_gmpy2()
     completed = _run_child("", implementation="pypy")
     assert completed.returncode == 0, completed.stderr

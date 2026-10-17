@@ -99,8 +99,7 @@ secp256k1 = ["btclib-secp256k1>=0.8.0.8"]
 # The floor is the release the suite has run against. CPython only: on
 # PyPy, gmpy2 loads through cpyext and `pow(a, -1, m)` over an mpz modulus
 # raises TypeError (https://github.com/pypy/pypy/issues/5207), so PyPy
-# stays on the int arithmetic: `number_theory` does not import gmpy2 there,
-# even one installed by other means
+# stays on the int arithmetic
 gmpy2 = ["gmpy2>=2.3.2; implementation_name == 'cpython'"]
 
 # Every entry below declares a lower bound, the release uv.lock resolved
