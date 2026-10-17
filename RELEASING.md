@@ -412,8 +412,8 @@ result.
    or the ruleset accepts, and auto-merge presses it once the approval
    and the checks are in. `GOVERNANCE.md`'s
    [*How a decision is made*](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md#how-a-decision-is-made)
-   says when the maintainer lands it without the approval. A direct push
-   to `main` is refused for everyone.
+   says when the maintainer adds the bypass back to land it without the
+   approval. A direct push to `main` is refused for everyone.
 
    Name the release commit's title and body explicitly, rather than leave
    them to `squash_merge_commit_message`'s repository default, which
@@ -424,7 +424,7 @@ result.
      --body-file <path> --subject <title>
    ```
 
-   Landing through the bypass adds `--admin`, as `CONTRIBUTING.md`'s
+   Landing through the emergency bypass adds `--admin`, as `CONTRIBUTING.md`'s
    *Landing it* says.
 
    That the commit is composed by GitHub and signed with its web-flow
