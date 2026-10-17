@@ -126,8 +126,8 @@ The quotes are for zsh, which reads the brackets as a glob.
 
 The `gmpy2` extra installs [gmpy2](https://pypi.org/project/gmpy2/), and
 the Jacobian group law of the Python arithmetic then runs on GMP's
-integers. It changes nothing where the bindings serve, and PyPy does not
-install it:
+integers. It changes nothing where the bindings serve. On PyPy the extra
+installs nothing, and the package ignores a gmpy2 installed by other means:
 
 ```shell
 python -m pip install --upgrade "btclib-ecc[secp256k1,gmpy2]"
