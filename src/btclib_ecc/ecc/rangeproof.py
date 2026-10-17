@@ -298,11 +298,11 @@ def _max_value(exp: int, mantissa: int, min_value: int) -> int:
     value = _UINT64_MAX >> (64 - mantissa) if mantissa else 0
     for _ in range(max(exp, 0)):
         if value > _UINT64_MAX // 10:
-            err_msg = f"rangeproof max value overflows at exponent {exp}"
+            err_msg = "rangeproof max value overflows at exponent"
             raise BTClibEccValueError(err_msg)
         value *= 10
     if value > _UINT64_MAX - min_value:
-        err_msg = f"rangeproof max value overflows past min value {min_value}"
+        err_msg = "rangeproof max value overflows past min value"
         raise BTClibEccValueError(err_msg)
     return value + min_value
 
