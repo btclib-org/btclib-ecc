@@ -34,9 +34,10 @@ from __future__ import annotations
 import secrets
 from hashlib import sha256
 
-from btclib_ecc._utils import bytes_from_octets, int_from_bits
+from btclib_ecc._utils import _MAX_NONCE_ATTEMPTS, bytes_from_octets, int_from_bits
 from btclib_ecc.alias import HashF, Integer, Octets, Point
 from btclib_ecc.curves import Curve, mult, scalar_from_prv_key, secp256k1
+from btclib_ecc.exceptions import BTClibEccRuntimeError
 from btclib_ecc.hashes import tagged_hash
 
 __all__ = [
@@ -102,7 +103,7 @@ def _bip340_nonce_(msg: bytes, q: int, Q: int, aux: bytes, ec: Curve, hf: HashF)
         digests = _stretch(nonce_tag, t, size, hf)
         return int.from_bytes(digests, "big") % (ec.n - 1) + 1
 
-    while True:
+    for _ in range(_MAX_NONCE_ATTEMPTS):
         t = tagged_hash(nonce_tag, t, hf)
         # reducing the hash mod n -- whether the whole of it or its
         # leftmost nlen bits -- would introduce a bias, which is why
@@ -116,6 +117,8 @@ def _bip340_nonce_(msg: bytes, q: int, Q: int, aux: bytes, ec: Curve, hf: HashF)
         nonce = int_from_bits(t, ec.nlen)  # candidate nonce
         if 0 < nonce < ec.n:  # acceptable value for nonce
             return nonce  # successful candidate
+    reason = f"no nonce in 1..n-1 after {_MAX_NONCE_ATTEMPTS} candidates"
+    raise BTClibEccRuntimeError(reason)
 
 
 def bip340_nonce_(

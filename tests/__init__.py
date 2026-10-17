@@ -507,6 +507,44 @@ class Sha256FirstByte:
         return clone
 
 
+class AllOnesHash:
+    """A hashlib-like object whose digest is always 32 octets of 0xff.
+
+    The digest is above the order of secp256k1, so a nonce derivation
+    that draws it never gets a candidate in 1..n-1. It counts its
+    digests in `digests` and raises after `LIMIT`, so that a derivation
+    without a bound fails the test instead of hanging it.
+    """
+
+    digest_size = 32
+    block_size = 64
+    name = "all-ones"
+    LIMIT = 100_000
+    digests = 0
+
+    def __init__(self, data: bytes = b"") -> None:
+        """Start from data, as hashlib's constructors do."""
+
+    def update(self, data: Any, /) -> None:
+        """Absorb more data, which changes nothing."""
+
+    def digest(self) -> bytes:
+        """Return 32 octets of 0xff, or fail once the limit is passed."""
+        type(self).digests += 1
+        if type(self).digests > self.LIMIT:
+            msg = f"more than {self.LIMIT} digests: the derivation does not stop"
+            raise AssertionError(msg)
+        return b"\xff" * 32
+
+    def hexdigest(self) -> str:
+        """Return the digest as a hex string."""
+        return self.digest().hex()
+
+    def copy(self) -> "AllOnesHash":
+        """Return a clone, which absorbs nothing either."""
+        return AllOnesHash()
+
+
 # --------------------------------------------------------------------------
 # AES-128, for `ecc/ecies_test.py`'s CBC vectors.
 #

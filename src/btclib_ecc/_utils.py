@@ -48,6 +48,15 @@ __all__ = [
 
 NoneOneOrMoreInt = int | Iterable[int] | None
 
+# Candidates a nonce derivation draws before it refuses. A hash function
+# behaving as a random oracle misses 1..n-1 with probability at most 1/2
+# per draw on any curve this package takes, so 256 misses in a row have
+# probability at most 2^-256; on secp256k1 one miss is about 2^-128.
+# RFC6979 section 3.2.h.3 and libsecp256k1's signing loop set no bound,
+# and BIP340 draws once. The bound turns a caller's hash function that
+# never yields a candidate from a hang into a refusal.
+_MAX_NONCE_ATTEMPTS = 256
+
 
 def _assert_byte_shaped(octets: bytes | bytearray | memoryview) -> None:
     """Refuse a memoryview whose layout or format is not plain bytes.

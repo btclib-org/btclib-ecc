@@ -28,10 +28,11 @@ import hashlib
 import hmac
 from hashlib import sha256
 
-from btclib_ecc._utils import bytes_from_octets, int_from_bits
+from btclib_ecc._utils import _MAX_NONCE_ATTEMPTS, bytes_from_octets, int_from_bits
 from btclib_ecc.alias import HashF, Integer, Octets
 from btclib_ecc.curves import Curve, scalar_from_prv_key, secp256k1
 from btclib_ecc.curves.curve import _assert_valid_ec
+from btclib_ecc.exceptions import BTClibEccRuntimeError
 
 __all__ = [
     "challenge_",
@@ -136,7 +137,7 @@ def _rfc6979_nonce_(
     bprvbm = q_bytes + c_bytes + (extra_entropy or b"")
 
     drbg = _HmacDrbg(bprvbm, hf)
-    while True:  # 3.2.h
+    for _ in range(_MAX_NONCE_ATTEMPTS):  # 3.2.h
         # reducing the hash mod n -- whether the whole of it or its
         # leftmost nlen bits -- would introduce a bias, which is why
         # neither is done here.
@@ -151,6 +152,8 @@ def _rfc6979_nonce_(
         if 0 < nonce < ec.n:  # acceptable values for nonce
             return nonce  # successful candidate
         drbg.reseed()
+    reason = f"no nonce in 1..n-1 after {_MAX_NONCE_ATTEMPTS} candidates"
+    raise BTClibEccRuntimeError(reason)
 
 
 def rfc6979_nonce_(

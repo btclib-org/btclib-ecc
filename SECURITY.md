@@ -132,7 +132,7 @@ package is used to teach and to prototype as much as to build:
     This package passes none, and that is a decision, not an oversight.
     `commit_nonce.commit_nonce_` reads one straight into a Python `int`
     at `int.from_bytes(tweaked, byteorder="big", signed=False)`
-    (`src/btclib_ecc/ecc/commit_nonce.py:157`). A caller-owned buffer
+    (`src/btclib_ecc/ecc/commit_nonce.py:159`). A caller-owned buffer
     can be wiped once the call that filled it returns; the `int` it is
     read into cannot be, and outlives the call regardless, so taking the
     buffer there would cost a public signature and buy nothing, short of
