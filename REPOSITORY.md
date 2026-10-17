@@ -248,9 +248,9 @@ gh api -X POST repos/btclib-org/btclib-ecc/rulesets --input - <<'JSON'
 JSON
 ```
 
-In an emergency the maintainer adds the bypass back, as actor `3296421`,
+The bypass, when the maintainer adds it back, is actor `3296421`,
 `fametrano`'s account id (`gh api users/fametrano --jq .id`), in
-`pull_request` mode, and removes it after the merge.
+`pull_request` mode.
 
 Classic protection's own copy of the signature rule is off, read on
 2026-10-15:
