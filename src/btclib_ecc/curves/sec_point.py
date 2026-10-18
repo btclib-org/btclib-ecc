@@ -182,9 +182,9 @@ def point_from_octets_var(
     in bitcoin produces one. Consensus has to accept what was mined instead:
     Core rejects hybrid keys only under STRICTENC, so the script engine is the
     one caller that asks for them (issue btclib-org/btclib#129). It is refused
-    rather than read for its truth: its `True` is the permissive value, and a
-    non-bool is true, so `hybrid="no"` would parse the very prefixes it was
-    written down to keep out.
+    rather than read for its truth: its `True` is the permissive value, and
+    most non-bools are true, so `hybrid="no"` would parse the very prefixes
+    it was written down to keep out.
 
     On a curve of cofactor above 1 a point on the curve need not be a
     point of ⟨G⟩: `_assert_in_subgroup` refuses one that is not, after

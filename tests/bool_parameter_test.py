@@ -24,11 +24,13 @@ refusal is for.
 
 ## The polarity a truth has to have
 
-`"no"` is true, and so is every other wrong value, so the misreading is
-never "the flag was off": it is always the one the flag's `True` stands
-for. That is what makes a truth safe rather than the fact that it changes
-no answer -- `strict="no"` is strict, `order_check="no"` checks the
-order. The wrong value falls on the side that refuses more.
+`"no"` is true, and so are most other wrong values, so the misreading is
+rarely "the flag was off": it is the one the flag's `True` stands for.
+`0`, `None` and `""` are wrong values that read as `False`, and no
+polarity covers them. What the rule gives is a truth safe against the
+rest, rather than the fact that it changes no answer -- `strict="no"` is
+strict, `order_check="no"` checks the order. Those fall on the side
+that refuses more.
 
 So a truth's `True` has to be its conservative value, and a flag whose
 `True` is the permissive one is a kind however little it computes.
