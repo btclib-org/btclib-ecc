@@ -200,10 +200,11 @@ package is used to teach and to prototype as much as to build:
     by `mult`, whose answer is then infinity; `dsa.sign` for secp256k1
     with sha256, the lower-s form, no caller-imposed nonce and no
     commitment; `ssa.sign` for secp256k1 with sha256, a message of any
-    size and no commitment; `dh.diffie_hellman` and
-    `commit_nonce.commit_nonce_` for secp256k1, the shared point of a key
-    agreement and the tweaking of a sign-to-contract nonce being other
-    places a secret meets the curve.
+    size and no commitment; `dh.diffie_hellman`,
+    `commit_nonce.commit_nonce_`, `curves.prv_key_tweak_add` and
+    `ssa.prv_key_tweak_add` for secp256k1, the shared point of a key
+    agreement, the tweaking of a sign-to-contract nonce and the tweaking of
+    a private key being other places a secret meets the curve.
     Verification crosses it whole, not only in its multiplication:
     `dsa.verify` and `ssa.verify` are one libsecp256k1 call each, where
     the dispatch is on, for secp256k1 with sha256, a high-s signature
@@ -339,10 +340,13 @@ package is used to teach and to prototype as much as to build:
     on either arm, forming the same roots for every seed.
     The other delegations the bullet above names are different calls:
     a multiple of the generator is `secp256k1_ec_pubkey_create`, which
-    runs `secp256k1_ecmult_gen`, and the tweaking of a sign-to-contract
-    nonce is `secp256k1_ec_seckey_tweak_add`, which adds scalars. Those
-    two and `secp256k1_ecdh` are among the entry points libsecp256k1's
-    own `src/ctime_tests.c` declassifies a secret for, and
+    runs `secp256k1_ecmult_gen`; the tweaking of a sign-to-contract nonce,
+    and `curves.prv_key_tweak_add`, are `secp256k1_ec_seckey_tweak_add`,
+    which adds scalars; and `ssa.prv_key_tweak_add` is
+    `secp256k1_keypair_xonly_tweak_add`, which negates the key where its
+    point has an odd y before adding. These calls and `secp256k1_ecdh` are
+    among the entry points libsecp256k1's own `src/ctime_tests.c`
+    declassifies a secret for, and
     `secp256k1_ec_pubkey_tweak_mul` is named nowhere in that file
 - `rangeproof.rewind` on the Python arm takes time that depends on the value
     it recovers: `rangeproof._value_encoding_var` at

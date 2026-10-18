@@ -198,6 +198,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.sec_point._mult_sec": (),
     "curves.sec_point.bytes_from_prv_key_int": ("ecc/musig2_test.py",),
+    "curves.sec_point.prv_key_tweak_add": (),
     "ecc.commit_nonce.commit_nonce_": ("ecc/ssa_test.py",),
     "ecc.dh.diffie_hellman": ("ecc/wycheproof_test.py",),
     "ecc.dsa.Signer.__init__": (),
@@ -228,6 +229,8 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/ssa_test.py",
     ),
     "ecc.ssa.assert_batch_as_valid_": ("ecc/ssa_test.py",),
+    "ecc.ssa.prv_key_tweak_add": (),
+    "ecc.ssa.pub_key_tweak_add_var": (),
     "ecc.ssa.sign_": ("ecc/ssa_test.py",),
 }
 
@@ -249,12 +252,22 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 #   of `_THIRD_PARTY_VECTORS` for the reason `tests/_data/README.md` gives
 #   in its entry for `bitcoin_core_compact_vectors.json`.
 #   A recoverable signature made by another implementation would close it.
+# - `curves.sec_point.prv_key_tweak_add`, a private key plus a tweak. BIP32's
+#   private derivation is this sum, so its test vectors, vendored, would
+#   close it.
+# - `ecc.ssa.prv_key_tweak_add` and `ecc.ssa.pub_key_tweak_add_var`, BIP341's
+#   tweaks. `tests/ecc/ssa_tweak_test.py` copies BIP341's wallet vectors
+#   inline; bip-0341/wallet-test-vectors.json, vendored and its module named
+#   above, would close both.
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
+        "curves.sec_point.prv_key_tweak_add",
         "ecc.dsa.Signer.__init__",
         "ecc.dsa.Signer.sign_",
         "ecc.dsa.sign_recoverable_",
+        "ecc.ssa.prv_key_tweak_add",
+        "ecc.ssa.pub_key_tweak_add_var",
     }
 )
 

@@ -22,8 +22,10 @@ from btclib_ecc.curves import (
     mult,
     point_from_octets_var,
     point_from_pub_key,
+    prv_key_tweak_add,
     scalar_from_prv_key,
     secp256k1,
+    tweak_add_var,
 )
 from btclib_ecc.curves.curve import CURVES
 from btclib_ecc.curves.sec_point import _mult_sec, mult_pub_key
@@ -543,6 +545,37 @@ def test_a_public_key_is_a_point_or_its_octets_and_nothing_else() -> None:
         )
 
 
+@pytest.mark.parametrize("ec_name", ["secp256k1", "secp256r1"])
+@both_arms
+def test_prv_key_tweak_add(ec_name: str) -> None:
+    """The sum modulo n, whose public key is the public key tweaked.
+
+    secp256r1 is the Python arm on both runs, the bindings serving
+    secp256k1 alone.
+    """
+    ec = CURVES[ec_name]
+    for q, t in ((1, 0), (5, 7), (ec.n - 1, 2), (0xC0FFEE, ec.n - 1)):
+        tweaked = prv_key_tweak_add(q, t, ec)
+        assert tweaked == (q + t) % ec.n
+        assert mult(tweaked, ec=ec) == tweak_add_var(mult(q, ec=ec), t, ec)
+    # the tweak in its octets, as BIP32 hands it over
+    assert prv_key_tweak_add(5, (7).to_bytes(32, "big"), ec) == 12
+
+
+@both_arms
+def test_prv_key_tweak_add_refusals() -> None:
+    """A tweak out of 0..n-1, and a sum of zero, are refused on both arms."""
+    for t in (-1, secp256k1.n):
+        with pytest.raises(BTClibEccValueError, match="tweak not in 0..n-1"):
+            prv_key_tweak_add(1, t)
+    q = 0xC0FFEE
+    with pytest.raises(BTClibEccValueError, match="tweaked private key is zero") as e:
+        prv_key_tweak_add(q, secp256k1.n - q)
+    assert_secret_free(e.value, [hex(q)[2:], q.to_bytes(32, "big")])
+    with pytest.raises(BTClibEccTypeError):
+        prv_key_tweak_add(1, 1.0)  # type: ignore[arg-type]
+
+
 # --------------------------------------------------------------------
 # a refusal carries no secret
 # --------------------------------------------------------------------
@@ -552,6 +585,7 @@ def test_a_public_key_is_a_point_or_its_octets_and_nothing_else() -> None:
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "scalar_from_prv_key": (scalar_from_prv_key, REFUSED_SCALARS),
+    "prv_key_tweak_add": (lambda q: prv_key_tweak_add(q, 1), REFUSED_SCALARS),
 }
 
 
