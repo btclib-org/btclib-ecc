@@ -370,15 +370,39 @@ def test_unchecked_serialization_keeps_fields_that_fit_but_do_not_validate() -> 
     assert reparsed.serialize(check_validity=False) == octets
 
 
-@pytest.mark.parametrize("what", ["exp", "min_value", "signs"])
-def test_unchecked_serialization_does_not_quote_a_refused_field(what: str) -> None:
+@pytest.mark.parametrize(
+    "what, method",
+    [
+        ("exp", "serialize"),
+        ("min_value", "serialize"),
+        ("signs", "serialize"),
+        ("exp", "max_value"),
+        ("min_value", "max_value"),
+        ("exp", "nonce_chain"),
+        ("min_value", "nonce_chain"),
+    ],
+)
+def test_unchecked_methods_do_not_quote_a_refused_field(what: str, method: str) -> None:
     """A secret in the wrong field leaves no spelling in the refusal."""
+    vector = _vector("odd mantissa")
     proof = RangeProof.parse(_octets("odd mantissa"))
     value = HELD_KEYS["int"]
     changed = (value, *proof.signs[1:]) if what == "signs" else value
     unchecked = replace_unchecked(proof, **{what: changed})
+    commitment = commit(vector["blind"], vector["value"], _GEN)
+    calls: dict[str, Callable[[], object]] = {
+        "serialize": lambda: unchecked.serialize(check_validity=False),
+        "max_value": lambda: unchecked.max_value,
+        "nonce_chain": lambda: unchecked.nonce_chain(
+            commitment,
+            vector["value"],
+            vector["nonce"],
+            _GEN,
+            check_validity=False,
+        ),
+    }
     with pytest.raises(BTClibEccException) as refused:
-        unchecked.serialize(check_validity=False)
+        calls[method]()
     assert_secret_free(refused.value, [str(value), *HELD_KEY_SPELLINGS])
 
 
@@ -392,7 +416,9 @@ def test_parse_refuses_a_range_that_overflows_its_own_width() -> None:
     """
     octets = _octets("odd mantissa")
     mutated = bytes([octets[0] | 18]) + octets[1:]
-    with pytest.raises(BTClibEccValueError, match="max value overflows at exponent 18"):
+    with pytest.raises(
+        BTClibEccValueError, match="^rangeproof max value overflows at exponent$"
+    ):
         RangeProof.parse(mutated)
 
 
@@ -526,7 +552,7 @@ def test_assert_valid_refuses_a_range_that_overflows_its_min_value() -> None:
     `secp256k1_rangeproof_getheader_impl` returns zero on.
     """
     sig = BorromeanSig(bytes(32), [[0] * 4] * 32)
-    err_msg = "max value overflows past min value 1"
+    err_msg = "^rangeproof max value overflows past min value$"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         RangeProof(0, 64, 1, (False,) * 31, (0,) * 31, sig)
 
