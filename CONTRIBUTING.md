@@ -382,8 +382,8 @@ So a flag whose `True` is the permissive value is a kind however little it
 computes, because the misreading waives the very refusal it was written to
 make: `point_from_octets_var`'s `hybrid` parses the prefixes it was written
 to keep out. `0`, `None` and `""` are wrong values that read as `False`,
-so on a truth they fall on the permissive side, and the rule does not
-cover them.
+so on a truth they fall on the permissive side, and the rule gives them
+no protection.
 
 **Which of the two a flag is, is written down for every one of them.**
 `tests/bool_parameter_test.py` is the census: two tables, a kind driven

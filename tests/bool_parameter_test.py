@@ -24,19 +24,10 @@ refusal is for.
 
 ## The polarity a truth has to have
 
-`"no"` is true, and so are most other wrong values, and for those the
-misreading is the one the flag's `True` stands for. That is what makes a
-truth safe rather than the fact that it changes no answer --
-`strict="no"` is strict, `order_check="no"` checks the order.
-
-So a truth's `True` has to be its conservative value, and a flag whose
-`True` is the permissive one is a kind however little it computes.
-`hybrid` is one, waiving the very refusal it was written to make, and it
-is in `_KINDS` under a comment of its own; issue btclib-org/btclib#884 is
-the one that asked.
-
-`0`, `None` and `""` are wrong values that read as `False`, so on a truth
-they fall on the permissive side, and the rule does not cover them.
+`CONTRIBUTING.md`'s *A truth's `True` has to be its conservative value*
+is the rule, with the wrong values it does not cover. `hybrid` breaks
+it, so it is in `_KINDS` under a comment of its own; issue
+btclib-org/btclib#884 is the one that asked.
 
 The two tests below are that line, one each:
 
