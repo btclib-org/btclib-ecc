@@ -230,7 +230,7 @@ def _assert_valid_mantissa(mantissa: int) -> None:
     module that reads a mantissa for its own arithmetic.
     """
     if not 1 <= mantissa <= _MAX_MANTISSA:
-        raise BTClibEccValueError(f"rangeproof mantissa not in 1..64: {mantissa}")
+        raise BTClibEccValueError("rangeproof mantissa not in 1..64")
 
 
 def _rsizes(mantissa: int) -> tuple[int, ...]:

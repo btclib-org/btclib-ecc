@@ -272,7 +272,7 @@ def test_parse_refuses_a_mantissa_past_the_cap() -> None:
     it has read the octet.
     """
     octets = _octets("one ring")
-    err_msg = "rangeproof mantissa not in 1..64: 65"
+    err_msg = "rangeproof mantissa not in 1..64$"
     for check_validity in (True, False):
         with pytest.raises(BTClibEccValueError, match=err_msg):
             RangeProof.parse(
@@ -535,7 +535,7 @@ def test_assert_valid_refuses_a_header_no_proof_carries() -> None:
 
     # the cap `parse` refuses where it reads the octet, which leaves
     # this the state of an object built rather than parsed
-    err_msg = "rangeproof mantissa not in 1..64: 65"
+    err_msg = "rangeproof mantissa not in 1..64$"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(proof, mantissa=65).assert_valid()
 
@@ -701,7 +701,7 @@ def test_a_mantissa_the_header_cannot_state_refuses_where_it_is_read(
         RangeProof.parse(bytes.fromhex(vector["proof"])), mantissa=mantissa
     )
     commitment = commit(vector["blind"], vector["value"], _GEN)
-    err_msg = f"rangeproof mantissa not in 1..64: {mantissa}"
+    err_msg = "rangeproof mantissa not in 1..64$"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         _ = proof.max_value
     with pytest.raises(BTClibEccValueError, match=err_msg):
@@ -2716,6 +2716,12 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
         (
             lambda secret: rangeproof._prove_params(2**63, secret, 0, 0),
             "rangeproof range from min value does not fit 2**64",
+        ),
+        (
+            lambda secret: RangeProof(
+                0, secret, 0, (), (), BorromeanSig(bytes(32), [[1]])
+            ),
+            "rangeproof mantissa not in 1..64",
         ),
     ],
 )
