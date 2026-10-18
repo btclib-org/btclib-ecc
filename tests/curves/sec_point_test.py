@@ -571,7 +571,7 @@ def test_prv_key_tweak_add_refusals() -> None:
     q = 0xC0FFEE
     with pytest.raises(BTClibEccValueError, match="tweaked private key is zero") as e:
         prv_key_tweak_add(q, secp256k1.n - q)
-    assert_secret_free(e.value, [hex(q)[2:], q.to_bytes(32, "big")])
+    assert_secret_free(e.value, [f"{q:x}", q.to_bytes(32, "big")])
     with pytest.raises(BTClibEccTypeError):
         prv_key_tweak_add(1, 1.0)  # type: ignore[arg-type]
 

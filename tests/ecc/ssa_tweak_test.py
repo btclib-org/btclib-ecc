@@ -51,7 +51,7 @@ BIP341_KEY_PATH = [
 @pytest.mark.parametrize("vector", BIP341_KEY_PATH)
 @both_arms
 def test_bip341_key_path(vector: tuple[str, str, str, str]) -> None:
-    """The tweaked private key, and the output key and parity it is the key of."""
+    """The tweaked private key, and the output key and parity it has."""
     prv_key, pub_key, tweak, tweaked = vector
     assert ssa.prv_key_tweak_add(prv_key, tweak) == int(tweaked, 16)
 
@@ -85,7 +85,7 @@ def test_the_sum_at_infinity_is_refused() -> None:
         ssa.pub_key_tweak_add_var(x_Q, secp256k1.n - q)
     with pytest.raises(BTClibEccValueError, match="private key is zero") as e:
         ssa.prv_key_tweak_add(q, secp256k1.n - q)
-    assert_secret_free(e.value, [hex(q)[2:], q.to_bytes(32, "big")])
+    assert_secret_free(e.value, [f"{q:x}", q.to_bytes(32, "big")])
 
 
 @both_arms

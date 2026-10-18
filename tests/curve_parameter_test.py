@@ -88,6 +88,7 @@ from btclib_ecc.curves.sec_point import (
     mult_pub_key,
     point_from_octets_var,
     point_from_pub_key,
+    prv_key_tweak_add,
     scalar_from_prv_key,
 )
 from btclib_ecc.ecc import borromean, dsa, ellswift, pedersen, ssa
@@ -215,6 +216,11 @@ _CASES = (
         "btclib_ecc.curves.sec_point.scalar_from_prv_key",
         scalar_from_prv_key,
         {"prv_key": _PRV_KEY},
+    ),
+    _Case(
+        "btclib_ecc.curves.sec_point.prv_key_tweak_add",
+        prv_key_tweak_add,
+        {"prv_key": _PRV_KEY, "t": _PRV_KEY},
     ),
     _Case(
         "btclib_ecc.curves.sec_point.mult_pub_key",
@@ -384,6 +390,16 @@ _CASES = (
         "btclib_ecc.ecc.ssa.point_from_bip340pub_key_var",
         ssa.point_from_bip340pub_key_var,
         {"x_Q": _PUB_KEY[0]},
+    ),
+    _Case(
+        "btclib_ecc.ecc.ssa.pub_key_tweak_add_var",
+        ssa.pub_key_tweak_add_var,
+        {"x_Q": _PUB_KEY[0], "t": _PRV_KEY},
+    ),
+    _Case(
+        "btclib_ecc.ecc.ssa.prv_key_tweak_add",
+        ssa.prv_key_tweak_add,
+        {"prv_key": _PRV_KEY, "t": _PRV_KEY},
     ),
     _Case("btclib_ecc.ecc.ssa.gen_keys", ssa.gen_keys, {"prv_key": _PRV_KEY}),
     _Case(
