@@ -762,7 +762,7 @@ class RangeProof:
         """Refuse a header field that is no integer.
 
         `check_validity=False` leaves a caller holding such a proof.
-        `serialize`, `pubk_rings` and `_mantissa_value` call this before
+        `serialize`, `pubk_rings_var` and `_mantissa_value` call this before
         they read a header field. An absent `min_value` is None and is no
         refusal.
         """
@@ -773,7 +773,7 @@ class RangeProof:
     def _assert_integer_rings(self) -> None:
         """Refuse a ring commitment that is no integer.
 
-        Asked by `serialize` and `pubk_rings`, which read the ring
+        Asked by `serialize` and `pubk_rings_var`, which read the ring
         commitments, and not by `nonce_chain` and `sign_key_idx`, which
         do not.
         """
