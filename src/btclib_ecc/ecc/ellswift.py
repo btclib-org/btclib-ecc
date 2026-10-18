@@ -244,7 +244,7 @@ def _ell_from_point_var(Q: Point, ec: Curve) -> bytes:
         # end to end, so no y ever reaches them -- while libsecp256k1
         # wraps the same x-only map in the same condition, its
         # elligatorswift_var over xelligatorswift_var. It is here because
-        # `decode` answers with a point; without it, half the encodings
+        # `decode_var` answers with a point; without it, half the encodings
         # would decode to -Q
         if t % 2 != Q[1] % 2:
             t = p - t
