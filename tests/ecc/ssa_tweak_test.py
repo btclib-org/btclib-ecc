@@ -27,7 +27,7 @@ _VECTORS = load("ecc", "_data", "wallet-test-vectors.json")
 
 
 def script_pub_key_vectors() -> list[Any]:
-    """BIP341's `scriptPubKey` vectors as pytest params."""
+    """Load BIP341's `scriptPubKey` vectors as pytest params."""
     return [
         pytest.param(vector, id=vector_id(index))
         for index, vector in enumerate(_VECTORS["scriptPubKey"])
@@ -35,7 +35,7 @@ def script_pub_key_vectors() -> list[Any]:
 
 
 def key_path_vectors() -> list[Any]:
-    """The inputs of BIP341's `keyPathSpending` vectors as pytest params."""
+    """Load BIP341's `keyPathSpending` inputs as pytest params."""
     inputs = [
         spending
         for vector in _VECTORS["keyPathSpending"]

@@ -157,6 +157,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/musig2_test.py",
         "ecc/rfc6979_test.py",
         "ecc/ssa_test.py",
+        "ecc/ssa_tweak_test.py",
         "ecc/wycheproof_test.py",
     ),
     "curves.curve._multi_mult_x_only_var": ("ecc/ssa_test.py",),
@@ -169,6 +170,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "curves/curve_test.py",
         "ecc/frost_test.py",
         "ecc/musig2_test.py",
+        "ecc/ssa_tweak_test.py",
     ),
     "curves.curve._x_octets": (
         "curves/curve_test.py",
@@ -182,6 +184,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/musig2_test.py",
         "ecc/rfc6979_test.py",
         "ecc/ssa_test.py",
+        "ecc/ssa_tweak_test.py",
         "ecc/wycheproof_test.py",
     ),
     "curves.curve.double_mult_var": (
