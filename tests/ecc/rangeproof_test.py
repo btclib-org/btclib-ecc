@@ -289,7 +289,7 @@ def test_parse_refuses_an_exponent_past_the_cap() -> None:
     """
     octets = _octets("one ring")
     mutated = bytes([octets[0] | 19]) + octets[1:]
-    with pytest.raises(BTClibEccValueError, match="exponent not in 0..18: 19"):
+    with pytest.raises(BTClibEccValueError, match="exponent not in 0..18$"):
         RangeProof.parse(mutated)
     assert (
         RangeProof.parse(mutated, check_validity=False).serialize(check_validity=False)
@@ -524,12 +524,12 @@ def test_assert_valid_refuses_a_header_no_proof_carries() -> None:
     """The exponent and the mantissa are one flag, so they move together."""
     proof = RangeProof.parse(_octets("odd mantissa"))
 
-    err_msg = "rangeproof exponent not in 0..18: -1"
+    err_msg = "rangeproof exponent not in 0..18$"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(proof, exp=-1).assert_valid()
 
     public = RangeProof.parse(_octets("public value"))
-    err_msg = "rangeproof exponent of a public value is not -1: 3"
+    err_msg = "rangeproof exponent of a public value is not -1$"
     with pytest.raises(BTClibEccValueError, match=err_msg):
         replace_unchecked(public, exp=3).assert_valid()
 
@@ -1286,13 +1286,13 @@ def test_sign_refuses_what_it_has_no_octets_for() -> None:
     with pytest.raises(BTClibEccValueError, match=err_msg):
         sign(_BLIND, 2**64, _NONCE, _GEN)
 
-    with pytest.raises(BTClibEccValueError, match="min value not in 0..value: 8"):
+    with pytest.raises(BTClibEccValueError, match="min value not in 0..value$"):
         sign(_BLIND, 7, _NONCE, _GEN, min_value=8)
-    with pytest.raises(BTClibEccValueError, match="exponent not in -1..18: 19"):
+    with pytest.raises(BTClibEccValueError, match="exponent not in -1..18$"):
         sign(_BLIND, 7, _NONCE, _GEN, exp=19)
-    with pytest.raises(BTClibEccValueError, match="exponent not in -1..18: -2"):
+    with pytest.raises(BTClibEccValueError, match="exponent not in -1..18$"):
         sign(_BLIND, 7, _NONCE, _GEN, exp=-2)
-    with pytest.raises(BTClibEccValueError, match="min bits not in 0..64: 65"):
+    with pytest.raises(BTClibEccValueError, match="min bits not in 0..64$"):
         sign(_BLIND, 7, _NONCE, _GEN, min_bits=65)
 
     with pytest.raises(
@@ -2684,3 +2684,72 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
     with pytest.raises(BTClibEccException) as refused:
         call(secret)
     assert_secret_free(refused.value, spellings)
+
+
+@pytest.mark.parametrize(
+    "call, error",
+    [
+        (
+            lambda secret: RangeProof(
+                secret, 64, 0, (), (), BorromeanSig(bytes(32), [[1]])
+            ),
+            "rangeproof exponent not in 0..18",
+        ),
+        (
+            lambda secret: RangeProof(
+                secret, 0, 0, (), (), BorromeanSig(bytes(32), [[1]])
+            ),
+            "rangeproof exponent of a public value is not -1",
+        ),
+        (
+            lambda secret: sign(1, 5, bytes(32), secp256k1.G, min_value=secret),
+            "rangeproof min value not in 0..value",
+        ),
+        (
+            lambda secret: sign(1, 5, bytes(32), secp256k1.G, exp=secret),
+            "rangeproof exponent not in -1..18",
+        ),
+        (
+            lambda secret: sign(1, 5, bytes(32), secp256k1.G, min_bits=secret),
+            "rangeproof min bits not in 0..64",
+        ),
+        (
+            lambda secret: rangeproof._prove_params(2**63, secret, 0, 0),
+            "rangeproof range from min value does not fit 2**64",
+        ),
+    ],
+)
+@both_arms
+def test_header_and_signing_refusals_keep_no_secret(
+    call: Callable[[int], object], error: str
+) -> None:
+    """A refused bound names its constraint without retaining its value."""
+    secret = HELD_KEYS["int"]
+    with pytest.raises(BTClibEccValueError) as refused:
+        call(secret)
+    assert_secret_free(refused.value, [str(secret), *HELD_KEY_SPELLINGS])
+    assert str(refused.value) == error
+
+
+@pytest.mark.parametrize("exp", [-2, -1, 0, 18, HELD_KEYS["int"]])
+@pytest.mark.parametrize("min_value", [None, 0, 7, 2**64 - 1])
+def test_public_maximum_does_not_scale_zero(
+    monkeypatch: pytest.MonkeyPatch, exp: int, min_value: int | None
+) -> None:
+    """An unchecked public value has no range to scale by its exponent."""
+
+    def bounded_range(stop: int) -> range:
+        # Bound the work before iterating, including on a regressed build.
+        assert stop <= 64
+        return range(stop)
+
+    monkeypatch.setattr(rangeproof, "range", bounded_range, raising=False)
+    sig = BorromeanSig(bytes(32), [[1]])
+    proof = RangeProof(exp, 0, min_value, (), (), sig, check_validity=False)
+    assert proof.max_value == (min_value or 0)
+
+    # Scaling a nonzero range and checking the minimum still take place.
+    scaled = RangeProof(2, 2, 7, (), (), sig, check_validity=False)
+    assert scaled.max_value == 307
+    with pytest.raises(BTClibEccValueError, match="overflows past min value"):
+        _ = RangeProof(exp, 0, 2**64, (), (), sig, check_validity=False).max_value

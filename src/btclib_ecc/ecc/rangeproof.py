@@ -296,7 +296,7 @@ def _max_value(exp: int, mantissa: int, min_value: int) -> int:
     if mantissa:
         _assert_valid_mantissa(mantissa)
     value = _UINT64_MAX >> (64 - mantissa) if mantissa else 0
-    for _ in range(max(exp, 0)):
+    for _ in range(max(exp, 0) if value else 0):
         if value > _UINT64_MAX // 10:
             err_msg = "rangeproof max value overflows at exponent"
             raise BTClibEccValueError(err_msg)
@@ -331,9 +331,9 @@ def _assert_valid_header(exp: int, mantissa: int, min_value: int | None) -> None
         _assert_integers(min_value=min_value)
     if mantissa:
         if not 0 <= exp <= _MAX_EXP:
-            raise BTClibEccValueError(f"rangeproof exponent not in 0..18: {exp}")
+            raise BTClibEccValueError("rangeproof exponent not in 0..18")
     elif exp != -1:
-        err_msg = f"rangeproof exponent of a public value is not -1: {exp}"
+        err_msg = "rangeproof exponent of a public value is not -1"
         raise BTClibEccValueError(err_msg)
 
     _assert_valid_min_value(min_value)
@@ -465,7 +465,7 @@ def _prove_params(value: int, min_value: int, exp: int, min_bits: int) -> _Prove
         return _ProveParams(0, (1,), (0,), value, 0, 1, -1)
 
     if (min_value and value > _INT64_MAX) or (value and min_value >= _INT64_MAX):
-        err_msg = f"rangeproof range from min value {min_value} does not fit 2**64"
+        err_msg = "rangeproof range from min value does not fit 2**64"
         raise BTClibEccValueError(err_msg)
 
     # precision above what the floor leaves is precision about octets
@@ -1221,12 +1221,12 @@ def sign(
     if not 0 <= value <= _UINT64_MAX:
         raise BTClibEccValueError("rangeproof value not in 0..2**64-1")
     if not 0 <= min_value <= value:
-        err_msg = f"rangeproof min value not in 0..value: {min_value}"
+        err_msg = "rangeproof min value not in 0..value"
         raise BTClibEccValueError(err_msg)
     if not -1 <= exp <= _MAX_EXP:
-        raise BTClibEccValueError(f"rangeproof exponent not in -1..18: {exp}")
+        raise BTClibEccValueError("rangeproof exponent not in -1..18")
     if not 0 <= min_bits <= _MAX_MANTISSA:
-        raise BTClibEccValueError(f"rangeproof min bits not in 0..64: {min_bits}")
+        raise BTClibEccValueError("rangeproof min bits not in 0..64")
     nonce_bytes = bytes_from_octets(nonce, _NONCE_SIZE)
     message_bytes = bytes_from_octets(message)
     extra_commit_bytes = bytes_from_octets(extra_commit)
