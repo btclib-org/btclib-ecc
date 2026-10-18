@@ -44,6 +44,7 @@ tests/ecc/_data/sign_verify_vectors.json -text
 tests/ecc/_data/test_vectors_generate_proof.csv -text
 tests/ecc/_data/test_vectors_verify_proof.csv -text
 tests/ecc/_data/tweak_vectors.json -text
+tests/ecc/_data/wallet-test-vectors.json -text
 tests/ecc/_data/xswiftec_inv_test_vectors.csv -text
 tests/ecc/_data/zkp_generator_vectors.json -text
 tests/ecc/_data/zkp_rangeproof_fixed_vectors.json -text

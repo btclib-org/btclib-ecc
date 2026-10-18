@@ -126,8 +126,9 @@ def prv_key_tweak_add(prv_key: Integer, t: Integer, ec: Curve = secp256k1) -> in
 
     The private half of `tweak_add_var`: the public key of the answer is
     the public key of prv_key plus t*G. BIP32's private derivation is
-    this sum. The tweak is in 0..n-1, and a sum of zero is no private key
-    and is refused.
+    this sum. The two differ on the tweak: `tweak_add_var` reduces it
+    modulo n, and this refuses one out of 0..n-1, as libsecp256k1 does. A
+    sum of zero is no private key and is refused.
 
     On secp256k1 the bindings compute the sum,
     `secp256k1_ec_seckey_tweak_add`, in constant time; Python's `%` on

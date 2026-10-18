@@ -120,6 +120,7 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
     ),
     "ecc/rfc6979_test.py": ("rfc6979.json",),
     "ecc/ssa_test.py": ("bip340_test_vectors.csv",),
+    "ecc/ssa_tweak_test.py": ("wallet-test-vectors.json",),
     "ecc/wycheproof_test.py": (
         "ecdh_secp256k1_test.json",
         "ecdsa_secp256k1_sha256_bitcoin_test.json",
@@ -229,8 +230,8 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/ssa_test.py",
     ),
     "ecc.ssa.assert_batch_as_valid_": ("ecc/ssa_test.py",),
-    "ecc.ssa.prv_key_tweak_add": (),
-    "ecc.ssa.pub_key_tweak_add_var": (),
+    "ecc.ssa.prv_key_tweak_add": ("ecc/ssa_tweak_test.py",),
+    "ecc.ssa.pub_key_tweak_add_var": ("ecc/ssa_tweak_test.py",),
     "ecc.ssa.sign_": ("ecc/ssa_test.py",),
 }
 
@@ -255,10 +256,6 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 # - `curves.sec_point.prv_key_tweak_add`, a private key plus a tweak. BIP32's
 #   private derivation is this sum, so its test vectors, vendored, would
 #   close it.
-# - `ecc.ssa.prv_key_tweak_add` and `ecc.ssa.pub_key_tweak_add_var`, BIP341's
-#   tweaks. `tests/ecc/ssa_tweak_test.py` copies BIP341's wallet vectors
-#   inline; bip-0341/wallet-test-vectors.json, vendored and its module named
-#   above, would close both.
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
@@ -266,8 +263,6 @@ _WITHOUT_AN_AUTHORITY = frozenset(
         "ecc.dsa.Signer.__init__",
         "ecc.dsa.Signer.sign_",
         "ecc.dsa.sign_recoverable_",
-        "ecc.ssa.prv_key_tweak_add",
-        "ecc.ssa.pub_key_tweak_add_var",
     }
 )
 

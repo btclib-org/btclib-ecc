@@ -4,10 +4,8 @@
 
 """Tests for BIP341's x-only tweaks in `btclib_ecc.ecc.ssa`.
 
-The vectors are inputs of BIP341's `keyPathSpending`, copied from
-bip-0341/wallet-test-vectors.json of bitcoin/bips at 927b6de: each gives an
-internal private key, its x-only public key, the TapTweak and the tweaked
-private key.
+The vectors are BIP341's own, bip-0341/wallet-test-vectors.json of
+bitcoin/bips: `tests/_data/README.md` has the revision vendored.
 """
 
 from collections.abc import Callable
@@ -22,44 +20,61 @@ from btclib_ecc.exceptions import (
     BTClibEccTypeError,
     BTClibEccValueError,
 )
-from tests import REFUSED_SCALARS, both_arms, refused_secret
+from tests import REFUSED_SCALARS, both_arms, load, refused_secret, vector_id
 from tests.secret_free import assert_secret_free
 
-# internalPrivkey, internalPubkey, tweak, tweakedPrivkey
-BIP341_KEY_PATH = [
-    (
-        "6b973d88838f27366ed61c9ad6367663045cb456e28335c109e30717ae0c6baa",
-        "d6889cb081036e0faefa3a35157ad71086b123b2b144b649798b494c300a961d",
-        "b86e7be8f39bab32a6f2c0443abbc210f0edac0e2c53d501b36b64437d9c6c70",
-        "2405b971772ad26915c8dcdf10f238753a9b837e5f8e6a86fd7c0cce5b7296d9",
-    ),
-    (
-        "1e4da49f6aaf4e5cd175fe08a32bb5cb4863d963921255f33d3bc31e1343907f",
-        "187791b6f712a8ea41c8ecdd0ee77fab3e85263b37e1ec18a3651926b3a6cf27",
-        "cbd8679ba636c1110ea247542cfbd964131a6be84f873f7f3b62a777528ed001",
-        "ea260c3b10e60f6de018455cd0278f2f5b7e454be1999572789e6a9565d26080",
-    ),
-    (
-        "d3c7af07da2d54f7a7735d3d0fc4f0a73164db638b2f2f7c43f711f6d4aa7e64",
-        "93478e9488f956df2396be2ce6c5cced75f900dfa18e7dabd2428aae78451820",
-        "6af9e28dbf9d6aaf027696e2598a5b3d056f5fd2355a7fd5a37a0e5008132d30",
-        "97323385e57015b75b0339a549c56a948eb961555973f0951f555ae6039ef00d",
-    ),
-]
+_VECTORS = load("ecc", "_data", "wallet-test-vectors.json")
 
 
-@pytest.mark.parametrize("vector", BIP341_KEY_PATH)
+def script_pub_key_vectors() -> list[Any]:
+    """BIP341's `scriptPubKey` vectors as pytest params."""
+    return [
+        pytest.param(vector, id=vector_id(index))
+        for index, vector in enumerate(_VECTORS["scriptPubKey"])
+    ]
+
+
+def key_path_vectors() -> list[Any]:
+    """The inputs of BIP341's `keyPathSpending` vectors as pytest params."""
+    inputs = [
+        spending
+        for vector in _VECTORS["keyPathSpending"]
+        for spending in vector["inputSpending"]
+    ]
+    return [
+        pytest.param(spending, id=vector_id(index))
+        for index, spending in enumerate(inputs)
+    ]
+
+
+@pytest.mark.parametrize("vector", script_pub_key_vectors())
 @both_arms
-def test_bip341_key_path(vector: tuple[str, str, str, str]) -> None:
-    """The tweaked private key, and the output key and parity it has."""
-    prv_key, pub_key, tweak, tweaked = vector
-    assert ssa.prv_key_tweak_add(prv_key, tweak) == int(tweaked, 16)
+def test_bip341_output_key(vector: dict[str, Any]) -> None:
+    """The output key, and the parity each control block carries."""
+    x, parity = ssa.pub_key_tweak_add_var(
+        vector["given"]["internalPubkey"], vector["intermediary"]["tweak"]
+    )
+    assert x == int(vector["intermediary"]["tweakedPubkey"], 16)
+    for control_block in vector["expected"].get("scriptPathControlBlocks", []):
+        assert int(control_block[:2], 16) & 1 == parity
+
+
+@pytest.mark.parametrize("spending", key_path_vectors())
+@both_arms
+def test_bip341_key_path(spending: dict[str, Any]) -> None:
+    """The tweaked private key, which is the key of the tweaked output key."""
+    prv_key = spending["given"]["internalPrivkey"]
+    pub_key = spending["intermediary"]["internalPubkey"]
+    tweak = spending["intermediary"]["tweak"]
+    tweaked = int(spending["intermediary"]["tweakedPrivkey"], 16)
+
+    assert ssa.gen_keys(prv_key)[1] == int(pub_key, 16)
+    assert ssa.prv_key_tweak_add(prv_key, tweak) == tweaked
 
     x, parity = ssa.pub_key_tweak_add_var(pub_key, tweak)
-    Q = mult(int(tweaked, 16))
-    assert (Q[0], Q[1] & 1) == (x, parity)
-
-    # the internal key as its SEC octets and as its point name one x-only key
+    assert mult(tweaked)[0] == x
+    # the internal key as its point, and as the point of its private key
+    # before the negation, name the one x-only key
     P = ssa.point_from_bip340pub_key_var(pub_key)
     assert ssa.pub_key_tweak_add_var(P, tweak) == (x, parity)
     assert ssa.pub_key_tweak_add_var(mult(int(prv_key, 16)), tweak) == (x, parity)
