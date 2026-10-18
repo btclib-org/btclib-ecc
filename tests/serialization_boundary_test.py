@@ -25,7 +25,7 @@ until it is driven or given a reason.
 
 **Parametric above the byte boundary, mono-format at it.** `ec` and
 `hf` are arguments everywhere arithmetic and protocol take them --
-`sign`, `verify`, `key_agg` -- and nowhere in this family: no `parse`
+`sign`, `verify`, `key_agg_var` -- and nowhere in this family: no `parse`
 or `serialize` here declares either, and
 `test_the_family_takes_no_ec_or_hf` is what turns that from an
 agreement into a gate (issue btclib-org/btclib#1084). The *object* keeps

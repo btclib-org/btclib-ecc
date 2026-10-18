@@ -35,11 +35,11 @@ come from the caller, not from a session this module holds:
 
 - setup, once per group: `validate_threshold_info` on the *n*-participant
   `ThresholdInfo` a dealer or a DKG produced;
-- tweaking, optional and once per session: `tweak_ctx_init` and
-  `apply_tweak`, or `thresh_pubkey_and_tweak` for both in one call,
+- tweaking, optional and once per session: `tweak_ctx_init_var` and
+  `apply_tweak_var`, or `thresh_pubkey_and_tweak_var` for both in one call,
   answering a `TweakContext`;
 - round 1, the nonces: `nonce_gen` for each of the *u* selected signers,
-  then `nonce_agg` over what they published, which anyone can do;
+  then `nonce_agg_var` over what they published, which anyone can do;
 - round 2, the partial signatures: `sign` (or `deterministic_sign`) for
   each signer, `partial_sig_verify` to hold a signer to what it sent, and
   `partial_sig_agg` for the aggregate signature.
@@ -86,7 +86,7 @@ BIP445's own reference code says in its header that it is "copied or
 modified from" BIP327's: this module's tag bytes, several error
 messages (the tweak-range message among them) and the shape of
 `ThresholdInfo`/interpolation differ from BIP327's, and the
-functions that do look alike -- `nonce_agg`, `apply_tweak` -- were
+functions that do look alike -- `nonce_agg_var`, `apply_tweak_var` -- were
 checked line by line against BIP445's own reference rather than assumed
 identical from the name. Where a check found the same construction, this
 module keeps its own copy rather than importing `musig2`'s private
@@ -125,9 +125,9 @@ __all__ = [
     "SessionValues",
     "ThresholdInfo",
     "TweakContext",
-    "apply_tweak",
+    "apply_tweak_var",
     "deterministic_sign",
-    "nonce_agg",
+    "nonce_agg_var",
     "nonce_gen",
     "nonce_gen_",
     "partial_sig_agg",
@@ -135,8 +135,8 @@ __all__ = [
     "partial_sig_verify_",
     "session_values",
     "sign",
-    "thresh_pubkey_and_tweak",
-    "tweak_ctx_init",
+    "thresh_pubkey_and_tweak_var",
+    "tweak_ctx_init_var",
     "validate_threshold_info",
 ]
 
@@ -289,7 +289,7 @@ def _serialize_ids(ids: Sequence[int]) -> bytes:
     return b"".join(i.to_bytes(ID_SIZE, "big") for i in sorted(ids))
 
 
-def _derive_interpolating_value(ids: Sequence[int], signer_id: int) -> int:
+def _derive_interpolating_value_var(ids: Sequence[int], signer_id: int) -> int:
     """Return the Lagrange coefficient of `signer_id` for the secret at x = -1.
 
     Assumes `ids` holds no duplicate, which `_validate_session_params`
@@ -308,17 +308,17 @@ def _derive_interpolating_value(ids: Sequence[int], signer_id: int) -> int:
     return num * mod_inv_var(deno, secp256k1.n) % secp256k1.n
 
 
-def _derive_pubshare_at(
+def _derive_pubshare_at_var(
     ids: Sequence[int], pub_shares: Sequence[Point], x: int
 ) -> Point:
     """Interpolate the polynomial `pub_shares` sit on, evaluated at `x`.
 
-    The general form `_derive_interpolating_value` is not: that one fixes
+    The general form `_derive_interpolating_value_var` is not: that one fixes
     the evaluation point at the secret's own x = -1, this one takes any
     x, which is what checking a further pubshare against a base set, or
     reconstructing the threshold public key, both need. May answer the
     point at infinity, which is a value here and a refusal only where a
-    caller -- `_derive_thresh_pubkey` -- says it must not be.
+    caller -- `_derive_thresh_pubkey_var` -- says it must not be.
     """
     coefficients = []
     for signer_id in ids:
@@ -335,9 +335,9 @@ def _derive_pubshare_at(
     return multi_mult_var(coefficients, pub_shares, secp256k1)
 
 
-def _derive_thresh_pubkey(ids: Sequence[int], pub_shares: Sequence[Point]) -> bytes:
+def _derive_thresh_pubkey_var(ids: Sequence[int], pub_shares: Sequence[Point]) -> bytes:
     """Reconstruct the threshold public key `pub_shares` were split from."""
-    Q = _derive_pubshare_at(ids, pub_shares, -1)
+    Q = _derive_pubshare_at_var(ids, pub_shares, -1)
     if Q[1] == 0:
         raise BTClibEccValueError(_THRESH_PK_INF_ERR)
     return _cbytes(Q)
@@ -433,9 +433,9 @@ def validate_threshold_info(info: ThresholdInfo) -> None:
 
     base_ids, base_points = parsed_ids[:t], parsed_points[:t]
     for i, point in zip(parsed_ids[t:], parsed_points[t:], strict=True):
-        if _derive_pubshare_at(base_ids, base_points, i) != point:
+        if _derive_pubshare_at_var(base_ids, base_points, i) != point:
             raise BTClibEccValueError(_KEY_MATERIAL_POLY_ERR)
-    if _derive_thresh_pubkey(base_ids, base_points) != thresh_pk:
+    if _derive_thresh_pubkey_var(base_ids, base_points) != thresh_pk:
         raise BTClibEccValueError(_KEY_MATERIAL_MATCH_ERR)
 
 
@@ -451,7 +451,7 @@ class TweakContext:
     rather than each signer adding a share of it. Unlike
     `KeyAggContext`, this is not built by aggregating several keys --
     FROST's threshold public key comes from key generation whole --
-    which is why `tweak_ctx_init` takes one key and not a list.
+    which is why `tweak_ctx_init_var` takes one key and not a list.
     """
 
     Q: Point
@@ -469,15 +469,20 @@ class TweakContext:
         return _cbytes(self.Q)
 
 
-def tweak_ctx_init(thresh_pk: Octets) -> TweakContext:
-    """Return a fresh `TweakContext` over an untweaked threshold public key."""
+def tweak_ctx_init_var(thresh_pk: Octets) -> TweakContext:
+    """Return a fresh `TweakContext` over an untweaked threshold public key.
+
+    BIP445's TweakCtxInit.
+    """
     return TweakContext(_cpoint_var(thresh_pk), 1, 0)
 
 
-def apply_tweak(tweak_ctx: TweakContext, tweak: Octets, is_xonly: bool) -> TweakContext:
-    """Return the context tweaked by t, x-only or plain.
+def apply_tweak_var(
+    tweak_ctx: TweakContext, tweak: Octets, is_xonly: bool
+) -> TweakContext:
+    """Return the context tweaked by t, x-only or plain: BIP445's ApplyTweak.
 
-    `musig2.apply_tweak`'s own reasoning for the negation and the
+    `musig2.apply_tweak_var`'s own reasoning for the negation and the
     accumulators holds identically here; only the range-error message
     differs from BIP327's, per the module docstring.
     """
@@ -495,17 +500,20 @@ def apply_tweak(tweak_ctx: TweakContext, tweak: Octets, is_xonly: bool) -> Tweak
     return TweakContext(Q, g * gacc % secp256k1.n, (t + g * tacc) % secp256k1.n)
 
 
-def thresh_pubkey_and_tweak(
+def thresh_pubkey_and_tweak_var(
     thresh_pk: Octets, tweaks: Sequence[Octets], is_xonly: Sequence[bool]
 ) -> TweakContext:
-    """Build a `TweakContext` and apply the tweaks in order."""
+    """Build a `TweakContext` and apply the tweaks in order.
+
+    BIP445's TweakCtxInit followed by ApplyTweak for each tweak.
+    """
     _assert_octets_sequence(tweaks, "tweaks")
     tweaks_ = _tweaks(tweaks)
     is_xonly_ = _flags(is_xonly)
     _require_same_length(tweaks_, is_xonly_)
-    tweak_ctx = tweak_ctx_init(thresh_pk)
+    tweak_ctx = tweak_ctx_init_var(thresh_pk)
     for tweak, xonly in zip(tweaks_, is_xonly_, strict=True):
-        tweak_ctx = apply_tweak(tweak_ctx, tweak, xonly)
+        tweak_ctx = apply_tweak_var(tweak_ctx, tweak, xonly)
     return tweak_ctx
 
 
@@ -648,10 +656,12 @@ def nonce_gen(
     )
 
 
-def nonce_agg(pub_nonces: Sequence[Octets]) -> bytes:
+def nonce_agg_var(pub_nonces: Sequence[Octets]) -> bytes:
     """Aggregate the public nonces of round 1 into the 66-byte aggnonce.
 
-    `musig2.nonce_agg`'s own construction, checked line by line against
+    BIP445's NonceAgg.
+
+    `musig2.nonce_agg_var`'s own construction, checked line by line against
     BIP445's reference rather than assumed identical from the name: both
     sum each half of the pair independently and serialize a half that
     sums to infinity as the 33-zero-byte placeholder, refusing that from
@@ -718,7 +728,7 @@ def _validate_session_params(
         raise BTClibEccValueError("The ids list contains duplicate elements.")
     if (
         pub_shares is not None
-        and _derive_thresh_pubkey(ids, pub_share_points) != thresh_pk
+        and _derive_thresh_pubkey_var(ids, pub_share_points) != thresh_pk
     ):
         raise BTClibEccValueError(_KEY_MATERIAL_MATCH_ERR)
 
@@ -789,13 +799,13 @@ class SessionValues:
     """What every signer derives from a `SessionContext` before signing.
 
     - Q, gacc and tacc are the tweaked threshold public key and its
-      tweak accumulators, from `thresh_pubkey_and_tweak`
+      tweak accumulators, from `thresh_pubkey_and_tweak_var`
     - b is the coefficient combining the two halves of the nonce
     - R is the effective nonce point, R_1 + b*R_2
     - e is the BIP340 challenge, over R, Q and the message
 
     Unlike `musig2.SessionValues`, there is no cached key-aggregation
-    coefficient here: `_derive_interpolating_value` is a pure function of
+    coefficient here: `_derive_interpolating_value_var` is a pure function of
     `session_ctx.ids` and one signer's own id, and both `sign` and
     `partial_sig_verify_` read `ids` straight off the context rather than
     off a value cached here.
@@ -826,7 +836,7 @@ def session_values(session_ctx: SessionContext) -> SessionValues:
         session_ctx.pub_shares,
         session_ctx.thresh_pk,
     )
-    tweak_ctx = thresh_pubkey_and_tweak(
+    tweak_ctx = thresh_pubkey_and_tweak_var(
         session_ctx.thresh_pk, session_ctx.tweaks, session_ctx.is_xonly
     )
     Q, gacc, tacc = tweak_ctx.Q, tweak_ctx.gacc, tweak_ctx.tacc
@@ -907,7 +917,7 @@ def sign(
                 "The signer's pubshare does not match its entry in the pubshares list."
             )
 
-    a = _derive_interpolating_value(session_ctx.ids, signer_id)
+    a = _derive_interpolating_value_var(session_ctx.ids, signer_id)
     g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
     d = g * values.gacc * d_ % secp256k1.n
     s = (k_1_ + values.b * k_2_ + values.e * a * d) % secp256k1.n
@@ -996,7 +1006,7 @@ def deterministic_sign(
         raise BTClibEccValueError(_AGG_OTHER_NONCE_PRESENT_ERR)
     agg_other_nonce_bytes = b"" if agg_other is None else agg_other
 
-    tweak_ctx = thresh_pubkey_and_tweak(thresh_pk_bytes, tweaks, is_xonly)
+    tweak_ctx = thresh_pubkey_and_tweak_var(thresh_pk_bytes, tweaks, is_xonly)
     tweaked_thresh_pk_xonly = tweak_ctx.x_only_pub_key
 
     d_ = int.from_bytes(bytes_from_octets(sec_share, _SCALAR_SIZE), "big")
@@ -1045,7 +1055,7 @@ def deterministic_sign(
         agg_nonce = pub_nonce
     else:
         try:
-            agg_nonce = nonce_agg([pub_nonce, agg_other_nonce])
+            agg_nonce = nonce_agg_var([pub_nonce, agg_other_nonce])
         except InvalidContributionError as e:
             # the coordinator's own aggregate is what could be wrong:
             # pub_nonce is this call's own, freshly built and valid
@@ -1096,7 +1106,7 @@ def partial_sig_verify_(
         and _cbytes(P) != session_ctx.pub_shares[session_ctx.ids.index(signer_id)]
     ):
         return False
-    a = _derive_interpolating_value(session_ctx.ids, signer_id)
+    a = _derive_interpolating_value_var(session_ctx.ids, signer_id)
     g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
     g = g * values.gacc % secp256k1.n
     lhs = mult(s, secp256k1.G, secp256k1)
@@ -1132,7 +1142,7 @@ def partial_sig_verify(
         raise BTClibEccValueError(err_msg)
     if not 0 <= i < len(ids):
         raise BTClibEccValueError("The signer index must satisfy 0 <= i <= u - 1.")
-    agg_nonce = nonce_agg(pub_nonces)
+    agg_nonce = nonce_agg_var(pub_nonces)
     session_ctx = SessionContext(
         n, t, ids, pub_shares, thresh_pk, agg_nonce, tweaks, is_xonly, msg
     )

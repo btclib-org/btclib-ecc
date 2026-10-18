@@ -38,7 +38,7 @@ and those are put to `_prove_params` against numbers
 tests at the end holding the same arguments to the library.
 
 Every entry is asked something further still, and this one needs no
-signature at all: `pubk_rings` and `sign_key_idx`, given the entry's own
+signature at all: `pubk_rings_var` and `sign_key_idx`, given the entry's own
 commitment and value, have to name keys that add up to the blinding
 factor the entry records. Nothing in a proof states that sum, and the
 published ring commitments cannot be asked to state it -- each carries a
@@ -55,7 +55,7 @@ those draws is reached at one in about 2**128. What puts them is a
 chain a test writes.
 
 And every entry is verified and rewound, which the nonce on file is
-what makes possible: `verify` walks the rings `pubk_rings` rebuilds
+what makes possible: `verify` walks the rings `pubk_rings_var` rebuilds
 back to the `e0` zkp wrote, and `rewind` answers the blinding factor
 and the value the entry records from that nonce alone.
 These are the proofs this tree asked zkp to write;
@@ -101,8 +101,8 @@ from btclib_ecc.ecc.pedersen import (
     _RANGEPROOF_TAG,
     _bytes_from_point_var,
     _point_from_x_var,
-    bytes_from_commitment,
-    bytes_from_generator,
+    bytes_from_commitment_var,
+    bytes_from_generator_var,
     commit,
     generator_from_seed,
     second_generator,
@@ -611,7 +611,7 @@ def test_pubk_rings_open_at_the_recorded_blinding_factor(
         bytes([recorded[0] ^ 8]) + recorded[1:]
     )
 
-    rings = proof.pubk_rings(commitment, _GEN)
+    rings = proof.pubk_rings_var(commitment, _GEN)
     assert tuple(len(ring) for ring in rings) == proof.rsizes
     stated = tuple(
         _point_from_x_var(x, sign)
@@ -715,7 +715,7 @@ def test_a_mantissa_the_header_cannot_state_refuses_where_it_is_read(
     with pytest.raises(BTClibEccValueError, match=err_msg):
         proof.serialize(check_validity=False)
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        proof.pubk_rings(commitment, _GEN, check_validity=False)
+        proof.pubk_rings_var(commitment, _GEN, check_validity=False)
 
 
 def test_pubk_rings_refuses_what_names_no_public_key() -> None:
@@ -731,7 +731,7 @@ def test_pubk_rings_refuses_what_names_no_public_key() -> None:
     proof = RangeProof.parse(bytes.fromhex(vector["proof"]))
     commitment = commit(vector["blind"], vector["value"], _GEN)
     with pytest.raises(BTClibEccValueError, match="point not on curve"):
-        proof.pubk_rings((1, 2), _GEN)
+        proof.pubk_rings_var((1, 2), _GEN)
 
     # 7 is no x-coordinate of this curve, and it is a ring commitment
     # `assert_valid` takes: what a proof states there is an integer of
@@ -739,7 +739,7 @@ def test_pubk_rings_refuses_what_names_no_public_key() -> None:
     with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
         replace_unchecked(
             proof, ring_commitments=(7, *proof.ring_commitments[1:])
-        ).pubk_rings(commitment, _GEN)
+        ).pubk_rings_var(commitment, _GEN)
 
     public = RangeProof.parse(_octets("public value"))
     min_value = public.min_value
@@ -747,7 +747,7 @@ def test_pubk_rings_refuses_what_names_no_public_key() -> None:
     assert min_value is not None
     err_msg = "last ring commitment is the point at infinity"
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        public.pubk_rings(mult(min_value, second_generator(), secp256k1), _GEN)
+        public.pubk_rings_var(mult(min_value, second_generator(), secp256k1), _GEN)
 
 
 def test_pubk_rings_does_not_check_the_proof_twice() -> None:
@@ -760,9 +760,9 @@ def test_pubk_rings_does_not_check_the_proof_twice() -> None:
     vector = _vector("odd mantissa")
     proof = RangeProof.parse(bytes.fromhex(vector["proof"]))
     commitment = commit(vector["blind"], vector["value"], _GEN)
-    assert proof.pubk_rings(commitment, _GEN, check_validity=False) == proof.pubk_rings(
-        commitment, _GEN
-    )
+    assert proof.pubk_rings_var(
+        commitment, _GEN, check_validity=False
+    ) == proof.pubk_rings_var(commitment, _GEN)
 
 
 def _seed(vector: dict[str, Any]) -> bytes:
@@ -815,7 +815,7 @@ def test_the_nonce_chain_writes_the_ring_commitments_a_proof_states(
 
     The last ring's factor is minus the sum of the others, and
     `secp256k1_rangeproof_sign_impl` adds the caller's own to it, which
-    is the head `pubk_rings` recovers rather than reads.
+    is the head `pubk_rings_var` recovers rather than reads.
     """
     proof = RangeProof.parse(bytes.fromhex(vector["proof"]))
     commitment = commit(vector["blind"], vector["value"], _GEN)
@@ -837,7 +837,9 @@ def test_the_nonce_chain_writes_the_ring_commitments_a_proof_states(
     stated = [_bytes_from_point_var(head, _RANGEPROOF_TAG) for head in heads[:-1]]
     assert tuple(int.from_bytes(o[1:], "big") for o in stated) == proof.ring_commitments
     assert tuple(bool(o[0]) for o in stated) == proof.signs
-    assert tuple(ring[0] for ring in proof.pubk_rings(commitment, _GEN)) == tuple(heads)
+    assert tuple(ring[0] for ring in proof.pubk_rings_var(commitment, _GEN)) == tuple(
+        heads
+    )
 
 
 @pytest.mark.parametrize("vector", _VECTORS, ids=_IDS)
@@ -866,7 +868,7 @@ def test_the_nonce_chain_answers_every_s_the_signature_did_not_write(
 def test_nonce_chain_refuses_a_commitment_that_is_no_point() -> None:
     """The commitment is required on the curve, before any seed exists.
 
-    The refusal is the explicit one, `pubk_rings`' on the argument of
+    The refusal is the explicit one, `pubk_rings_var`' on the argument of
     the same name. `_bytes_from_point_var` would turn the same pair down
     where the seed is written, so what the explicit check fixes is
     where the refusal happens rather than whether it happens.
@@ -895,7 +897,7 @@ def test_nonce_chain_refuses_a_commitment_at_infinity() -> None:
 
 
 def test_nonce_chain_does_not_check_the_proof_twice() -> None:
-    """`check_validity` is `pubk_rings`' flag and means the same here.
+    """`check_validity` is `pubk_rings_var`' flag and means the same here.
 
     The chain reads the mantissa, the exponent and `min_value`, which
     `assert_valid` has already held against each other, so a caller
@@ -1254,7 +1256,7 @@ def test_a_proof_written_here_opens_at_its_own_blinding_factor(
     proof = _written(arguments)
     assert header[2] <= value <= proof.max_value
 
-    rings = proof.pubk_rings(commit(_BLIND, value, _GEN), _GEN)
+    rings = proof.pubk_rings_var(commit(_BLIND, value, _GEN), _GEN)
     stated = tuple(
         _point_from_x_var(x, sign_bit)
         for x, sign_bit in zip(proof.ring_commitments, proof.signs, strict=True)
@@ -1375,7 +1377,7 @@ _LAST_RING = "ring commitment 2"
     "method, what, value",
     [
         (method, what, value)
-        for method in ["serialize", "pubk_rings", "nonce_chain", "sign_key_idx"]
+        for method in ["serialize", "pubk_rings_var", "nonce_chain", "sign_key_idx"]
         for what in ["exp", "mantissa", "min_value", "ring commitment 0", _LAST_RING]
         for value in _NOT_INTEGERS
         if not (what == "min_value" and value is None)
@@ -1396,7 +1398,7 @@ def test_the_methods_refuse_a_field_that_is_no_integer_unchecked(
     unchecked = replace_unchecked(proof, **_changed(proof, what, value))
     calls = {
         "serialize": lambda: unchecked.serialize(check_validity=False),
-        "pubk_rings": lambda: unchecked.pubk_rings(
+        "pubk_rings_var": lambda: unchecked.pubk_rings_var(
             commitment, _GEN, check_validity=False
         ),
         "nonce_chain": lambda: unchecked.nonce_chain(
@@ -1592,7 +1594,7 @@ def test_a_recorded_proof_holds_for_its_own_commitment(vector: dict[str, Any]) -
 
     The proof is octets zkp signed and the commitment is built here from
     the entry's own blinding factor and value, so what this asks is
-    whether the walk over the rings `pubk_rings` rebuilds closes on the
+    whether the walk over the rings `pubk_rings_var` rebuilds closes on the
     `e0` those octets carry. A commitment to another value is asked
     beside it: the last ring commitment is recovered from the
     commitment, so every ring's message changes with it and nothing
@@ -1762,7 +1764,7 @@ def test_verify_refuses_a_ring_key_at_infinity() -> None:
         ),
     )
     commitment = commit(vector["blind"], vector["value"], _GEN)
-    rings = holed.pubk_rings(commitment, _GEN)
+    rings = holed.pubk_rings_var(commitment, _GEN)
     assert rings[0][1] == INF
     with pytest.raises(
         BTClibEccRuntimeError, match="ring key is the point at infinity"
@@ -2584,7 +2586,7 @@ def test_a_proof_under_a_derived_generator_crosses_to_zkp() -> None:
     seed = bytes(31) + b"\x2a"
     gen_bytes = zkp_generator.generate(seed)
     gen = generator_from_seed(seed)
-    assert bytes_from_generator(gen) == gen_bytes
+    assert bytes_from_generator_var(gen) == gen_bytes
     assert gen != _GEN
 
     blind = bytes.fromhex(_BLIND)
@@ -2593,7 +2595,7 @@ def test_a_proof_under_a_derived_generator_crosses_to_zkp() -> None:
     message = b"one asset of several"
     point = commit(_BLIND, value, gen)
     commitment = zkp_generator.pedersen_commit(blind, value, gen_bytes)
-    assert bytes_from_commitment(point) == commitment
+    assert bytes_from_commitment_var(point) == commitment
 
     proof = sign(_BLIND, value, _NONCE, gen, min_bits=8, message=message)
     octets = proof.serialize()

@@ -88,8 +88,8 @@ BINARY_PARSERS: dict[str, Callable[[bytes], Any]] = {
     "point_from_octets_var": point_from_octets_var,
     "ssa.point_from_bip340pub_key_var": ssa.point_from_bip340pub_key_var,
     "ellswift.decode_var": ellswift.decode_var,
-    "pedersen.commitment_from_octets": pedersen.commitment_from_octets,
-    "pedersen.generator_from_octets": pedersen.generator_from_octets,
+    "pedersen.commitment_from_octets_var": pedersen.commitment_from_octets_var,
+    "pedersen.generator_from_octets_var": pedersen.generator_from_octets_var,
 }
 
 # The same contract, for what a user pastes rather than what a peer
@@ -306,9 +306,9 @@ def _wire_list(sample: bytes) -> st.SearchStrategy[tuple[list[bytes]]]:
 
 
 WIRE_FUNCTIONS: dict[str, tuple[Callable[..., Any], type, st.SearchStrategy[Any]]] = {
-    "musig2.nonce_agg": (musig2.nonce_agg, bytes, _wire_list(_PUB_NONCE)),
-    "musig2.key_agg": (musig2.key_agg, musig2.KeyAggContext, _wire_list(_KEY)),
-    "frost.nonce_agg": (frost.nonce_agg, bytes, _wire_list(_PUB_NONCE)),
+    "musig2.nonce_agg_var": (musig2.nonce_agg_var, bytes, _wire_list(_PUB_NONCE)),
+    "musig2.key_agg_var": (musig2.key_agg_var, musig2.KeyAggContext, _wire_list(_KEY)),
+    "frost.nonce_agg_var": (frost.nonce_agg_var, bytes, _wire_list(_PUB_NONCE)),
     "dleq.verify_proof": (
         dleq.verify_proof,
         bool,
@@ -350,9 +350,9 @@ def test_wire_function_honors_the_exception_contract(
 
 def test_the_wire_samples_are_accepted() -> None:
     """A sample the function refuses would make every mutation a refusal."""
-    assert musig2.nonce_agg([_PUB_NONCE])
-    assert isinstance(musig2.key_agg([_KEY]), musig2.KeyAggContext)
-    assert frost.nonce_agg([_PUB_NONCE])
+    assert musig2.nonce_agg_var([_PUB_NONCE])
+    assert isinstance(musig2.key_agg_var([_KEY]), musig2.KeyAggContext)
+    assert frost.nonce_agg_var([_PUB_NONCE])
     assert dleq.verify_proof(_DLEQ_A, _KEY, _DLEQ_A, _DLEQ_PROOF)
     assert ssa_adaptor.verify(_SSA_PRE_SIG, _MSG, _X_ONLY_KEY, _KEY)
     assert ecdsa_adaptor.verify(_ECDSA_ADAPTOR_SIG, _MSG, _KEY, _KEY)

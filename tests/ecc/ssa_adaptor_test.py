@@ -70,10 +70,10 @@ def test_extract_vectors(vector: dict[str, Any]) -> None:
     args = (vector["pre_sig"], vector["msg"], vector["pk"])
     T = point_from_pub_key(vector["adaptor"])
     if flags["extract_success"]:
-        assert (ssa_adaptor.extract(*args) == T) is flags["extracted_val_correct"]
+        assert (ssa_adaptor.extract_var(*args) == T) is flags["extracted_val_correct"]
     else:
         with pytest.raises(BTClibEccValueError):
-            ssa_adaptor.extract(*args)
+            ssa_adaptor.extract_var(*args)
     assert ssa_adaptor.verify(*args, T) is flags["extracted_val_correct"]
 
 
@@ -91,7 +91,7 @@ def test_adapt_vectors(vector: dict[str, Any]) -> None:
 @both_arms
 def test_extract_adaptor_vectors(vector: dict[str, Any]) -> None:
     """The secret is upstream's, or not, as upstream says."""
-    t = ssa_adaptor.extract_adaptor(vector["sig"], vector["pre_sig"])
+    t = ssa_adaptor.extract_adaptor_var(vector["sig"], vector["pre_sig"])
     expected = vector["checks"]["check_extract_sec"]["expected"]
     assert (t.to_bytes(32, "big").hex() == vector["sec_adaptor"]) is expected
 
@@ -122,11 +122,11 @@ def test_round_trip(d: int, nonce: int) -> None:
     """
     pre_sig = ssa_adaptor.presign(_MSG, d, _T, _AUX, nonce=nonce)
     assert ssa_adaptor.verify(pre_sig, _MSG, _X_P, _T)
-    assert ssa_adaptor.extract(pre_sig, _MSG, _X_P) == _T
+    assert ssa_adaptor.extract_var(pre_sig, _MSG, _X_P) == _T
     sig = ssa_adaptor.adapt(pre_sig, _T_SEC)
     assert ssa.verify_(_MSG, _X_P, sig)
-    assert ssa_adaptor.extract_adaptor(sig, pre_sig) == _T_SEC
-    assert ssa_adaptor.extract_adaptor(sig.serialize(), pre_sig) == _T_SEC
+    assert ssa_adaptor.extract_adaptor_var(sig, pre_sig) == _T_SEC
+    assert ssa_adaptor.extract_adaptor_var(sig.serialize(), pre_sig) == _T_SEC
 
 
 def test_round_trip_reaches_both_parities() -> None:
@@ -183,7 +183,7 @@ def test_extract_refuses_an_adaptor_point_at_infinity() -> None:
     sig = ssa.sign_(_MSG, _D, _AUX)
     pre_sig = b"\x02" + sig.serialize()
     with pytest.raises(BTClibEccValueError, match="adaptor point is infinity"):
-        ssa_adaptor.extract(pre_sig, _MSG, _X_P)
+        ssa_adaptor.extract_var(pre_sig, _MSG, _X_P)
     assert not ssa_adaptor.verify(pre_sig, _MSG, _X_P, _T)
 
 
@@ -226,15 +226,15 @@ def test_extract_adaptor_refuses_what_is_not_an_adaptation() -> None:
 
     other = ssa.sign_(_MSG, _D, _AUX)
     with pytest.raises(BTClibEccValueError, match="r does not match"):
-        ssa_adaptor.extract_adaptor(other, pre_sig)
+        ssa_adaptor.extract_adaptor_var(other, pre_sig)
 
     out_of_range = ssa.Sig(sig.r, sig.s + ec.n, check_validity=False)
     with pytest.raises(BTClibEccValueError, match="s not in"):
-        ssa_adaptor.extract_adaptor(out_of_range, pre_sig)
+        ssa_adaptor.extract_adaptor_var(out_of_range, pre_sig)
 
     other_curve = ssa.Sig(sig.r, sig.s, CURVES["secp256r1"], check_validity=False)
     with pytest.raises(BTClibEccValueError, match="secp256k1"):
-        ssa_adaptor.extract_adaptor(other_curve, pre_sig)
+        ssa_adaptor.extract_adaptor_var(other_curve, pre_sig)
 
 
 # --------------------------------------------------------------------

@@ -80,7 +80,7 @@ from btclib_ecc.hashes import tagged_hash
 __all__ = [
     "commit_entropy_",
     "commit_nonce_",
-    "commit_point_",
+    "commit_point_var_",
 ]
 
 
@@ -169,7 +169,7 @@ def commit_nonce_(
     return tweaked_nonce, receipt
 
 
-def commit_point_(
+def commit_point_var_(
     commit_hash: Octets,
     receipt: Point,
     tag: bytes,

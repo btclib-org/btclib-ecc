@@ -18,9 +18,9 @@ signs, because signing is interactive and no library call can be: the
 signers exchange nonces, then partial signatures, and each exchange is
 somebody else's network. The rounds are
 
-- key aggregation, once per group: `key_sort`, `key_agg`, `apply_tweak`
-  and `key_agg_and_tweak`, answering a `KeyAggContext`;
-- round 1, the nonces: `nonce_gen` for each signer, then `nonce_agg`
+- key aggregation, once per group: `key_sort`, `key_agg_var`, `apply_tweak_var`
+  and `key_agg_and_tweak_var`, answering a `KeyAggContext`;
+- round 1, the nonces: `nonce_gen` for each signer, then `nonce_agg_var`
   over what they published, which anyone can do;
 - round 2, the partial signatures: `sign` (or `deterministic_sign`) for
   each signer, `partial_sig_verify` to hold a signer to what it sent,
@@ -151,14 +151,14 @@ __all__ = [
     "SessionContext",
     "SessionValues",
     "adapt",
-    "apply_tweak",
+    "apply_tweak_var",
     "deterministic_sign",
     "extract_adaptor",
     "individual_pub_key",
-    "key_agg",
-    "key_agg_and_tweak",
+    "key_agg_and_tweak_var",
+    "key_agg_var",
     "key_sort",
-    "nonce_agg",
+    "nonce_agg_var",
     "nonce_gen",
     "nonce_gen_",
     "partial_sig_agg",
@@ -365,8 +365,8 @@ class KeyAggContext:
         return self.Q[0].to_bytes(secp256k1.p_size, "big")
 
 
-def key_agg(pub_keys: Sequence[Octets]) -> KeyAggContext:
-    """Aggregate plain public keys into a `KeyAggContext`.
+def key_agg_var(pub_keys: Sequence[Octets]) -> KeyAggContext:
+    """Aggregate plain public keys into a `KeyAggContext`: BIP327's KeyAgg.
 
     The order of the list is part of the key: aggregate the same keys in
     another order and the group is another group. `key_sort` is the
@@ -406,10 +406,10 @@ def key_agg(pub_keys: Sequence[Octets]) -> KeyAggContext:
     return KeyAggContext(Q, 1, 0)
 
 
-def apply_tweak(
+def apply_tweak_var(
     key_agg_ctx: KeyAggContext, tweak: Octets, is_xonly: bool
 ) -> KeyAggContext:
-    """Return the context tweaked by t, x-only or plain.
+    """Return the context tweaked by t, x-only or plain: BIP327's ApplyTweak.
 
     An x-only tweak is a BIP341 taproot commitment: it applies to the
     even-y point, so an odd-y Q is negated first and the negation is
@@ -440,21 +440,21 @@ def apply_tweak(
     return KeyAggContext(Q, g * gacc % secp256k1.n, (t + g * tacc) % secp256k1.n)
 
 
-def key_agg_and_tweak(
+def key_agg_and_tweak_var(
     pub_keys: Sequence[Octets],
     tweaks: Sequence[Octets],
     is_xonly: Sequence[bool],
 ) -> KeyAggContext:
-    """Aggregate the keys, then apply the tweaks in order."""
-    # pub_keys is key_agg's own to guard, below; tweaks is only this
+    """Aggregate the keys, then apply the tweaks: KeyAgg, then ApplyTweak."""
+    # pub_keys is key_agg_var's own to guard, below; tweaks is only this
     # function's, `_tweaks` having no other caller that already checked it
     _assert_octets_sequence(tweaks, "tweaks")
     tweaks_ = _tweaks(tweaks)
     is_xonly = _flags(is_xonly)
     _require_same_length(tweaks_, is_xonly)
-    key_agg_ctx = key_agg(pub_keys)
+    key_agg_ctx = key_agg_var(pub_keys)
     for tweak, xonly in zip(tweaks_, is_xonly, strict=True):
-        key_agg_ctx = apply_tweak(key_agg_ctx, tweak, xonly)
+        key_agg_ctx = apply_tweak_var(key_agg_ctx, tweak, xonly)
     return key_agg_ctx
 
 
@@ -567,8 +567,10 @@ def nonce_gen(
     )
 
 
-def nonce_agg(pub_nonces: Sequence[Octets]) -> bytes:
+def nonce_agg_var(pub_nonces: Sequence[Octets]) -> bytes:
     """Aggregate the public nonces of round 1 into the 66-byte aggnonce.
+
+    BIP327's NonceAgg.
 
     Anybody can do this -- there is no secret in it -- and a signer that
     disagrees with the result is free to recompute it: the aggregate
@@ -659,7 +661,7 @@ class SessionContext:
         adaptor: Octets | None = None,
     ) -> None:
         # this constructor is a direct entry point of its own, not only
-        # reached through key_agg_and_tweak, so pub_keys and tweaks are
+        # reached through key_agg_and_tweak_var, so pub_keys and tweaks are
         # both its own to guard
         _assert_octets_sequence(pub_keys, "pub_keys")
         _assert_octets_sequence(tweaks, "tweaks")
@@ -721,9 +723,10 @@ def session_values(session_ctx: SessionContext) -> SessionValues:
 
     `L`, `second` and `pub_keys_set` are computed here too, once, and not
     because deriving them needs anything above -- they are pure functions of
-    `session_ctx.pub_keys` alone, the same as `key_agg`'s own `L` and `second`,
-    which it likewise computes once and reuses for every key. Computed again
-    here rather than threaded out of `key_agg_and_tweak` above: doing that would
+    `session_ctx.pub_keys` alone, the same as `key_agg_var`'s own `L` and
+    `second`, which it likewise computes once and reuses for every key.
+    Computed again here rather than threaded out of `key_agg_and_tweak_var`
+    above: doing that would
     widen `KeyAggContext`, which callers outside this module already read, for a
     value only `_session_key_agg_coeff` wants. What earns them a place on
     `SessionValues` instead of a second cached field on `SessionContext` is that
@@ -733,7 +736,7 @@ def session_values(session_ctx: SessionContext) -> SessionValues:
     """
     if session_ctx._values is not None:
         return session_ctx._values
-    key_agg_ctx = key_agg_and_tweak(
+    key_agg_ctx = key_agg_and_tweak_var(
         session_ctx.pub_keys, session_ctx.tweaks, session_ctx.is_xonly
     )
     Q = key_agg_ctx.Q
@@ -899,7 +902,7 @@ def deterministic_sign(
         sk = _bytes_xor(sk, tagged_hash(_AUX_TAG, bytes_from_octets(rand)))
     agg_other_nonce = bytes_from_octets(agg_other_nonce, _NONCE_SIZE)
     msg = bytes_from_octets(msg)
-    agg_pk = key_agg_and_tweak(pub_keys, tweaks, is_xonly).x_only_pub_key
+    agg_pk = key_agg_and_tweak_var(pub_keys, tweaks, is_xonly).x_only_pub_key
 
     k_1 = _det_nonce_hash(sk, agg_other_nonce, agg_pk, msg, 0) % secp256k1.n
     k_2 = _det_nonce_hash(sk, agg_other_nonce, agg_pk, msg, 1) % secp256k1.n
@@ -910,7 +913,7 @@ def deterministic_sign(
         + individual_pub_key(q)
     )
     try:
-        agg_nonce = nonce_agg([pub_nonce, agg_other_nonce])
+        agg_nonce = nonce_agg_var([pub_nonce, agg_other_nonce])
     except InvalidContributionError as e:
         # whoever aggregated the other nonces is accountable for them,
         # and there is no signer index to name: what this party received
@@ -978,9 +981,9 @@ def partial_sig_verify_(
     so a session that carries one takes the Python arm regardless of the other
     two conditions, or raises where the bindings are required
     (`curves.set_libsecp256k1_serving`). Nothing else in this module is
-    delegated -- `key_agg`, `key_sort` and `nonce_agg` measured too close to
-    their Python cost, or run once per session already, to be worth a second
-    code path.
+    delegated -- `key_agg_var`, `key_sort` and `nonce_agg_var` measured too
+    close to their Python cost, or run once per session already, to be worth
+    a second code path.
 
     The signer's pubkey has to be one of the session's -- a membership test with
     no C equivalent, `musig_partial_sig_verify` answering a verdict for whatever
@@ -1073,7 +1076,7 @@ def partial_sig_verify(
         raise BTClibEccValueError(err_msg)
     if not 0 <= i < len(pub_keys):
         raise BTClibEccValueError("The signer index must satisfy 0 <= i <= u - 1.")
-    agg_nonce = nonce_agg(pub_nonces)
+    agg_nonce = nonce_agg_var(pub_nonces)
     session_ctx = SessionContext(agg_nonce, pub_keys, tweaks, is_xonly, msg)
     return partial_sig_verify_(psig, pub_nonces[i], pub_keys[i], session_ctx)
 

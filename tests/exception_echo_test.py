@@ -122,13 +122,16 @@ _CASES: dict[str, tuple[Callable[[], Any], int | bytes]] = {
     "mult_pub_key": (lambda: mult_pub_key(2, SEC), PRV_INT),
     "ecies.encrypt": (lambda: ecies.encrypt(b"m", SEC, _forbid), PRV_INT),
     "ecies.derive_keys": (lambda: ecies.derive_keys(1, SEC), PRV_INT),
-    "musig2.key_agg": (lambda: musig2.key_agg([b"\x02" + _G_SEC, SEC]), PRV_INT),
-    "pedersen.commitment_from_octets": (
-        lambda: pedersen.commitment_from_octets(b"\x08" + PRV),
+    "musig2.key_agg_var": (
+        lambda: musig2.key_agg_var([b"\x02" + _G_SEC, SEC]),
         PRV_INT,
     ),
-    "pedersen.generator_from_octets": (
-        lambda: pedersen.generator_from_octets(b"\x0a" + PRV),
+    "pedersen.commitment_from_octets_var": (
+        lambda: pedersen.commitment_from_octets_var(b"\x08" + PRV),
+        PRV_INT,
+    ),
+    "pedersen.generator_from_octets_var": (
+        lambda: pedersen.generator_from_octets_var(b"\x0a" + PRV),
         PRV_INT,
     ),
     "pedersen.generator_from_seed": (

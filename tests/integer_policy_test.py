@@ -59,7 +59,7 @@ _FROST_SESSION = frost.SessionContext(
     [0],
     [_FROST_PUB_SHARE],
     _FROST_PUB_SHARE,
-    frost.nonce_agg([_FROST_PUB_NONCE]),
+    frost.nonce_agg_var([_FROST_PUB_NONCE]),
     [],
     [],
     b"msg",

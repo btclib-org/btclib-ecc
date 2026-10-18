@@ -47,9 +47,9 @@ import pytest
 from btclib_ecc.curves import mult, secp256k1
 from btclib_ecc.ecc.pedersen import (
     _point_from_x_var,
-    bytes_from_commitment,
+    bytes_from_commitment_var,
     commit,
-    commitment_from_octets,
+    commitment_from_octets_var,
     second_generator,
 )
 from btclib_ecc.ecc.rangeproof import RangeProof, rewind, verify
@@ -152,7 +152,7 @@ def test_the_rings_open_at_the_published_blinding_factor(
     The commitment comes first because everything after it hangs from
     it: `ecc.pedersen.commit` over the published blinding factor and
     value has to be the point whose octets upstream published beside
-    the proof, which is what `bytes_from_commitment` writes. Reading its
+    the proof, which is what `bytes_from_commitment_var` writes. Reading its
     residuosity bit as parity answers a different point for some of
     these vectors and the same point for the rest, with nothing in the
     octets saying which.
@@ -165,9 +165,9 @@ def test_the_rings_open_at_the_published_blinding_factor(
     """
     proof = RangeProof.parse(bytes.fromhex(vector["proof"]))
     commitment = commit(vector["blind"], vector["value"], _GEN)
-    assert bytes_from_commitment(commitment) == bytes.fromhex(vector["commitment"])
+    assert bytes_from_commitment_var(commitment) == bytes.fromhex(vector["commitment"])
 
-    rings = proof.pubk_rings(commitment, _GEN)
+    rings = proof.pubk_rings_var(commitment, _GEN)
     stated = tuple(
         _point_from_x_var(x, sign)
         for x, sign in zip(proof.ring_commitments, proof.signs, strict=True)
@@ -187,14 +187,14 @@ def test_the_signature_holds_for_the_published_commitment(
     """The rings walked back to the `e0` upstream published.
 
     The commitment is the one published beside the proof, lifted with
-    `ecc.pedersen.commitment_from_octets` rather than recomputed from
+    `ecc.pedersen.commitment_from_octets_var` rather than recomputed from
     the blinding factor: everything the walk hangs from is then read
     out of the vector, the last ring commitment it recovers included.
 
     A turned octet of the signature beside it, because a walk that
     accepts everything accepts these too.
     """
-    commitment = commitment_from_octets(vector["commitment"])
+    commitment = commitment_from_octets_var(vector["commitment"])
     octets = bytes.fromhex(vector["proof"])
     assert verify(commitment, octets, _GEN)
 
@@ -223,7 +223,7 @@ def test_the_published_nonce_reads_back_what_upstream_reads_back(
     reading it out of the vector is what leaves the nonce as the only
     thing the recovery hangs from.
     """
-    commitment = commitment_from_octets(vector["commitment"])
+    commitment = commitment_from_octets_var(vector["commitment"])
     rewound = rewind(commitment, bytes.fromhex(vector["proof"]), _nonce(vector), _GEN)
     assert rewound.blind == int(vector["blind"], 16)
     assert rewound.value == vector["value"]
@@ -245,7 +245,7 @@ def test_the_maximum_length_message_comes_back_with_its_padding() -> None:
     the right length that is not this one -- fails here.
     """
     vector = _BY_ID["test_rangeproof_fixed_vectors_reproducible vector_0"]
-    commitment = commitment_from_octets(vector["commitment"])
+    commitment = commitment_from_octets_var(vector["commitment"])
     rewound = rewind(commitment, bytes.fromhex(vector["proof"]), _nonce(vector), _GEN)
 
     assert rewound.message[:_MAX_MESSAGE_LEN] == b"\xff" * _MAX_MESSAGE_LEN
