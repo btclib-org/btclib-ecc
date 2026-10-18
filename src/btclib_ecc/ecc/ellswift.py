@@ -16,8 +16,8 @@ This module stops at the map. What BIP324 builds on it -- the x-only
 ECDH over two encodings, the key schedule, the cipher and the packet
 framing -- is a protocol's, and not a fact about a curve.
 
-`decode` is the map, and it is deterministic. `encode` and `create` are
-its inverse, and are not: up to eight (u, t) pairs decode to one
+`decode_var` is the map, and it is deterministic. `encode_var` and
+`create` are its inverse, and are not: up to eight (u, t) pairs decode to one
 x-coordinate, one of them is picked at random, and the randomness is the
 point -- an encoding derived from the key alone would be recognizable by
 anyone who could derive it too. So there is no deterministic option here
