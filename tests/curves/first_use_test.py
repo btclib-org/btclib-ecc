@@ -54,7 +54,7 @@ _LRU_CACHES = (
 _PRV = 0x5EED0214
 _PUB = mult(_PRV, secp256k1.G, secp256k1)
 _MSGS = [sha256(bytes([i])).digest() for i in range(THREADS)]
-_ELL = [ellswift.create_var(0x1000 + i, secp256k1) for i in range(THREADS)]
+_ELL = [ellswift.create(0x1000 + i, secp256k1) for i in range(THREADS)]
 
 
 @pytest.fixture(autouse=True)

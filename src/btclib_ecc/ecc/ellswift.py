@@ -61,7 +61,7 @@ from btclib_ecc.exceptions import (
 from btclib_ecc.number_theory import legendre_symbol_var, mod_inv_var, mod_sqrt_var
 
 __all__ = [
-    "create_var",
+    "create",
     "decode_var",
     "encode_var",
 ]
@@ -254,7 +254,7 @@ def _ell_from_point_var(Q: Point, ec: Curve) -> bytes:
 def _ell_from_octets(ell: Octets, ec: Curve) -> bytes:
     """Return the encoding as the octets the map reads, size checked."""
     # the size is the curve's, so this is where `decode_var` first reads
-    # it; `create_var` and `encode_var` take no encoding in
+    # it; `create` and `encode_var` take no encoding in
     # and reach the curve through the key converters instead
     _assert_valid_ec(ec)
     ell = bytes_from_octets(ell)
@@ -265,13 +265,19 @@ def _ell_from_octets(ell: Octets, ec: Curve) -> bytes:
     return ell
 
 
-def create_var(prv_key: Integer, ec: Curve = secp256k1) -> bytes:
+def create(prv_key: Integer, ec: Curve = secp256k1) -> bytes:
     """Return an ElligatorSwift encoding of the private key's public key.
 
-    The private key is its own entropy for the encoding, which is what
-    `secp256k1_ellswift_create` is for and what makes it preferable to
-    encoding the public key: a caller cannot supply randomness that is a
-    function of the key, because it supplies none.
+    The caller supplies no randomness, so it cannot hand in any that is
+    derived from the key. Where the bindings serve,
+    `secp256k1_ellswift_create` draws the encoding from a hash of the
+    private key and fresh randomness, so the key adds entropy of its
+    own. The Python path draws it from `secrets` alone, as `encode_var`
+    does.
+
+    The name is plain because the private key reaches only `mult`, whose
+    algorithm does not follow its value. The variable-time encoding
+    works on the public key.
     """
     q = scalar_from_prv_key(prv_key, ec)
 
@@ -290,7 +296,8 @@ def encode_var(pub_key: PubKey, ec: Curve = secp256k1) -> bytes:
     The randomness is drawn here and is not a function of the key, which
     is what BIP324 requires of it: two encodings of one key are
     unlinkable, and an encoding nobody can recompute is what makes them
-    so. `create` is the better call when the private key is at hand.
+    so. Where the private key is at hand, `create` is the call, and its
+    docstring says why.
     """
     Q = point_from_pub_key(pub_key, ec)
 

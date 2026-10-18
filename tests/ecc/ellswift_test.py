@@ -129,7 +129,7 @@ def test_create_and_encode_round_trip() -> None:
     for _ in range(8):
         q, Q = _key_pair()
 
-        for ell in (ellswift.create_var(q), ellswift.encode_var(Q)):
+        for ell in (ellswift.create(q), ellswift.encode_var(Q)):
             assert len(ell) == 2 * secp256k1.p_size
             assert ellswift.decode_var(ell) == Q
             # the bindings agree about what this package produced
@@ -153,7 +153,7 @@ def test_the_python_create_and_encode_are_the_bindings_ones(
 
         with monkeypatch.context() as no_bindings:
             no_bindings.setattr(ellswift, "_libsecp256k1_serves", lambda *_: False)
-            python_create = ellswift.create_var(q)
+            python_create = ellswift.create(q)
             python_encode = ellswift.encode_var(Q)
             # the Python path also decodes what the bindings created
             assert ellswift.decode_var(libsecp256k1_ellswift.create(q)) == Q
@@ -176,7 +176,7 @@ def test_the_other_koblitz_curves(curve_name: str) -> None:
     q = secrets.randbelow(ec.n - 1) + 1
     Q = mult(q, ec.G, ec)
 
-    for ell in (ellswift.create_var(q, ec), ellswift.encode_var(Q, ec)):
+    for ell in (ellswift.create(q, ec), ellswift.encode_var(Q, ec)):
         assert len(ell) == 2 * ec.p_size
         assert ellswift.decode_var(ell, ec) == Q
 
@@ -189,7 +189,7 @@ def test_a_curve_the_map_is_not_defined_on() -> None:
 
     err_msg = "the ElligatorSwift map wants a curve with a == 0"
     with pytest.raises(BTClibEccValueError, match=err_msg):
-        ellswift.create_var(q, ec)
+        ellswift.create(q, ec)
     with pytest.raises(BTClibEccValueError, match=err_msg):
         ellswift.encode_var(mult(q, ec.G, ec), ec)
     with pytest.raises(BTClibEccValueError, match=err_msg):
@@ -198,7 +198,7 @@ def test_a_curve_the_map_is_not_defined_on() -> None:
 
 def test_wrong_size_encoding() -> None:
     """An encoding is two field elements, and nothing else is one."""
-    ell = ellswift.create_var(secrets.randbelow(secp256k1.n - 1) + 1)
+    ell = ellswift.create(secrets.randbelow(secp256k1.n - 1) + 1)
 
     for bad in (ell[:-1], ell + b"\x00", b""):
         with pytest.raises(BTClibEccValueError, match="invalid ElligatorSwift size"):
@@ -209,7 +209,7 @@ def test_invalid_private_key() -> None:
     """A key outside 1..n-1 is refused, and by `scalar_from_prv_key`."""
     for prv_key in (0, secp256k1.n):
         with pytest.raises(BTClibEccValueError):
-            ellswift.create_var(prv_key)
+            ellswift.create(prv_key)
 
 
 def _key_pair() -> tuple[int, tuple[int, int]]:
@@ -326,7 +326,7 @@ def test_the_inverse_is_the_reference_inverse(curve_name: str) -> None:
 # `tests.REFUSED_SECRETS` that the call refuses, on both arms.
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
-    "create_var": (ellswift.create_var, REFUSED_SCALARS),
+    "create": (ellswift.create, REFUSED_SCALARS),
 }
 
 
