@@ -6,6 +6,7 @@
 
 import contextlib
 
+from btclib_ecc._libsecp256k1 import keys as libsecp256k1_keys
 from btclib_ecc._libsecp256k1 import (
     pubkey_from_prvkey as libsecp256k1_pubkey_from_prvkey,
 )
@@ -36,6 +37,7 @@ __all__ = [
     "mult_pub_key",
     "point_from_octets_var",
     "point_from_pub_key",
+    "prv_key_tweak_add",
     "scalar_from_prv_key",
 ]
 
@@ -104,6 +106,48 @@ def scalar_from_prv_key(prv_key: Integer, ec: Curve = secp256k1) -> int:
     if not 0 < q < ec.n:
         raise BTClibEccValueError("private key not in 1..n-1")
 
+    return q
+
+
+def _scalar_from_tweak(t: Integer, ec: Curve) -> int:
+    """Return a tweak as the integer in 0..n-1 libsecp256k1 takes.
+
+    Refused, not reduced, out of that range: libsecp256k1 refuses such a
+    tweak, and BIP32 and BIP341 each refuse it rather than reduce it.
+    """
+    tweak = int_from_integer(t)
+    if not 0 <= tweak < ec.n:
+        raise BTClibEccValueError("tweak not in 0..n-1")
+    return tweak
+
+
+def prv_key_tweak_add(prv_key: Integer, t: Integer, ec: Curve = secp256k1) -> int:
+    """Return the private key plus a tweak, modulo n.
+
+    The private half of `tweak_add_var`: the public key of the answer is
+    the public key of prv_key plus t*G. BIP32's private derivation is
+    this sum. The tweak is in 0..n-1, and a sum of zero is no private key
+    and is refused.
+
+    On secp256k1 the bindings compute the sum,
+    `secp256k1_ec_seckey_tweak_add`, in constant time; Python's `%` on
+    the other arm is not. `ssa.prv_key_tweak_add` is BIP341's sum, which
+    negates the key first where its point has an odd y.
+    """
+    q = scalar_from_prv_key(prv_key, ec)
+    tweak = _scalar_from_tweak(t, ec)
+
+    if _libsecp256k1_serves(ec, None):
+        try:
+            tweaked = libsecp256k1_keys.prvkey_tweak_add(q, tweak)
+        except ValueError as e:
+            # key and tweak are in range, so the one sum refused is zero
+            raise BTClibEccValueError("tweaked private key is zero") from e
+        return int.from_bytes(tweaked, byteorder="big", signed=False)
+
+    q = (q + tweak) % ec.n
+    if q == 0:
+        raise BTClibEccValueError("tweaked private key is zero")
     return q
 
 

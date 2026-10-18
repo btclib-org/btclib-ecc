@@ -59,6 +59,7 @@ for BIP340, whose five steps and reasoning are in
 
 from __future__ import annotations
 
+import contextlib
 import secrets
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -67,6 +68,10 @@ from types import TracebackType
 from typing import Self, overload
 
 from btclib_ecc._libsecp256k1 import ssa as libsecp256k1_ssa
+from btclib_ecc._libsecp256k1 import (
+    xonly_prvkey_tweak_add as libsecp256k1_xonly_prvkey_tweak_add,
+)
+from btclib_ecc._libsecp256k1 import xonly_tweak_add as libsecp256k1_xonly_tweak_add
 from btclib_ecc._utils import (
     assert_no_trailing,
     assert_type,
@@ -94,9 +99,11 @@ from btclib_ecc.curves.curve import (
     _jac_double_mult_var,
     _libsecp256k1_serves,
     _multi_mult_x_only_var,
+    _tweak_add_var,
     _y_even_var,
     mult,
 )
+from btclib_ecc.curves.sec_point import _scalar_from_tweak
 from btclib_ecc.ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
 from btclib_ecc.ecc.commit_nonce import (
     commit_entropy_,
@@ -128,6 +135,8 @@ __all__ = [
     "challenge_",
     "gen_keys",
     "point_from_bip340pub_key_var",
+    "prv_key_tweak_add",
+    "pub_key_tweak_add_var",
     "sign",
     "sign_",
     "verify",
@@ -391,6 +400,69 @@ def gen_keys(prv_key: Integer | None = None, ec: Curve = secp256k1) -> tuple[int
     q = (q, ec.n - q)[y_Q & 1]
 
     return q, x_Q
+
+
+def pub_key_tweak_add_var(
+    x_Q: BIP340PubKey, t: Integer, ec: Curve = secp256k1
+) -> tuple[int, int]:
+    """Return the x-only key P + t*G, P the point of x_Q, and its y parity.
+
+    BIP341's taproot output key: x_Q is the internal key, t the TapTweak,
+    and the parity is what a script path spending commits to in its
+    control block. The tweak is in 0..n-1. A sum at infinity, where t is
+    the private key of -P, is refused.
+
+    Checking a taproot commitment is this call and a comparison of what
+    it answers, which is what `secp256k1_xonly_pubkey_tweak_add_check`
+    does too.
+    """
+    _assert_valid_ec(ec)
+    x = _x_from_bip340pub_key(x_Q, ec)
+    tweak = _scalar_from_tweak(t, ec)
+
+    # an x the bindings refuse, and the sum at infinity, fall through to
+    # the Python arm, which says which of the two it was
+    if _libsecp256k1_serves(ec, None) and 0 <= x < ec.p:
+        with contextlib.suppress(ValueError):
+            x_bytes, parity = libsecp256k1_xonly_tweak_add(
+                x.to_bytes(ec.p_size, "big"), tweak
+            )
+            return int.from_bytes(x_bytes, "big", signed=False), parity
+
+    Q = _tweak_add_var((x, _y_even_in_subgroup_var(x, ec)), tweak, ec)
+    if Q[1] == 0:
+        raise BTClibEccValueError("tweaked public key at infinity")
+    return Q[0], Q[1] & 1
+
+
+def prv_key_tweak_add(prv_key: Integer, t: Integer, ec: Curve = secp256k1) -> int:
+    """Return the private key of the key `pub_key_tweak_add_var` answers.
+
+    BIP341's taproot output private key: the key is negated where its
+    point has an odd y, as `gen_keys` does, and the tweak is added. The
+    tweak is in 0..n-1, and a sum of zero is refused.
+
+    On secp256k1 the bindings compute it,
+    `secp256k1_keypair_xonly_tweak_add`, in constant time; the Python arm
+    is not. `curves.prv_key_tweak_add` is the sum without the negation.
+    """
+    q = scalar_from_prv_key(prv_key, ec)
+    tweak = _scalar_from_tweak(t, ec)
+
+    if _libsecp256k1_serves(ec, None):
+        try:
+            tweaked = libsecp256k1_xonly_prvkey_tweak_add(q, tweak)
+        except ValueError as e:
+            # key and tweak are in range, so the one sum refused is zero
+            raise BTClibEccValueError("tweaked private key is zero") from e
+        return int.from_bytes(tweaked, byteorder="big", signed=False)
+
+    # selected by index, not under an `if`, as in gen_keys
+    q = (q, ec.n - q)[mult(q, ec=ec)[1] & 1]
+    q = (q + tweak) % ec.n
+    if q == 0:
+        raise BTClibEccValueError("tweaked private key is zero")
+    return q
 
 
 def challenge_(msg: Octets, x_Q: int, x_K: int, ec: Curve, hf: HashF) -> int:

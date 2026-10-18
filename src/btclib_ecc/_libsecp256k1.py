@@ -104,8 +104,10 @@ __all__ = [
     "recovery",
     "shared_point",
     "ssa",
+    "xonly_prvkey_tweak_add",
     "xonly_pubkey_verify",
     "xonly_to_pubkey",
+    "xonly_tweak_add",
 ]
 
 _BINDINGS_MODULE = "btclib_secp256k1"
@@ -195,8 +197,10 @@ try:
         pubkey_tweak_add,
         pubkey_tweak_mul_sum,
     )
+    from btclib_secp256k1.xonly import prvkey_tweak_add as xonly_prvkey_tweak_add
     from btclib_secp256k1.xonly import pubkey_verify as xonly_pubkey_verify
     from btclib_secp256k1.xonly import to_pubkey as xonly_to_pubkey
+    from btclib_secp256k1.xonly import tweak_add as xonly_tweak_add
 
     INSTALLED = True
 # issue btclib-org/btclib#1002 measured this branch rather than assuming it
@@ -241,6 +245,7 @@ except (
     pubkey_from_prvkey = pubkey_sum = None  # type: ignore[assignment]
     pubkey_tweak_add = pubkey_tweak_mul_sum = None  # type: ignore[assignment]
     xonly_pubkey_verify = xonly_to_pubkey = None  # type: ignore[assignment]
+    xonly_prvkey_tweak_add = xonly_tweak_add = None  # type: ignore[assignment]
 
     INSTALLED = False
 
