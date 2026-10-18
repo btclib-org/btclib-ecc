@@ -374,16 +374,16 @@ a check or skips one, and never changes an answer.
 `tests/check_validity_test.py` owns that convention.
 
 **A truth's `True` has to be its conservative value**
-(btclib-org/btclib#884). Most wrong values are true, so the misreading is
-rarely "the flag was off": it is the one the flag's `True` stands for.
-`0`, `None` and `""` are wrong values that read as `False`, and no
-polarity covers them. What the rule gives is a truth safe against the rest
-— `strict="no"` is strict, `order_check="no"` checks the order — and it is
-a fact about the *name*, not about the check. So a flag whose `True` is
-the permissive value is a kind however little it computes, because the
-misreading waives the very refusal it was written to make:
-`point_from_octets_var`'s `hybrid` parses the prefixes it was written to
-keep out.
+(btclib-org/btclib#884). Most wrong values are true, and for
+those the misreading is the one the flag's `True` stands for —
+`strict="no"` is strict, `order_check="no"` checks the order. That is what
+makes a truth safe, and it is a fact about the *name*, not about the check.
+So a flag whose `True` is the permissive value is a kind however little it
+computes, because the misreading waives the very refusal it was written to
+make: `point_from_octets_var`'s `hybrid` parses the prefixes it was written
+to keep out. `0`, `None` and `""` are wrong values that read as `False`,
+so on a truth they fall on the permissive side, and the rule does not
+cover them.
 
 **Which of the two a flag is, is written down for every one of them.**
 `tests/bool_parameter_test.py` is the census: two tables, a kind driven
