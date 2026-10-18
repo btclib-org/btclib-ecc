@@ -334,8 +334,8 @@ _CASES = (
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY, "rho": _MSG_HASH},
     ),
     _Case(
-        "btclib_ecc.ecc.ellswift.create_var",
-        ellswift.create_var,
+        "btclib_ecc.ecc.ellswift.create",
+        ellswift.create,
         {"prv_key": _PRV_KEY},
     ),
     _Case(

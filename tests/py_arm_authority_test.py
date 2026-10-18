@@ -215,7 +215,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/rfc6979_test.py",
     ),
     "ecc.dsa.sign_recoverable_": (),
-    "ecc.ellswift.create_var": ("ecc/ellswift_test.py",),
+    "ecc.ellswift.create": ("ecc/ellswift_test.py",),
     "ecc.ellswift.decode_var": ("ecc/ellswift_test.py",),
     "ecc.ellswift.encode_var": ("ecc/ellswift_test.py",),
     "ecc.musig2.partial_sig_verify_": ("ecc/musig2_test.py",),
