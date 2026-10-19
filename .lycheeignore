@@ -1,0 +1,13 @@
+# what links.yml is told not to check, each line a regex and each with
+# the measurement that put it here.
+
+# gmplib.org answers a developer machine and times out for a runner.
+# From a workstation, curl got 200 in under 0.25 s, three times. From the
+# runner, the weekly run 39018754822 (2026-10-17) and the dispatch
+# 39298170565 (2026-10-19) each ended with this one [TIMEOUT] in
+# SECURITY.md, after lychee's 3 retries at 45 s; the 2026-10-11 run, the
+# last before SECURITY.md cited the page, was green. The citation stays:
+# it is the GMP manual's list of the functions written for side-channel
+# resistance, which SECURITY.md's gmpy2 paragraph rests on, and only
+# the check is skipped.
+^https://gmplib\.org/manual/Low_002dlevel-Functions$
