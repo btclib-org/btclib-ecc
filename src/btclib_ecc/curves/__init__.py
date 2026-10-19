@@ -24,8 +24,8 @@ multiplied again -- the one thing the memoized tables below cannot infer
 and the whole of what stands between a repeated point and the treatment
 the generator gets. Beside them are a sum of points, a point plus a
 multiple of the generator -- once, or along a chain of tweaks of one
-point -- its private half, a private key plus a tweak, and the test of
-whether an x is a coordinate of the curve.
+point -- a private key plus a tweak, which is the same sum on the
+private side, and the test of whether an x is a coordinate of the curve.
 
 `CURVES` is what makes the catalogue reachable -- `secp256k1` is
 exported by name because nearly every caller wants that one, and every

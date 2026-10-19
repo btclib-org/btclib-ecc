@@ -443,8 +443,11 @@ def prv_key_tweak_add(prv_key: Integer, t: Integer, ec: Curve = secp256k1) -> in
     tweak is in 0..n-1, and a sum of zero is refused.
 
     On secp256k1 the bindings compute it,
-    `secp256k1_keypair_xonly_tweak_add`, in constant time; the Python arm
-    is not. `curves.prv_key_tweak_add` is the sum without the negation.
+    `secp256k1_keypair_xonly_tweak_add`, in constant time in the key; the
+    tweak is taken as public, as BIP341's is, and libsecp256k1 multiplies
+    the generator by it in variable time. The Python arm is not
+    constant-time. `curves.prv_key_tweak_add` is the sum without the
+    negation.
     """
     q = scalar_from_prv_key(prv_key, ec)
     tweak = _scalar_from_tweak(t, ec)
