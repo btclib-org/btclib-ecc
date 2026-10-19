@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""An atheris harness fuzzing `btclib_ecc.ecc.ecies.Envelope`'s decoders.
+"""An atheris harness fuzzing `ecc.ecc.ecies.Envelope`'s decoders.
 
 A BIE1 envelope is written by whoever sends it and read by whoever
 receives it, and the MAC that says which of the two it is comes last:
@@ -20,7 +20,7 @@ reachable from the other.
 A crash here on hostile bytes is a defect in the decoder, never in this
 harness: `data` is unconstrained bytes handed straight to each entry
 point, `b64decode` taking bytes as the ascii it decodes them from.
-`BTClibEccException` is what both answer a wrong magic, a field of
+`EccException` is what both answer a wrong magic, a field of
 the wrong size, a point off the curve and a ciphertext that is not whole
 blocks with, so that family is caught below as the expected outcome. An
 `IndexError`, a `RecursionError` or an uncaught assertion is not, and
@@ -28,7 +28,7 @@ propagates to atheris as the finding it is.
 
 No cipher is involved and none is needed: the ciphertext is opaque octets
 to this class, which is what lets an envelope be framed, parsed and
-MAC-checked by code that has no AES -- `src/btclib_ecc/ecc/ecies.py`'s
+MAC-checked by code that has no AES -- `src/ecc/ecc/ecies.py`'s
 own docstring is where that is argued. The seed corpus is one envelope
 built that way, in both forms: the octets `serialize` writes, and the
 base64 `b64encode` armors them in.
@@ -41,29 +41,29 @@ import sys
 
 import atheris
 
-from btclib_ecc.ecc.ecies import Envelope
-from btclib_ecc.exceptions import BTClibEccException
+from ecc.ecc.ecies import Envelope
+from ecc.exceptions import EccException
 
 # tests/fuzz_corpus_test.py reads this by ast.literal_eval, never by
 # importing the module -- atheris below is CI-only and undeclared in
 # pyproject.toml, so the test must not execute this file
 ENTRY_POINTS = (
-    "btclib_ecc.ecc.ecies:Envelope.parse",
-    "btclib_ecc.ecc.ecies:Envelope.b64decode",
+    "ecc.ecc.ecies:Envelope.parse",
+    "ecc.ecc.ecies:Envelope.b64decode",
 )
 
 
 def fuzz_target(data: bytes) -> None:
     """Parse `data` as envelope octets, then as the base64 armor of some.
 
-    `BTClibEccException` is swallowed as each entry point's own
+    `EccException` is swallowed as each entry point's own
     refusal of malformed input; any other exception propagates, which is
     how atheris tells a defect in the decoder from the domain of input it
     already rejects.
     """
-    with contextlib.suppress(BTClibEccException):
+    with contextlib.suppress(EccException):
         Envelope.parse(data)
-    with contextlib.suppress(BTClibEccException):
+    with contextlib.suppress(EccException):
         Envelope.b64decode(data)
 
 

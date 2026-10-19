@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `btclib_ecc.hashes` module."""
+"""Tests for the `ecc.hashes` module."""
 
 import hashlib
 from hashlib import sha256
@@ -10,8 +10,8 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc.exceptions import BTClibEccTypeError
-from btclib_ecc.hashes import _assert_valid_hf, tagged_hash
+from ecc.exceptions import EccTypeError
+from ecc.hashes import _assert_valid_hf, tagged_hash
 from tests import Sha256FirstByte
 
 
@@ -23,13 +23,13 @@ from tests import Sha256FirstByte
 def test_a_hash_function_that_is_not_one_is_refused(hf: Any) -> None:
     """`sha256()` where `sha256` belongs is the caller error this names.
 
-    A BTClibEccTypeError and not a BTClibEccValueError, which is
+    An EccTypeError and not an EccValueError, which is
     what the five boolean verifications rely on: theirs is an `except
-    (ValueError, BTClibEccRuntimeError)`, so a value error here would be
+    (ValueError, EccRuntimeError)`, so a value error here would be
     reported as a signature that does not verify rather than reaching the caller
     who made the mistake.
     """
-    with pytest.raises(BTClibEccTypeError, match="not a hash function"):
+    with pytest.raises(EccTypeError, match="not a hash function"):
         _assert_valid_hf(hf)
 
 
@@ -43,20 +43,20 @@ def test_tagged_hash_refuses_a_tag_or_a_message_that_is_no_bytes() -> None:
     """A `str` tag used to leak a bare TypeError from `hashlib`'s `update`.
 
     `tag` and `m` are `bytes`, not `Octets`: neither is ever a
-    caller's hex-string (issue btclib-org/btclib-ecc#11).
+    caller's hex-string (issue btclib-org/ecc#11).
     """
-    with pytest.raises(BTClibEccTypeError, match="invalid tag type"):
+    with pytest.raises(EccTypeError, match="invalid tag type"):
         tagged_hash("t", b"m")  # type: ignore[arg-type]
-    with pytest.raises(BTClibEccTypeError, match="invalid m type"):
+    with pytest.raises(EccTypeError, match="invalid m type"):
         tagged_hash(b"t", "m")  # type: ignore[arg-type]
 
 
 def test_tagged_hash_refuses_a_hash_function_that_is_not_one() -> None:
     """The same refusal `_assert_valid_hf` gives, reached through `tagged_hash`.
 
-    Issue btclib-org/btclib-ecc#11.
+    Issue btclib-org/ecc#11.
     """
-    with pytest.raises(BTClibEccTypeError, match="not a hash function"):
+    with pytest.raises(EccTypeError, match="not a hash function"):
         tagged_hash(b"t", b"m", sha256())  # type: ignore[arg-type]
 
 

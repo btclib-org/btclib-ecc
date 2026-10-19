@@ -1,7 +1,7 @@
 # Assurance case
 
 [SECURITY](./SECURITY.md) states what a user can and cannot expect of
-btclib-ecc in terms of security. This page argues why those expectations
+ecc in terms of security. This page argues why those expectations
 hold: the threat model, the trust boundaries, how secure design
 principles are applied, and how common implementation weaknesses are
 countered. Each argument below names the file, the test or the workflow
@@ -15,8 +15,8 @@ points at it instead of repeating it.
   defined by: libsecp256k1 for secp256k1, and the vectors the BIPs, the
   RFCs, Wycheproof and libsecp256k1-zkp publish.
 - **Malformed input is refused the way the package says it is.** A public
-  function handed an argument it cannot use raises `BTClibEccTypeError`
-  or `BTClibEccValueError`.
+  function handed an argument it cannot use raises `EccTypeError`
+  or `EccValueError`.
 - **Where a secret meets the curve, the protection is the one
   SECURITY.md states**, and no more: SECURITY.md says which operations
   cross into libsecp256k1, whose constant-time properties hold on the C
@@ -27,7 +27,7 @@ points at it instead of repeating it.
 
 ## Threat model
 
-btclib-ecc is a library in its caller's process. It has no network
+ecc is a library in its caller's process. It has no network
 client and no way to start a process, and the only files it opens are
 its own package data, so every input it has, but for one environment
 variable, is one a caller handed it. The command below lists the
@@ -39,7 +39,7 @@ lists is the one dependency `pyproject.toml` declares,
 MPFR and MPC in its wheels, for the integers of the Python arithmetic;
 and standard-library modules, none of which is a network client or a
 process launcher. `os` is there for `os.environ` alone, `json` and
-`pathlib` to read the curve catalogue under `src/btclib_ecc/curves/_data/`,
+`pathlib` to read the curve catalogue under `src/ecc/curves/_data/`,
 and `importlib` to import the package's own submodules and read its
 version.
 
@@ -88,7 +88,7 @@ vulnerabilities*:
 - memory disclosure: a secret in a Python object is not zeroized
 - a secret handed to a delegated `_var` multiplication, which is
   variable time in its scalar
-- the block cipher `btclib_ecc.ecc.ecies` takes from its caller, whose
+- the block cipher `ecc.ecc.ecies` takes from its caller, whose
   resistance to side channels is the caller's
 - the operating system's random number generator, which the package uses
   through `secrets` rather than seeding one of its own
@@ -110,11 +110,11 @@ curve, or `check_validity=False`. Some of those choices select the
 Python arithmetic, and SECURITY.md states which.
 
 **The package and the bindings.** Past this boundary is C code the
-package does not own. `btclib_ecc.curves.curve._libsecp256k1_serves`
+package does not own. `ecc.curves.curve._libsecp256k1_serves`
 decides whether a call may cross. A caller's choice that the bindings do
 not take goes to it as a keyword, and only a condition on an input's value
 is and-ed on by the call site, so whether anything crosses is decided by one
-predicate and one switch, `btclib_ecc.curves.is_libsecp256k1_serving`
+predicate and one switch, `ecc.curves.is_libsecp256k1_serving`
 being how a caller asks. The bindings are trusted for the answer, and the
 suite compares the Python arithmetic against them:
 `tests/curves/curve_test.py` states it. The bindings being the authority
@@ -128,12 +128,12 @@ answers.
 
 **Octets from outside.** A signature, a public key, an ECIES envelope, a
 proof and a share come from parties the package has no reason to trust.
-`src/btclib_ecc/_utils.py` states the parse contract: a field is as long
+`src/ecc/_utils.py` states the parse contract: a field is as long
 as its encoding says, a complete octet string is one whole object, and a
 caller's stream is the caller's. `tests/parse_contract_test.py` walks the
 package for every public class carrying a `parse`, and holds each to that
 contract or names the reason it is excluded. A range proof header names
-an exponent and a mantissa, and `src/btclib_ecc/ecc/rangeproof.py`
+an exponent and a mantissa, and `src/ecc/ecc/rangeproof.py`
 bounds them by `_MAX_EXP` and `_MAX_MANTISSA`, the mantissa being checked
 before any ring size is computed from it. An ECIES envelope's MAC is
 verified, by `hmac.compare_digest`, before the caller's cipher is handed
@@ -141,14 +141,14 @@ a ciphertext.
 
 **Files.** The package opens no file a caller names. What it reads is
 its own catalogue of curve parameters, four json files under
-`src/btclib_ecc/curves/_data/`, once, at import, in
-`src/btclib_ecc/curves/curve.py`. It also reads the metadata of the
-installed distributions: its own version, in `src/btclib_ecc/__init__.py`,
-and in `src/btclib_ecc/_libsecp256k1.py` its requirements and the
+`src/ecc/curves/_data/`, once, at import, in
+`src/ecc/curves/curve.py`. It also reads the metadata of the
+installed distributions: its own version, in `src/ecc/__init__.py`,
+and in `src/ecc/_libsecp256k1.py` its requirements and the
 bindings' version.
 
-**The environment.** `BTCLIB_ECC_NO_LIBSECP256K1` is read once, at
-import, in `src/btclib_ecc/_libsecp256k1.py`, and can only turn the
+**The environment.** `ECC_NO_LIBSECP256K1` is read once, at
+import, in `src/ecc/_libsecp256k1.py`, and can only turn the
 delegation off.
 
 ## Secure design principles
@@ -158,9 +158,9 @@ describes beside them.
 
 - **Economy of mechanism.** One predicate decides the delegation, as
   above, where a copy per call site could drift. Every error the package
-  defines derives from `BTClibEccException`
-  (`src/btclib_ecc/exceptions.py`), and `BTClibEccValueError` and
-  `BTClibEccTypeError` derive from `ValueError` and `TypeError`, so
+  defines derives from `EccException`
+  (`src/ecc/exceptions.py`), and `EccValueError` and
+  `EccTypeError` derive from `ValueError` and `TypeError`, so
   `except ValueError` catches a value refused by the package.
 - **Fail-safe defaults.** The plain name beside a `_var` one is the one a
   secret may be handed, so a caller who does not choose gets the safer
@@ -188,7 +188,7 @@ describes beside them.
   signature that does not verify and raises for an input it cannot read,
   so a caller can tell a forgery from a mistake (CONTRIBUTING.md's *The
   public surface*, and `tests/bool_contract_test.py`).
-- **Layering.** `curves` does not import `ecc`, and the package imports
+- **Layering.** `ecc.curves` does not import `ecc.ecc`, and the package imports
   nothing of this organization's other packages but the optional
   `btclib_secp256k1`:
   `tests/imports_test.py` imports each module alone and refuses one that
@@ -227,13 +227,13 @@ to, and what counters each.
   RFC 6979 and an `ssa` one by BIP340, each checked against the vectors
   its specification publishes. `musig2`, `frost` and `dleq` draw the
   randomness of BIP327's, BIP445's and BIP374's nonce generation from
-  `secrets`, and `tests/ecc/musig2_test.py`, `frost_test.py` and
+  `secrets`, and `tests/schemes/musig2_test.py`, `frost_test.py` and
   `dleq_test.py` check the derivation against those BIPs' vectors.
   `borromean` and `ecies` draw scalars from `secrets` directly.
 - **Improper verification of a signature (CWE-347).** A scheme whose
   specification publishes vectors is checked against them, and against
   Wycheproof's adversarial secp256k1 vectors in
-  `tests/ecc/wycheproof_test.py`, all pinned in `tests/_data/README.md`.
+  `tests/schemes/wycheproof_test.py`, all pinned in `tests/_data/README.md`.
   `.github/workflows/vendored-vectors.yml` runs weekly: it hashes each
   vendored file against the blob recorded there, compares that blob with
   upstream's at the pinned commit, and reports a pin that is no longer
@@ -264,14 +264,14 @@ to, and what counters each.
   `Envelope.b64decode`'s of a non-ASCII str and `hex_string`'s of a negative
   integer print neither the input nor the number.
   The `repr` and `str` of the classes that hold a key or a nonce are checked
-  the same way. `tests/ecc/dsa_test.py` checks `dsa.Signer`,
-  `tests/ecc/ssa_test.py` `ssa.Signer`, `tests/ecc/rfc6979_test.py`
-  `_HmacDrbg`, and `tests/ecc/rangeproof_test.py` `NonceChain`,
+  the same way. `tests/schemes/dsa_test.py` checks `dsa.Signer`,
+  `tests/schemes/ssa_test.py` `ssa.Signer`, `tests/schemes/rfc6979_test.py`
+  `_HmacDrbg`, and `tests/schemes/rangeproof_test.py` `NonceChain`,
   `Rewound` and `_ProveParams`.
   The other exception tests are in `tests/exception_echo_test.py`,
-  `tests/curves/sec_point_test.py`, `tests/ecc/dsa_test.py`,
-  `tests/ecc/ecies_test.py`, `tests/ecc/nonce_bound_test.py`,
-  `tests/ecc/rangeproof_test.py`, `tests/ecc/ssa_tweak_test.py` and
+  `tests/curves/sec_point_test.py`, `tests/schemes/dsa_test.py`,
+  `tests/schemes/ecies_test.py`, `tests/schemes/nonce_bound_test.py`,
+  `tests/schemes/rangeproof_test.py`, `tests/schemes/ssa_tweak_test.py` and
   `tests/utils_test.py`.
 - **Type confusion (CWE-843).** mypy runs with `strict = true`
   (`pyproject.toml`) as a hook of the lint gate in

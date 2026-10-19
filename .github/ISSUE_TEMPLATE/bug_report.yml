@@ -1,6 +1,6 @@
 ---
 name: Bug report
-description: Something in btclib-ecc does not work as documented
+description: Something in ecc does not work as documented
 type: Bug
 
 body:
@@ -28,10 +28,10 @@ body:
   - type: input
     id: version
     attributes:
-      label: btclib-ecc version
+      label: ecc version
       description: >
         `python -c "from importlib.metadata import version;
-        print(version('btclib-ecc'))"`
+        print(version('ecc'))"`
       placeholder: "2026.10"
     validations:
       required: true

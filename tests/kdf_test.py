@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `btclib_ecc.kdf` module.
+"""Tests for the `ecc.kdf` module.
 
 **Both KDFs are driven under SHA-1 as well as SHA-256**, and that is a
 deliberate reading of this tree's rule rather than an oversight. The
@@ -24,13 +24,13 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc.alias import HashF
-from btclib_ecc.exceptions import (
-    BTClibEccException,
-    BTClibEccTypeError,
-    BTClibEccValueError,
+from ecc.alias import HashF
+from ecc.exceptions import (
+    EccException,
+    EccTypeError,
+    EccValueError,
 )
-from btclib_ecc.kdf import ansi_x9_63_kdf, hkdf, hkdf_expand, hkdf_extract
+from ecc.kdf import ansi_x9_63_kdf, hkdf, hkdf_expand, hkdf_extract
 from tests import both_arms, refused_secret
 from tests.secret_free import assert_secret_free
 
@@ -46,7 +46,7 @@ def test_a_key_of_no_octets_is_no_key(size: int) -> None:
     as a positive integer, and a caller asking for no octets of keying material
     has a bug rather than an empty key (issue btclib-org/btclib#321).
     """
-    with pytest.raises(BTClibEccValueError, match="invalid keying data size"):
+    with pytest.raises(EccValueError, match="invalid keying data size"):
         ansi_x9_63_kdf(b"z", size, sha256, None)
 
 
@@ -56,12 +56,12 @@ def test_a_size_that_is_no_integer_is_refused_as_such(size: object) -> None:
 
     A float reached the final slice and left through a bare `TypeError`
     about slice indices -- outside the exception contract of
-    src/btclib_ecc/exceptions.py, which is the contract tests/fuzz_test.py
+    src/ecc/exceptions.py, which is the contract tests/fuzz_test.py
     holds every parser to. A bool is refused for the reason
-    `btclib_ecc._utils.is_integer` gives: `True` would have derived a
+    `ecc._utils.is_integer` gives: `True` would have derived a
     one-octet key.
     """
-    with pytest.raises(BTClibEccTypeError, match="non-integer keying data size"):
+    with pytest.raises(EccTypeError, match="non-integer keying data size"):
         ansi_x9_63_kdf(b"z", size, sha256, None)  # type: ignore[arg-type]
 
 
@@ -70,9 +70,9 @@ def test_a_z_that_is_no_bytes_is_refused_as_such() -> None:
 
     `z` is `bytes`, not `Octets`: it is the shared secret an agreement
     computed, never a caller's hex-string (issue
-    btclib-org/btclib-ecc#11).
+    btclib-org/ecc#11).
     """
-    with pytest.raises(BTClibEccTypeError, match="invalid z type"):
+    with pytest.raises(EccTypeError, match="invalid z type"):
         ansi_x9_63_kdf("abc", 10, sha256, None)  # type: ignore[arg-type]
 
 
@@ -80,9 +80,9 @@ def test_a_hash_function_that_is_not_one_is_refused_as_such() -> None:
     """A digest object where the constructor belongs, refused before use.
 
     `hf().digest_size` used to leak "not callable" straight from the
-    call (issue btclib-org/btclib-ecc#11).
+    call (issue btclib-org/ecc#11).
     """
-    with pytest.raises(BTClibEccTypeError, match="not a hash function"):
+    with pytest.raises(EccTypeError, match="not a hash function"):
         ansi_x9_63_kdf(b"abc", 10, sha256(), None)  # type: ignore[arg-type]
 
 
@@ -356,7 +356,7 @@ def test_hkdf_derives_at_most_255_digests() -> None:
     hf_size = sha256().digest_size
     prk = hkdf_extract(b"z", None, sha256)
     assert len(hkdf_expand(prk, 255 * hf_size, sha256, None)) == 255 * hf_size
-    with pytest.raises(BTClibEccValueError, match="cannot derive a key larger than "):
+    with pytest.raises(EccValueError, match="cannot derive a key larger than "):
         hkdf_expand(prk, 255 * hf_size + 1, sha256, None)
 
 
@@ -368,23 +368,23 @@ def test_hkdf_refuses_a_key_of_no_octets(size: int) -> None:
     the refusals the SEC 1 KDF makes are the refusals this one makes, and
     both leave through `_assert_valid_keying_data_size`.
     """
-    with pytest.raises(BTClibEccValueError, match="invalid keying data size"):
+    with pytest.raises(EccValueError, match="invalid keying data size"):
         hkdf(b"z", size, sha256, None, None)
 
 
 @pytest.mark.parametrize("size", [1.5, 32.0, "32", None, True, False])
 def test_hkdf_refuses_a_size_that_is_no_integer(size: object) -> None:
     """As this library's TypeError, whichever KDF was asked."""
-    with pytest.raises(BTClibEccTypeError, match="non-integer keying data size"):
+    with pytest.raises(EccTypeError, match="non-integer keying data size"):
         hkdf(b"z", size, sha256, None, None)  # type: ignore[arg-type]
 
 
 def test_hkdf_refuses_an_ikm_that_is_no_bytes() -> None:
     """A hex-string used to reach `hmac.new` and leak a str/bytes mismatch.
 
-    Issue btclib-org/btclib-ecc#11.
+    Issue btclib-org/ecc#11.
     """
-    with pytest.raises(BTClibEccTypeError, match="invalid ikm type"):
+    with pytest.raises(EccTypeError, match="invalid ikm type"):
         hkdf("abc", 10, sha256, None, None)  # type: ignore[arg-type]
 
 
@@ -398,16 +398,16 @@ def test_hkdf_expand_refuses_a_short_pseudorandom_key() -> None:
     has to be told.
     """
     hf_size = sha256().digest_size
-    with pytest.raises(BTClibEccValueError, match="pseudorandom key shorter than "):
+    with pytest.raises(EccValueError, match="pseudorandom key shorter than "):
         hkdf_expand(bytes(hf_size - 1), 42, sha256, None)
 
 
 def test_hkdf_expand_refuses_a_prk_that_is_no_bytes() -> None:
     """A hex-string used to leak "key: expected bytes" from `hmac.new`.
 
-    Issue btclib-org/btclib-ecc#11.
+    Issue btclib-org/ecc#11.
     """
-    with pytest.raises(BTClibEccTypeError, match="invalid prk type"):
+    with pytest.raises(EccTypeError, match="invalid prk type"):
         hkdf_expand("a" * 32, 10, sha256, None)  # type: ignore[arg-type]
 
 
@@ -456,6 +456,6 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
     """No piece of the secret is in the exception or in anything it chains."""
     call, _ = _SECRET_CALLS[name]
     secret, spellings = refused_secret(kind)
-    with pytest.raises(BTClibEccException) as refused:
+    with pytest.raises(EccException) as refused:
         call(secret)
     assert_secret_free(refused.value, spellings)

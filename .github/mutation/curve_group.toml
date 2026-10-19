@@ -16,8 +16,8 @@
 
 [cosmic-ray]
 module-path = [
-    "src/btclib_ecc/curves/curve_group.py",
-    "src/btclib_ecc/curves/curve_group_2.py",
+    "src/ecc/curves/curve_group.py",
+    "src/ecc/curves/curve_group_2.py",
 ]
 
 # each module's own file, and curve_test.py for what curve_group.py
@@ -38,8 +38,8 @@ excluded-modules = []
 # No `BitOr` exclusion: `m | 1` in both modules is the odd-digit
 # recoding, code and not an annotation
 #
-#   grep -n ' | ' src/btclib_ecc/curves/curve_group.py \
-#     src/btclib_ecc/curves/curve_group_2.py
+#   grep -n ' | ' src/ecc/curves/curve_group.py \
+#     src/ecc/curves/curve_group_2.py
 
 [cosmic-ray.distributor]
 name = "local"

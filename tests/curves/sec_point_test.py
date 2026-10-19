@@ -2,15 +2,15 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `btclib_ecc.curves.sec_point` module."""
+"""Tests for the `ecc.curves.sec_point` module."""
 
 from collections.abc import Callable
 from typing import Any
 
 import pytest
 
-from btclib_ecc.alias import INF, Point
-from btclib_ecc.curves import (
+from ecc.alias import INF, Point
+from ecc.curves import (
     Curve,
     PreparedPoint,
     bytes_from_point,
@@ -27,12 +27,12 @@ from btclib_ecc.curves import (
     secp256k1,
     tweak_add_var,
 )
-from btclib_ecc.curves.curve import CURVES
-from btclib_ecc.curves.sec_point import _mult_sec, mult_pub_key
-from btclib_ecc.exceptions import (
-    BTClibEccException,
-    BTClibEccTypeError,
-    BTClibEccValueError,
+from ecc.curves.curve import CURVES
+from ecc.curves.sec_point import _mult_sec, mult_pub_key
+from ecc.exceptions import (
+    EccException,
+    EccTypeError,
+    EccValueError,
 )
 from tests import REFUSED_SCALARS, b58encode, both_arms, needs_bindings, refused_secret
 from tests.curves.curve_test import secp112r2_order_4_point, secp128r2_order_4_point
@@ -45,7 +45,7 @@ low_card_curves["ec13_19"] = Curve(13, 0, 2, (1, 9), 19, 1, False)
 # 17 % 4 = 1; 17 % 8 = 1
 #
 # cofactor 1, not 2: tests/curves/curve_test.py's own copy of this dict
-# has the reason (issue btclib-org/btclib-ecc#32)
+# has the reason (issue btclib-org/ecc#32)
 low_card_curves["ec17_13"] = Curve(17, 6, 8, (0, 12), 13, 1, False)
 low_card_curves["ec17_23"] = Curve(17, 3, 5, (1, 14), 23, 1, False)
 # 19 % 4 = 3; 19 % 8 = 3
@@ -95,42 +95,38 @@ def test_octets2point() -> None:
         assert Q_point == Q
 
         Q_bytes = b"\x01" + b"\x01" * ec.p_size
-        with pytest.raises(BTClibEccValueError, match="not a point: "):
+        with pytest.raises(EccValueError, match="not a point: "):
             point_from_octets_var(Q_bytes, ec)
 
         Q_bytes = b"\x01" + b"\x01" * 2 * ec.p_size
-        with pytest.raises(BTClibEccValueError, match="not a point: "):
+        with pytest.raises(EccValueError, match="not a point: "):
             point_from_octets_var(Q_bytes, ec)
 
         Q_bytes = b"\x04" + b"\x01" * ec.p_size
         with pytest.raises(
-            BTClibEccValueError, match="invalid size for uncompressed point: "
+            EccValueError, match="invalid size for uncompressed point: "
         ):
             point_from_octets_var(Q_bytes, ec)
 
         Q_bytes = b"\x02" + b"\x01" * 2 * ec.p_size
-        with pytest.raises(
-            BTClibEccValueError, match="invalid size for compressed point: "
-        ):
+        with pytest.raises(EccValueError, match="invalid size for compressed point: "):
             point_from_octets_var(Q_bytes, ec)
 
         Q_bytes = b"\x03" + b"\x01" * 2 * ec.p_size
-        with pytest.raises(
-            BTClibEccValueError, match="invalid size for compressed point: "
-        ):
+        with pytest.raises(EccValueError, match="invalid size for compressed point: "):
             point_from_octets_var(Q_bytes, ec)
 
     # invalid x_Q coordinate
     ec = CURVES["secp256k1"]
     x_Q = 0xEEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34
     xstr = format(x_Q, "32X")
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
+    with pytest.raises(EccValueError, match="invalid x-coordinate$"):
         point_from_octets_var(f"03{xstr}", ec)
-    with pytest.raises(BTClibEccValueError, match="point not on curve$"):
+    with pytest.raises(EccValueError, match="point not on curve$"):
         point_from_octets_var("04" + 2 * xstr, ec)
-    with pytest.raises(BTClibEccValueError, match="point not on curve"):
+    with pytest.raises(EccValueError, match="point not on curve"):
         bytes_from_point((x_Q, x_Q), ec)
-    with pytest.raises(BTClibEccValueError, match="point not on curve"):
+    with pytest.raises(EccValueError, match="point not on curve"):
         bytes_from_point((x_Q, x_Q), ec, False)
 
 
@@ -155,12 +151,12 @@ def test_hybrid_prefixes_are_admitted_only_when_asked() -> None:
     assert point_from_octets_var(prefix + body, ec, hybrid=True) == Q
     assert point_from_octets_var((prefix + body).hex(), ec, hybrid=True) == Q
 
-    with pytest.raises(BTClibEccValueError, match="not a point: prefix "):
+    with pytest.raises(EccValueError, match="not a point: prefix "):
         point_from_octets_var(prefix + body, ec)
 
     # the prefix repeats the parity of the y that follows it, so the two
     # can contradict each other, and then it is not a point
-    with pytest.raises(BTClibEccValueError, match="against the hybrid prefix "):
+    with pytest.raises(EccValueError, match="against the hybrid prefix "):
         point_from_octets_var(mismatched + body, ec, hybrid=True)
 
     # and 0x04 does not acquire a parity rule it never had
@@ -212,7 +208,7 @@ def test_bytes_from_prv_key_int() -> None:
     for ec in (CURVES["secp256k1"], low_card_curves["ec13_11"]):
         for q in (0, ec.n):
             with pytest.raises(
-                BTClibEccValueError,
+                EccValueError,
                 match="no bytes representation for infinity point",
             ):
                 bytes_from_prv_key_int(q, ec)
@@ -221,7 +217,7 @@ def test_bytes_from_prv_key_int() -> None:
 def test_infinity_point_bytes() -> None:
     """Refuse to serialize the point at infinity."""
     with pytest.raises(
-        BTClibEccValueError, match="no bytes representation for infinity point"
+        EccValueError, match="no bytes representation for infinity point"
     ):
         bytes_from_point(INF)
 
@@ -233,7 +229,7 @@ def test_infinity_point_from_octets_var() -> None:
     inf_bytes += INF[0].to_bytes(curve_size, byteorder="big", signed=False)
     inf_bytes += INF[1].to_bytes(curve_size, byteorder="big", signed=False)
     with pytest.raises(
-        BTClibEccValueError, match="no bytes representation for infinity point"
+        EccValueError, match="no bytes representation for infinity point"
     ):
         point_from_octets_var(inf_bytes)
 
@@ -245,7 +241,7 @@ def test_point_from_pub_key_refuses_a_point_outside_the_subgroup() -> None:
     `bytes_from_point` serializes it without complaint -- but not a point
     of ⟨G⟩, `n*T` not being INF: `mult` would answer `dU*T` reduced mod n,
     a wrong point for any dU, which is the whole of issue
-    btclib-org/btclib-ecc#15. Every spelling that reaches a point --
+    btclib-org/ecc#15. Every spelling that reaches a point --
     the bare tuple, the compressed octets, the uncompressed ones -- is
     refused the same way.
     """
@@ -253,11 +249,11 @@ def test_point_from_pub_key_refuses_a_point_outside_the_subgroup() -> None:
     t = secp112r2_order_4_point()
     err_msg = "point not in the subgroup generated by G"
 
-    with pytest.raises(BTClibEccValueError, match=err_msg):
+    with pytest.raises(EccValueError, match=err_msg):
         point_from_pub_key(t, ec)
-    with pytest.raises(BTClibEccValueError, match=err_msg):
+    with pytest.raises(EccValueError, match=err_msg):
         point_from_octets_var(bytes_from_point(t, ec, compressed=False), ec)
-    with pytest.raises(BTClibEccValueError, match=err_msg):
+    with pytest.raises(EccValueError, match=err_msg):
         point_from_octets_var(bytes_from_point(t, ec, compressed=True), ec)
 
     # a point of ⟨G⟩ itself is unaffected, on the very same curve
@@ -287,7 +283,7 @@ def test_point_from_octets_var_refuses_the_real_two_torsion_point(
     `_jac_from_aff` reads affine y == 0 as Jacobian Z == 0 exactly as the
     convention this refuses does, and it never reduces y at all -- so
     both compressed keys passed silently (issue
-    btclib-org/btclib-ecc#16). Both prefixes, and both entry points,
+    btclib-org/ecc#16). Both prefixes, and both entry points,
     are checked; the hybrid and plain uncompressed forms are refused
     already -- no bytes representation exists for a y == 0 uncompressed
     point at all, ambiguous or not -- and are checked here too so a
@@ -300,13 +296,13 @@ def test_point_from_octets_var_refuses_the_real_two_torsion_point(
     x_bytes = t2[0].to_bytes(ec.p_size, byteorder="big")
 
     def refused(octets: bytes, err_msg: str) -> None:
-        with pytest.raises(BTClibEccValueError, match=err_msg):
+        with pytest.raises(EccValueError, match=err_msg):
             point_from_octets_var(octets, ec)
         # point_from_pub_key's octets branch translates whatever
         # point_from_octets_var raises into its own "not a public key", with no
         # cause and no context: the octets may be private material passed by
         # mistake, and what point_from_octets_var said of them is no safer
-        with pytest.raises(BTClibEccValueError, match="not a public key") as exc:
+        with pytest.raises(EccValueError, match="not a public key") as exc:
             point_from_pub_key(octets, ec)
         assert exc.value.__cause__ is None
         assert exc.value.__context__ is None
@@ -320,15 +316,15 @@ def test_point_from_octets_var_refuses_the_real_two_torsion_point(
 
     y_bytes = (0).to_bytes(ec.p_size, byteorder="big")
     inf_msg = "no bytes representation for infinity point"
-    with pytest.raises(BTClibEccValueError, match=inf_msg):
+    with pytest.raises(EccValueError, match=inf_msg):
         point_from_octets_var(b"\x04" + x_bytes + y_bytes, ec)
-    with pytest.raises(BTClibEccValueError, match="not a public key") as exc:
+    with pytest.raises(EccValueError, match="not a public key") as exc:
         point_from_pub_key(b"\x04" + x_bytes + y_bytes, ec)
     assert exc.value.__cause__ is None
     assert exc.value.__context__ is None
     # hybrid has no point_from_pub_key spelling: that function takes no
     # hybrid flag, so 0x06 there is "not a point" rather than this refusal
-    with pytest.raises(BTClibEccValueError, match=inf_msg):
+    with pytest.raises(EccValueError, match=inf_msg):
         point_from_octets_var(b"\x06" + x_bytes + y_bytes, ec, hybrid=True)
 
 
@@ -378,7 +374,7 @@ def test_mult_sec(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
     # what the fallthrough exists to keep saying
     ec = CURVES["secp256k1"]
     x_Q = 0xEEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
+    with pytest.raises(EccValueError, match="invalid x-coordinate$"):
         _mult_sec(b"\x02" + x_Q.to_bytes(ec.p_size, "big"), 2, ec)
 
 
@@ -394,8 +390,8 @@ def test_mult_pub_key(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
 
     The two twins it composes are asserted above; what is left is the
     public spelling's own part: every form of `PubKey`, a scalar as any
-    `Integer` and reduced mod n, and a key that is no point refused as a
-    `BTClibEccValueError` whichever form it arrived in.
+    `Integer` and reduced mod n, and a key that is no point refused as an
+    `EccValueError` whichever form it arrived in.
     """
     if not bindings:
         monkeypatch.setattr(curve, "_libsecp256k1_available", False)
@@ -420,12 +416,12 @@ def test_mult_pub_key(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
         (ec.G[0], ec.G[1] + 1),
         INF,
     ):
-        with pytest.raises(BTClibEccValueError):
+        with pytest.raises(EccValueError):
             mult_pub_key(5, not_a_point)
 
-    with pytest.raises(BTClibEccTypeError):
+    with pytest.raises(EccTypeError):
         mult_pub_key(1.5, Q)  # type: ignore[arg-type]
-    with pytest.raises(BTClibEccTypeError):
+    with pytest.raises(EccTypeError):
         mult_pub_key(5, 7)  # type: ignore[arg-type]
 
 
@@ -444,7 +440,7 @@ def test_a_hybrid_key_is_refused_on_both_arms(
     A multiplication has to refuse a hybrid key on either arm, as
     `point_from_octets_var` does without `hybrid=True`: a key valid on one
     install and invalid on another is the defect (issue
-    btclib-org/btclib-ecc#75).
+    btclib-org/ecc#75).
     """
     if not bindings:
         monkeypatch.setattr(curve, "_libsecp256k1_available", False)
@@ -456,10 +452,10 @@ def test_a_hybrid_key_is_refused_on_both_arms(
     assert point_from_octets_var(hybrid, ec, hybrid=True) == Q
 
     for pub_key in (hybrid, hybrid.hex()):
-        with pytest.raises(BTClibEccValueError, match="not a public key"):
+        with pytest.raises(EccValueError, match="not a public key"):
             mult_pub_key(5, pub_key)
     for m in (0, 5):
-        with pytest.raises(BTClibEccValueError, match="not a point: prefix "):
+        with pytest.raises(EccValueError, match="not a point: prefix "):
             _mult_sec(hybrid, m, ec)
 
 
@@ -490,11 +486,11 @@ def test_a_scalar_is_an_int_or_its_octets_and_nothing_else() -> None:
         "mzhNe8gj7WMbGNpsRRbE59dWU27jWqmKvFsg7A4vgdAD"
     )
     for text in (b58encode(b"\x80" + q.to_bytes(32, "big") + b"\x01").decode(), xprv):
-        with pytest.raises(BTClibEccValueError, match="invalid hex string"):
+        with pytest.raises(EccValueError, match="invalid hex string"):
             scalar_from_prv_key(text)
 
     for out_of_range in (0, secp256k1.n):
-        with pytest.raises(BTClibEccValueError, match="private key not in 1..n-1"):
+        with pytest.raises(EccValueError, match="private key not in 1..n-1"):
             scalar_from_prv_key(out_of_range)
 
 
@@ -528,18 +524,18 @@ def test_a_public_key_is_a_point_or_its_octets_and_nothing_else() -> None:
     # never echoed -- it may be the private material issue btclib-org/btclib#143
     # is about
     for wrong_type in (q, 1.5, None):
-        with pytest.raises(BTClibEccTypeError, match="not a public key"):
+        with pytest.raises(EccTypeError, match="not a public key"):
             point_from_pub_key(wrong_type)  # type: ignore[arg-type]
 
     # a tuple of the right shape that is no point of the curve, and the
     # infinity point, which has no public key
     for not_a_point in ((1, 2), INF):
-        with pytest.raises(BTClibEccValueError, match="not a valid public key"):
+        with pytest.raises(EccValueError, match="not a valid public key"):
             point_from_pub_key(not_a_point)
 
     # octets of a declared type whose content is no point: a value error,
     # and the parse's own reason is chained under it
-    with pytest.raises(BTClibEccValueError, match="not a public key"):
+    with pytest.raises(EccValueError, match="not a public key"):
         point_from_pub_key(
             b58encode(b"\x80" + q.to_bytes(32, "big") + b"\x01").decode()
         )
@@ -566,13 +562,13 @@ def test_prv_key_tweak_add(ec_name: str) -> None:
 def test_prv_key_tweak_add_refusals() -> None:
     """A tweak out of 0..n-1, and a sum of zero, are refused on both arms."""
     for t in (-1, secp256k1.n):
-        with pytest.raises(BTClibEccValueError, match="tweak not in 0..n-1"):
+        with pytest.raises(EccValueError, match="tweak not in 0..n-1"):
             prv_key_tweak_add(1, t)
     q = 0xC0FFEE
-    with pytest.raises(BTClibEccValueError, match="tweaked private key is zero") as e:
+    with pytest.raises(EccValueError, match="tweaked private key is zero") as e:
         prv_key_tweak_add(q, secp256k1.n - q)
     assert_secret_free(e.value, [f"{q:x}", q.to_bytes(32, "big")])
-    with pytest.raises(BTClibEccTypeError):
+    with pytest.raises(EccTypeError):
         prv_key_tweak_add(1, 1.0)  # type: ignore[arg-type]
 
 
@@ -600,6 +596,6 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
     """No piece of the secret is in the exception or in anything it chains."""
     call, _ = _SECRET_CALLS[name]
     secret, spellings = refused_secret(kind)
-    with pytest.raises(BTClibEccException) as refused:
+    with pytest.raises(EccException) as refused:
         call(secret)
     assert_secret_free(refused.value, spellings)

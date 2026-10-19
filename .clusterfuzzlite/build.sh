@@ -32,7 +32,7 @@ pip3 install --no-deps --no-build-isolation -e .
 
 # compile_python_fuzzer forwards every extra argument straight to
 # pyinstaller, ahead of the fuzzer's own path (base-builder's own
-# compile_python_fuzzer script). --collect-data=btclib_ecc is what
+# compile_python_fuzzer script). --collect-data=ecc is what
 # closes a gap PyInstaller's own analysis does not: `curves.curve` reads
 # JSON files under its package's `_data/` directory at import time, from
 # a path built off `__file__`, and a frozen onefile executable bundles no
@@ -46,7 +46,7 @@ pip3 install --no-deps --no-build-isolation -e .
 # fuzz_*.py with a corpus directory beside it is picked up here without a
 # second list of names to keep in step with the first.
 for fuzzer in $(find "$SRC/ellipticcurves/fuzz" -maxdepth 1 -name 'fuzz_*.py'); do
-  compile_python_fuzzer "$fuzzer" --collect-data=btclib_ecc
+  compile_python_fuzzer "$fuzzer" --collect-data=ecc
   name=$(basename "$fuzzer" .py)
   if [ -d "fuzz/corpus/$name" ]; then
     zip -j "$OUT/${name}_seed_corpus.zip" "fuzz/corpus/$name"/*.bin

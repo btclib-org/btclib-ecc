@@ -2,13 +2,13 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `btclib_ecc.curves.curve_group_f` module."""
+"""Tests for the `ecc.curves.curve_group_f` module."""
 
 import pytest
 
-from btclib_ecc.curves import CurveGroup, find_all_points, find_subgroup_points
-from btclib_ecc.curves.curve_group import _mult_aff_var
-from btclib_ecc.exceptions import BTClibEccValueError
+from ecc.curves import CurveGroup, find_all_points, find_subgroup_points
+from ecc.curves.curve_group import _mult_aff_var
+from ecc.exceptions import EccValueError
 
 
 def test_ecf() -> None:
@@ -56,11 +56,11 @@ def test_ecf_exceptions() -> None:
     ec = CurveGroup(10007, 497, 1768)
 
     err_msg = "p is too big to count all group points: "
-    with pytest.raises(BTClibEccValueError, match=err_msg):
+    with pytest.raises(EccValueError, match=err_msg):
         find_all_points(ec)
 
     err_msg = "p is too big to count all subgroup points: "
-    with pytest.raises(BTClibEccValueError, match=err_msg):
+    with pytest.raises(EccValueError, match=err_msg):
         # p (10007) is too big to count all subgroup points
         G = (2, 3265)
         find_subgroup_points(ec, G)

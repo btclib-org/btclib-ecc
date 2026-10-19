@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `btclib_ecc.curves.curve_group_2` module."""
+"""Tests for the `ecc.curves.curve_group_2` module."""
 
 import random
 import secrets
@@ -10,18 +10,18 @@ from collections.abc import Callable
 
 import pytest
 
-from btclib_ecc.alias import INF, INFJ, JacPoint
-from btclib_ecc.curves import Curve, secp256k1
-from btclib_ecc.curves.curve_group import (
+from ecc.alias import INF, INFJ, JacPoint
+from ecc.curves import Curve, secp256k1
+from ecc.curves.curve_group import (
     _double_mult_var,
     _mult,
     _odd_multiples_aff,
     _signed_odd_multiples_aff,
 )
 
-# from the module that defines them: btclib_ecc.curves does not export the
+# from the module that defines them: ecc.curves does not export the
 # individual multiplication implementations
-from btclib_ecc.curves.curve_group_2 import (
+from ecc.curves.curve_group_2 import (
     _BETA,
     _HALF_LEN,
     _LAM,
@@ -37,7 +37,7 @@ from btclib_ecc.curves.curve_group_2 import (
     _mult_w_NAF_var,
     _multiplier_decomposer,
 )
-from btclib_ecc.exceptions import BTClibEccValueError
+from ecc.exceptions import EccValueError
 from tests.curves.curve_group_test import _CountingGroup
 from tests.curves.curve_test import low_card_curves
 
@@ -66,10 +66,10 @@ def test_mult_sliding_window() -> None:
             assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
             assert ec.is_jac_equal(_mult_sliding_window_var(ec.n, ec.GJ, ec, w), INFJ)
 
-            with pytest.raises(BTClibEccValueError, match="negative m$"):
+            with pytest.raises(EccValueError, match="negative m$"):
                 _mult_sliding_window_var(-1, ec.GJ, ec, w)
 
-            with pytest.raises(BTClibEccValueError, match="non positive w: "):
+            with pytest.raises(EccValueError, match="non positive w: "):
                 _mult_sliding_window_var(1, ec.GJ, ec, -w)
 
     ec = ec23_31
@@ -99,10 +99,10 @@ def test_mult_w_NAF() -> None:
             assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
             assert ec.is_jac_equal(_mult_w_NAF_var(ec.n, ec.GJ, ec, w), INFJ)
 
-            with pytest.raises(BTClibEccValueError, match="negative m$"):
+            with pytest.raises(EccValueError, match="negative m$"):
                 _mult_w_NAF_var(-1, ec.GJ, ec, w)
 
-            with pytest.raises(BTClibEccValueError, match="non positive w: "):
+            with pytest.raises(EccValueError, match="non positive w: "):
                 _mult_w_NAF_var(1, ec.GJ, ec, -w)
 
     ec = ec23_31
@@ -146,7 +146,7 @@ def test_mult_endomorphism_secp256k1(
     assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
     assert ec.is_jac_equal(mult(ec.n, ec.GJ), INFJ)
 
-    with pytest.raises(BTClibEccValueError, match="negative m$"):
+    with pytest.raises(EccValueError, match="negative m$"):
         mult(-1, ec.GJ)
 
 
@@ -238,11 +238,11 @@ def test_double_mult_w_NAF() -> None:
     assert ec.is_jac_equal(
         _double_mult_w_NAF_var(0, ec.GJ, 0, ec.GJ, ec, 4, ec._fixed_points), INFJ
     )
-    with pytest.raises(BTClibEccValueError, match="negative first coefficient$"):
+    with pytest.raises(EccValueError, match="negative first coefficient$"):
         _double_mult_w_NAF_var(-1, ec.GJ, 1, ec.GJ, ec, 4, ec._fixed_points)
-    with pytest.raises(BTClibEccValueError, match="negative second coefficient$"):
+    with pytest.raises(EccValueError, match="negative second coefficient$"):
         _double_mult_w_NAF_var(1, ec.GJ, -1, ec.GJ, ec, 4, ec._fixed_points)
-    with pytest.raises(BTClibEccValueError, match="non positive w: "):
+    with pytest.raises(EccValueError, match="non positive w: "):
         _double_mult_w_NAF_var(1, ec.GJ, 1, ec.GJ, ec, 0, ec._fixed_points)
 
 
@@ -303,11 +303,11 @@ def test_double_mult_endomorphism_secp256k1() -> None:
     assert ec.is_jac_equal(dm(7, 5, HJ, HJ), _double_mult_var(7, HJ, 5, HJ, ec))
     assert ec.is_jac_equal(dm(3, _N - 3, HJ, HJ), INFJ)
 
-    with pytest.raises(BTClibEccValueError, match="negative first coefficient$"):
+    with pytest.raises(EccValueError, match="negative first coefficient$"):
         dm(-1, 1, HJ, QJ)
-    with pytest.raises(BTClibEccValueError, match="negative second coefficient$"):
+    with pytest.raises(EccValueError, match="negative second coefficient$"):
         dm(1, -1, HJ, QJ)
-    with pytest.raises(BTClibEccValueError, match="non positive w: "):
+    with pytest.raises(EccValueError, match="non positive w: "):
         dm(1, 1, HJ, QJ, 0)
 
 
@@ -338,11 +338,11 @@ def test_double_mult_regular_window() -> None:
             got = _double_mult_regular_window(u, ec.GJ, v, ec.GJ, ec, 4, scalar_len)
             assert ec.is_jac_equal(got, expected), (u, v, scalar_len)
 
-    with pytest.raises(BTClibEccValueError, match="negative first coefficient$"):
+    with pytest.raises(EccValueError, match="negative first coefficient$"):
         _double_mult_regular_window(-1, ec.GJ, 1, ec.GJ, ec, w=4, scalar_len=0)
-    with pytest.raises(BTClibEccValueError, match="negative second coefficient$"):
+    with pytest.raises(EccValueError, match="negative second coefficient$"):
         _double_mult_regular_window(1, ec.GJ, -1, ec.GJ, ec, w=4, scalar_len=0)
-    with pytest.raises(BTClibEccValueError, match="non positive w: "):
+    with pytest.raises(EccValueError, match="non positive w: "):
         _double_mult_regular_window(1, ec.GJ, 1, ec.GJ, ec, 0, scalar_len=0)
 
 
@@ -401,9 +401,9 @@ def test_mult_endomorphism_makes_the_same_operations_for_every_scalar() -> None:
 def test_mult_endomorphism_refuses_a_non_positive_w() -> None:
     """Both endomorphism multiplications refuse a non-positive w."""
     for w in (0, -1):
-        with pytest.raises(BTClibEccValueError, match="non positive w: "):
+        with pytest.raises(EccValueError, match="non positive w: "):
             _mult_endomorphism_secp256k1(1, secp256k1.GJ, secp256k1, w)
-        with pytest.raises(BTClibEccValueError, match="non positive w: "):
+        with pytest.raises(EccValueError, match="non positive w: "):
             _mult_endomorphism_secp256k1_var(1, secp256k1.GJ, secp256k1, w)
 
 

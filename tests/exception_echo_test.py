@@ -5,7 +5,7 @@
 """A private key handed over as a public key is not repeated in an exception.
 
 What a caller passes where a public key belongs may be a private key
-(btclib-org/btclib-ecc#74), and exception text is logged and printed.
+(btclib-org/ecc#74), and exception text is logged and printed.
 
 "Never appears" is held here for the exception, for its `__cause__` and
 for its `__context__`, recursively, `str` and `repr` of each. The default
@@ -23,17 +23,17 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc import number_theory as nt
-from btclib_ecc.curves import (
+from ecc import number_theory as nt
+from ecc.curves import (
     mult_pub_key,
     point_from_octets_var,
     point_from_pub_key,
     secp256k1,
 )
-from btclib_ecc.curves.curve import is_x_coordinate_var
-from btclib_ecc.curves.curve_group import signed_odd_digits
-from btclib_ecc.ecc import dleq, dsa, ecies, musig2, pedersen, rangeproof, ssa
-from btclib_ecc.exceptions import BTClibEccException
+from ecc.curves.curve import is_x_coordinate_var
+from ecc.curves.curve_group import signed_odd_digits
+from ecc.ecc import dleq, dsa, ecies, musig2, pedersen, rangeproof, ssa
+from ecc.exceptions import EccException
 from tests import needs_bindings
 from tests.curves.curve_test import no_bindings_anywhere
 
@@ -224,7 +224,7 @@ def test_no_exception_repeats_the_operand(
     if not bindings:
         no_bindings_anywhere(monkeypatch)
     call, secret = _CASES[name]
-    with pytest.raises(BTClibEccException) as raised:
+    with pytest.raises(EccException) as raised:
         call()
     for exc in _chain(raised.value):
         assert not _echoes(str(exc), secret), (name, "str", str(exc))

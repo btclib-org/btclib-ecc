@@ -6,26 +6,26 @@
 
 > Every public function guarantees the validation of all its inputs,
 > directly or indirectly. A malformed argument leaves as
-> `BTClibEccTypeError` or `BTClibEccValueError`.
+> `EccTypeError` or `EccValueError`.
 
 CONTRIBUTING.md's "Every public function validates its inputs" states it, and
 which of the two classes comes out is not a coin toss -- it is the distinction
 issue btclib-org/btclib#814 settled, so this file drives the two separately:
 
 - **a value of a type the signature does not declare** is the caller's
-  own mistake, and leaves as a `BTClibEccTypeError`. Every function
+  own mistake, and leaves as an `EccTypeError`. Every function
   the walk can drive, without exception.
 - **a value of a declared type that no valid input carries** is a fact
-  about the input, and leaves as a `BTClibEccException`.
+  about the input, and leaves as an `EccException`.
 
-Both are `BTClibEccException`, which is what makes the second rule one
+Both are `EccException`, which is what makes the second rule one
 predicate instead of a tuple that has to be kept in step with the
 hierarchy.
 
 ## How it calls what it calls
 
 The package's input types are few and well bounded, most of them named in
-`src/btclib_ecc/alias.py` and the key ones beside their converters.
+`src/ecc/alias.py` and the key ones beside their converters.
 `_WRONG_TYPE` and `_WRONG_VALUE` give each of them values of the two
 kinds, and the walk finds every public module-level function whose
 *required* parameters are all of those types. Those it can call with no
@@ -71,13 +71,13 @@ walk over a call with nothing wrong with it. `_WRONG_TYPE` and
 `_WRONG_VALUE` are read together everywhere else in this file, so rather
 than carrying four keys through only one of the two dicts, these four
 stay out of both, and the functions they gate are validated and driven
-by hand instead: `kdf_test.py`, `hashes_test.py`, `ecc/ecies_test.py`,
-`ecc/commit_nonce_test.py`, `ecc/musig2_test.py` and `ecc/frost_test.py`
-hold `kdf.ansi_x9_63_kdf`, `kdf.hkdf`, `kdf.hkdf_expand`,
-`kdf.hkdf_extract`, `hashes.tagged_hash`, `ecies.encrypt`,
+by hand instead: `kdf_test.py`, `hashes_test.py`, `schemes/ecies_test.py`,
+`schemes/commit_nonce_test.py`, `schemes/musig2_test.py` and
+`schemes/frost_test.py` hold `kdf.ansi_x9_63_kdf`, `kdf.hkdf`,
+`kdf.hkdf_expand`, `kdf.hkdf_extract`, `hashes.tagged_hash`, `ecies.encrypt`,
 `commit_nonce.commit_nonce_`, `musig2.sign` and `frost.sign` to the same
-`BTClibEccTypeError`/`BTClibEccValueError` contract this file drives
-automatically for everything else (issue btclib-org/btclib-ecc#11).
+`EccTypeError`/`EccValueError` contract this file drives
+automatically for everything else (issue btclib-org/ecc#11).
 
 `int` alone would also reach outside this package's input-validation
 surface and into arithmetic this file has never gated:
@@ -87,7 +87,7 @@ extended Euclid, not a malformed argument.
 `curves.curve_group.signed_odd_digits` refuses a non-integer `m`, `w` or
 `size` of its own accord, driven by hand in `curves/curve_group_test.py`
 rather than by this walk, in a module of its own (issue
-btclib-org/btclib-ecc#34).
+btclib-org/ecc#34).
 
 ## The two lists
 
@@ -110,9 +110,9 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc.exceptions import BTClibEccException, BTClibEccTypeError
+from ecc.exceptions import EccException, EccTypeError
 
-_LIBRARY = Path(__file__).parents[1] / "src" / "btclib_ecc"
+_LIBRARY = Path(__file__).parents[1] / "src" / "ecc"
 
 # a value of no type the alias declares: the caller's own mistake, and a
 # call mypy refuses. The tuples are read round-robin so that a function
@@ -231,14 +231,14 @@ _DRIVEN = sorted(_DRIVABLE)
 def test_a_wrong_type_leaves_as_a_type_error_of_the_package(dotted: str) -> None:
     """The first rule, and it has no exceptions.
 
-    `BTClibEccTypeError` and not `BTClibEccException`: this is
-    where the class is the point. A bare `TypeError` fails here as a
-    `BTClibEccValueError` does -- the first is a leak from underneath
+    `EccTypeError` and not `EccException`: this is
+    where the class is the point. A bare `TypeError` fails here as an
+    `EccValueError` does -- the first is a leak from underneath
     the package, the second is the package calling a caller's mistake a
     fact about the input.
     """
     for call in _calls(dotted, _WRONG_TYPE):
-        with pytest.raises(BTClibEccTypeError):
+        with pytest.raises(EccTypeError):
             call()
 
 
@@ -246,14 +246,14 @@ def test_a_wrong_type_leaves_as_a_type_error_of_the_package(dotted: str) -> None
 def test_a_wrong_value_leaves_as_an_exception_of_the_package(dotted: str) -> None:
     """The second rule, over every function the walk drives.
 
-    `BTClibEccException` and not one of the three: which of them a
-    malformed value deserves is the function's to decide -- a size is a
-    `BTClibEccValueError`, a bool where a number belongs is a
-    `BTClibEccTypeError` -- and the contract a caller is given is the
+    `EccException` and not one of the three: which of them a
+    malformed value deserves is the function's to decide -- a size is an
+    `EccValueError`, a bool where a number belongs is an
+    `EccTypeError` -- and the contract a caller is given is the
     base.
     """
     for call in _calls(dotted, _WRONG_VALUE):
-        with pytest.raises(BTClibEccException):
+        with pytest.raises(EccException):
             call()
 
 
@@ -261,7 +261,7 @@ def test_the_vocabulary_is_the_libraries_input_types() -> None:
     """A renamed type would narrow the walk without failing anything.
 
     Every name in the two vocabularies is still declared under
-    `src/btclib_ecc/`, and
+    `src/ecc/`, and
     every type `alias.py` declares and a public parameter is annotated
     with is either in the vocabulary or named below with the reason no
     wrong value can be built for it.
@@ -307,7 +307,7 @@ def test_the_vocabulary_is_the_libraries_input_types() -> None:
     without_a_wrong_value = {
         # not always behind a default: `ssa.challenge_` and four of
         # `kdf`'s functions take it with none (issue
-        # btclib-org/btclib-ecc#11). What keeps it out of
+        # btclib-org/ecc#11). What keeps it out of
         # `_WRONG_TYPE`/`_WRONG_VALUE` is that it has no wrong value the
         # module docstring's "What it does not reach" does not already
         # give a shared reason for -- `hashes._assert_valid_hf` is the
@@ -333,11 +333,11 @@ def test_the_walk_reaches_what_it_claims() -> None:
     must leave alone: a private name, and a function whose required
     parameters are not all in the vocabulary.
     """
-    assert _DRIVABLE["btclib_ecc.hashes.reduce_to_hlen"] == ["Octets"]
-    assert _DRIVABLE["btclib_ecc.ecc.dleq.generate_proof"] == ["Integer", "PubKey"]
+    assert _DRIVABLE["ecc.hashes.reduce_to_hlen"] == ["Octets"]
+    assert _DRIVABLE["ecc.ecc.dleq.generate_proof"] == ["Integer", "PubKey"]
     # `ec` and `compressed` carry defaults and are not driven
-    assert _DRIVABLE["btclib_ecc.curves.sec_point.bytes_from_point"] == ["Point"]
+    assert _DRIVABLE["ecc.curves.sec_point.bytes_from_point"] == ["Point"]
 
-    assert "btclib_ecc.hashes._assert_valid_hf" not in _DRIVABLE
+    assert "ecc.hashes._assert_valid_hf" not in _DRIVABLE
     # a required parameter the vocabulary cannot build: a signature object
-    assert "btclib_ecc.ecc.dsa.verify" not in _DRIVABLE
+    assert "ecc.ecc.dsa.verify" not in _DRIVABLE

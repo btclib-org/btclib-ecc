@@ -8,7 +8,7 @@ That file's docstring documents the measurement by hand: per third-party
 test module, in an environment with no bindings installed,
 
     uv run --locked --no-default-groups --group harness \
-        pytest <one module> --cov=btclib_ecc --cov-report=json \
+        pytest <one module> --cov=ecc --cov-report=json \
         --cov-fail-under=0
 
 reading back which lines of each Python arm ran, the `def` line excluded
@@ -68,7 +68,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from btclib_ecc._libsecp256k1 import INSTALLED
+from ecc._libsecp256k1 import INSTALLED
 
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT))
@@ -102,7 +102,7 @@ def _run_coverage(module: str, report_path: Path) -> dict[str, set[int]]:
             "-m",
             "pytest",
             f"tests/{module}",
-            "--cov=btclib_ecc",
+            "--cov=ecc",
             f"--cov-report=json:{report_path}",
             "--cov-fail-under=0",
         ],
@@ -130,7 +130,7 @@ def _assert_bindings_absent() -> None:
     """Refuse to measure where btclib_secp256k1 is installed at all.
 
     Presence rather than delegation, which is the broader of the two on
-    purpose: `BTCLIB_ECC_NO_LIBSECP256K1` leaves the package installed with
+    purpose: `ECC_NO_LIBSECP256K1` leaves the package installed with
     the Python arithmetic answering, and `_AUTHORITY` is measured in an
     environment holding no bindings. Refusing presence is what holds a
     run by hand to that environment instead of to one a reader has

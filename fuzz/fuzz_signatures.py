@@ -14,7 +14,7 @@ integers.
 
 A crash here on hostile bytes is a defect in the decoder, never in this
 harness: `data` is unconstrained bytes handed straight to each entry
-point. `BTClibEccException` is what both answer malformed input
+point. `EccException` is what both answer malformed input
 with, so that family is caught below as the expected outcome; any other
 exception propagates to atheris as the finding it is.
 
@@ -28,9 +28,9 @@ import sys
 
 import atheris
 
-from btclib_ecc.ecc.dsa import Sig as DsaSig
-from btclib_ecc.ecc.ssa import Sig as SsaSig
-from btclib_ecc.exceptions import BTClibEccException
+from ecc.ecc.dsa import Sig as DsaSig
+from ecc.ecc.ssa import Sig as SsaSig
+from ecc.exceptions import EccException
 
 # tests/fuzz_corpus_test.py reads this by ast.literal_eval, never by
 # importing the module -- atheris below is CI-only and undeclared in
@@ -39,22 +39,22 @@ from btclib_ecc.exceptions import BTClibEccException
 # call one attribute deep, `DsaSig.parse`, against the import that binds
 # the name
 ENTRY_POINTS = (
-    "btclib_ecc.ecc.dsa:Sig.parse",
-    "btclib_ecc.ecc.ssa:Sig.parse",
+    "ecc.ecc.dsa:Sig.parse",
+    "ecc.ecc.ssa:Sig.parse",
 )
 
 
 def fuzz_target(data: bytes) -> None:
     """Parse `data` as a DER ECDSA signature, then as a BIP340 one.
 
-    `BTClibEccException` is swallowed as each entry point's own
+    `EccException` is swallowed as each entry point's own
     refusal of malformed input; any other exception propagates, which is
     how atheris tells a defect in the decoder from the domain of input it
     already rejects.
     """
-    with contextlib.suppress(BTClibEccException):
+    with contextlib.suppress(EccException):
         DsaSig.parse(data)
-    with contextlib.suppress(BTClibEccException):
+    with contextlib.suppress(EccException):
         SsaSig.parse(data)
 
 

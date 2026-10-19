@@ -1,4 +1,4 @@
-# btclib-ecc
+# ecc
 
 Elliptic curve arithmetic, and the signature, key-agreement and
 commitment schemes built on it, in typed Python.
@@ -21,36 +21,36 @@ A badge that reports no state -- "we use ruff", "we use uv" -- reports a
 choice instead, and those are in CONTRIBUTING.md, beside the prose that
 says how the choice is enforced.
 -->
-[![PyPI version](https://img.shields.io/pypi/v/btclib-ecc.svg?logo=pypi)](https://pypi.org/project/btclib-ecc/)
-[![GitHub release](https://img.shields.io/github/v/release/btclib-org/btclib-ecc.svg)](https://github.com/btclib-org/btclib-ecc/releases)
-[![development status](https://img.shields.io/pypi/status/btclib-ecc.svg)](https://pypi.org/project/btclib-ecc/)
-[![license](https://img.shields.io/github/license/btclib-org/btclib-ecc.svg)](https://github.com/btclib-org/btclib-ecc/blob/main/LICENSE)
-[![downloads](https://static.pepy.tech/badge/btclib-ecc)](https://pepy.tech/projects/btclib-ecc)
-[![supported Python versions](https://img.shields.io/pypi/pyversions/btclib-ecc.svg?logo=python)](https://pypi.org/project/btclib-ecc/)
-[![implementation](https://img.shields.io/pypi/implementation/btclib-ecc.svg)](https://pypi.org/project/btclib-ecc/)
-[![wheel](https://img.shields.io/pypi/wheel/btclib-ecc.svg)](https://pypi.org/project/btclib-ecc/)
+[![PyPI version](https://img.shields.io/pypi/v/ecc.svg?logo=pypi)](https://pypi.org/project/ecc/)
+[![GitHub release](https://img.shields.io/github/v/release/btclib-org/ecc.svg)](https://github.com/btclib-org/ecc/releases)
+[![development status](https://img.shields.io/pypi/status/ecc.svg)](https://pypi.org/project/ecc/)
+[![license](https://img.shields.io/github/license/btclib-org/ecc.svg)](https://github.com/btclib-org/ecc/blob/main/LICENSE)
+[![downloads](https://static.pepy.tech/badge/ecc)](https://pepy.tech/projects/ecc)
+[![supported Python versions](https://img.shields.io/pypi/pyversions/ecc.svg?logo=python)](https://pypi.org/project/ecc/)
+[![implementation](https://img.shields.io/pypi/implementation/ecc.svg)](https://pypi.org/project/ecc/)
+[![wheel](https://img.shields.io/pypi/wheel/ecc.svg)](https://pypi.org/project/ecc/)
 
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/btclib-ecc/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/btclib-ecc/main)
-[![lint workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/lint.yml?query=branch%3Amain)
-[![test workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/test.yml?query=branch%3Amain)
-[![docs workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/docs.yml?query=branch%3Amain)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/ecc/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/ecc/main)
+[![lint workflow status](https://github.com/btclib-org/ecc/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/lint.yml?query=branch%3Amain)
+[![test workflow status](https://github.com/btclib-org/ecc/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/test.yml?query=branch%3Amain)
+[![docs workflow status](https://github.com/btclib-org/ecc/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/docs.yml?query=branch%3Amain)
 [![documentation build](https://app.readthedocs.org/projects/btclib-ecc/badge/?version=latest)](https://btclib-ecc.readthedocs.io)
-[![vendored-vectors workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/vendored-vectors.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/vendored-vectors.yml?query=branch%3Amain)
-[![mutation workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/mutation.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/mutation.yml?query=branch%3Amain)
-[![fuzz workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/fuzz.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/fuzz.yml?query=branch%3Amain)
-[![zkp-oracle workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/zkp-oracle.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/zkp-oracle.yml?query=branch%3Amain)
-[![deps-latest workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/deps-latest.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/deps-latest.yml?query=branch%3Amain)
-[![pypi-install workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/pypi-install.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/pypi-install.yml?query=branch%3Amain)
-[![deps-oldest workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/deps-oldest.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/deps-oldest.yml?query=branch%3Amain)
-[![py-arm-authority workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/py-arm-authority.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/py-arm-authority.yml?query=branch%3Amain)
-[![os-macos workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/os-macos.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/os-macos.yml?query=branch%3Amain)
-[![os-ubuntu workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/os-ubuntu.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/os-ubuntu.yml?query=branch%3Amain)
-[![os-windows workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/os-windows.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/os-windows.yml?query=branch%3Amain)
-[![links workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/links.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/links.yml?query=branch%3Amain)
-[![sdist-rebuild workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/sdist-rebuild.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/sdist-rebuild.yml?query=branch%3Amain)
-[![codeql workflow status](https://github.com/btclib-org/btclib-ecc/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/btclib-org/btclib-ecc/actions/workflows/codeql.yml?query=branch%3Amain)
+[![vendored-vectors workflow status](https://github.com/btclib-org/ecc/actions/workflows/vendored-vectors.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/vendored-vectors.yml?query=branch%3Amain)
+[![mutation workflow status](https://github.com/btclib-org/ecc/actions/workflows/mutation.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/mutation.yml?query=branch%3Amain)
+[![fuzz workflow status](https://github.com/btclib-org/ecc/actions/workflows/fuzz.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/fuzz.yml?query=branch%3Amain)
+[![zkp-oracle workflow status](https://github.com/btclib-org/ecc/actions/workflows/zkp-oracle.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/zkp-oracle.yml?query=branch%3Amain)
+[![deps-latest workflow status](https://github.com/btclib-org/ecc/actions/workflows/deps-latest.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/deps-latest.yml?query=branch%3Amain)
+[![pypi-install workflow status](https://github.com/btclib-org/ecc/actions/workflows/pypi-install.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/pypi-install.yml?query=branch%3Amain)
+[![deps-oldest workflow status](https://github.com/btclib-org/ecc/actions/workflows/deps-oldest.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/deps-oldest.yml?query=branch%3Amain)
+[![py-arm-authority workflow status](https://github.com/btclib-org/ecc/actions/workflows/py-arm-authority.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/py-arm-authority.yml?query=branch%3Amain)
+[![os-macos workflow status](https://github.com/btclib-org/ecc/actions/workflows/os-macos.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/os-macos.yml?query=branch%3Amain)
+[![os-ubuntu workflow status](https://github.com/btclib-org/ecc/actions/workflows/os-ubuntu.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/os-ubuntu.yml?query=branch%3Amain)
+[![os-windows workflow status](https://github.com/btclib-org/ecc/actions/workflows/os-windows.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/os-windows.yml?query=branch%3Amain)
+[![links workflow status](https://github.com/btclib-org/ecc/actions/workflows/links.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/links.yml?query=branch%3Amain)
+[![sdist-rebuild workflow status](https://github.com/btclib-org/ecc/actions/workflows/sdist-rebuild.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/sdist-rebuild.yml?query=branch%3Amain)
+[![codeql workflow status](https://github.com/btclib-org/ecc/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/codeql.yml?query=branch%3Amain)
 
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/btclib-ecc/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/btclib-ecc)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/btclib-org/ecc/badge)](https://scorecard.dev/viewer/?uri=github.com/btclib-org/ecc)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15085/badge)](https://www.bestpractices.dev/projects/15085)
 [![OpenSSF Baseline](https://www.bestpractices.dev/projects/15085/baseline)](https://www.bestpractices.dev/projects/15085)
 
@@ -117,7 +117,7 @@ to the upstream commit it was copied from.
 ## Installing
 
 ```shell
-python -m pip install --upgrade "btclib-ecc[secp256k1]"
+python -m pip install --upgrade "ecc[secp256k1]"
 ```
 
 The `secp256k1` extra installs the
@@ -130,7 +130,7 @@ integers. It changes nothing where the bindings serve. On PyPy the extra
 installs nothing, and the package ignores a gmpy2 installed by other means:
 
 ```shell
-python -m pip install --upgrade "btclib-ecc[secp256k1,gmpy2]"
+python -m pip install --upgrade "ecc[secp256k1,gmpy2]"
 ```
 
 ## First use
@@ -139,8 +139,8 @@ An ECDSA signature, verified from the DER octets a peer would send, and
 a BIP340 Schnorr signature:
 
 ```python
-from btclib_ecc.curves import sec_point
-from btclib_ecc.ecc import dsa, ssa
+from ecc.curves import sec_point
+from ecc.ecc import dsa, ssa
 
 prv_key = 0xB7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF
 
@@ -188,8 +188,8 @@ what it intends to do, and what it deliberately does not, is its
 ## Links
 
 - Documentation: <https://btclib-ecc.readthedocs.io/>
-- Source: <https://github.com/btclib-org/btclib-ecc>
-- Releases: <https://github.com/btclib-org/btclib-ecc/releases>
+- Source: <https://github.com/btclib-org/ecc>
+- Releases: <https://github.com/btclib-org/ecc/releases>
 - [CHANGELOG.md](./CHANGELOG.md), and [RELEASE_NOTES.md](./RELEASE_NOTES.md)
   for what a release asks a user to act on
 

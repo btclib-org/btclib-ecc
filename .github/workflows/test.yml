@@ -198,9 +198,9 @@ jobs:
       - name: Assert the bindings are absent
         run: >
           uv run --locked --no-default-groups --group harness
-          python -c "from btclib_ecc._libsecp256k1 import INSTALLED;
+          python -c "from ecc._libsecp256k1 import INSTALLED;
           assert not INSTALLED, 'btclib_secp256k1 is installed';
-          from btclib_ecc.curves import is_libsecp256k1_serving;
+          from ecc.curves import is_libsecp256k1_serving;
           assert not is_libsecp256k1_serving()"
       - name: Run pytest
         run: >
@@ -218,7 +218,7 @@ jobs:
   # the union of the two runs above, gated at the same floor, beside the
   # `coverage` job's own gate rather than instead of it. A line only the
   # no-bindings run reaches is a line the configuration an ordinary
-  # `pip install btclib-ecc[secp256k1]` gets never executes, and the
+  # `pip install ecc[secp256k1]` gets never executes, and the
   # `coverage` job reports it by going red; gating the union alone would
   # let it pass. What this gate adds is the line neither run reaches: dead
   # code in either configuration, or a `bindings` marker drawn wider
@@ -298,7 +298,7 @@ jobs:
       - name: Assert the bindings serve and the arithmetic is int
         run: >
           uv run --locked --no-default-groups --group harness --group bindings
-          python -c "from btclib_ecc.curves import is_libsecp256k1_serving, secp256k1;
+          python -c "from ecc.curves import is_libsecp256k1_serving, secp256k1;
           assert is_libsecp256k1_serving();
           assert type(secp256k1._modulus) is int, 'gmpy2 is installed'"
       - name: Run pytest
@@ -436,17 +436,17 @@ jobs:
             .venv/bin/python -c "
           import sys
           from importlib.metadata import requires, version
-          import btclib_ecc
-          from btclib_ecc.curves import is_libsecp256k1_serving, mult, secp256k1
-          from btclib_ecc.ecc import dsa
+          import ecc
+          from ecc.curves import is_libsecp256k1_serving, mult, secp256k1
+          from ecc.ecc import dsa
 
-          print(version('btclib-ecc'), requires('btclib-ecc'))
-          assert btclib_ecc.__version__ == version('btclib-ecc')
+          print(version(ecc.name), requires(ecc.name))
+          assert ecc.__version__ == version(ecc.name)
           assert is_libsecp256k1_serving() is (sys.argv[1] == '[secp256k1]')
           field = 'mpz' if sys.argv[1] == '[gmpy2]' else 'int'
           assert type(secp256k1._modulus).__name__ == field
-          sig = dsa.sign(b'btclib_ecc', 1)
-          assert dsa.verify(b'btclib_ecc', mult(1), sig)
+          sig = dsa.sign(b'ecc', 1)
+          assert dsa.verify(b'ecc', mult(1), sig)
           " "$extra"
           done
       # the suite as the sdist ships it, unpacked outside the checkout and
