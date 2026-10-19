@@ -90,9 +90,9 @@ jobs:
       - name: Assert the bindings are absent
         run: >
           uv run --locked --no-default-groups --group harness
-          python -c "from btclib_ecc._libsecp256k1 import INSTALLED;
+          python -c "from ecc._libsecp256k1 import INSTALLED;
           assert not INSTALLED, 'btclib_secp256k1 is installed';
-          from btclib_ecc.curves import is_libsecp256k1_serving;
+          from ecc.curves import is_libsecp256k1_serving;
           assert not is_libsecp256k1_serving()"
 
       # --dry-run on the pull_request trigger only: a fork's read-only

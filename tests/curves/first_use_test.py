@@ -32,11 +32,11 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc import _libsecp256k1
-from btclib_ecc.curves import curve_group, mult, secp256k1
-from btclib_ecc.curves.curve import PreparedPoint, is_libsecp256k1_serving
-from btclib_ecc.curves.sec_point import bytes_from_point
-from btclib_ecc.ecc import dsa, ellswift, frost, musig2, pedersen, ssa
+from ecc import _libsecp256k1
+from ecc.curves import curve_group, mult, secp256k1
+from ecc.curves.curve import PreparedPoint, is_libsecp256k1_serving
+from ecc.curves.sec_point import bytes_from_point
+from ecc.ecc import dsa, ellswift, frost, musig2, pedersen, ssa
 from tests import module_names, needs_bindings
 from tests.curves.curve_test import no_bindings_anywhere
 
@@ -220,7 +220,7 @@ def _is_lru_cache(obj: Any) -> bool:
 
 
 def _lru_caches_of_the_package() -> set[Any]:
-    """Return every lru_cache wrapper in btclib_ecc, functions and methods."""
+    """Return every lru_cache wrapper in ecc, functions and methods."""
     found = set()
     for name in module_names():
         module = importlib.import_module(name)

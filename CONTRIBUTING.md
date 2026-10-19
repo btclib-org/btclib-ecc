@@ -262,7 +262,7 @@ markdownlint-cli2](https://img.shields.io/badge/lint-markdownlint--cli2-yellowgr
 [![pre-commit
 enabled](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![GitHub repository:
-btclib-org/btclib-ecc](https://img.shields.io/badge/GitHub-btclib--org%2Fbtclib--ecc-181717?logo=github)](https://github.com/btclib-org/btclib-ecc/)
+btclib-org/ecc](https://img.shields.io/badge/GitHub-btclib--org%2Fecc-181717?logo=github)](https://github.com/btclib-org/ecc/)
 
 To get an overview of the project, read the [README](./README.md).
 
@@ -274,7 +274,7 @@ happens to lack a leading underscore. An empty list is a legitimate
 answer, for a module with nothing public of its own; declaring nothing is
 not. For a package the list is what the `__init__` publishes, submodules
 included; for a module it is what the module itself defines, a name it
-imported belonging to the module that defines it. `btclib_ecc.__all__`
+imported belonging to the module that defines it. `ecc.__all__`
 is the root of that tree, written out rather than discovered, so that a
 new module is published by somebody deciding to. `tests/all_test.py`
 checks all of this and finds the modules rather than listing them: a
@@ -287,8 +287,8 @@ imports each module alone and refuses one that loads anything above it.
 
 **Every public function validates its inputs.** Whatever it is handed — a
 string, octets, or an object somebody built earlier — a name a caller can
-reach checks it before acting on it, and a malformed argument leaves as a
-`BTClibEccTypeError` or a `BTClibEccValueError`, which is what
+reach checks it before acting on it, and a malformed argument leaves as an
+`EccTypeError` or an `EccValueError`, which is what
 the callers of this package are written to catch. The work itself may be
 deferred to a private twin that does not validate; that twin is then what
 the package composes internally, where the inputs have already been
@@ -299,18 +299,19 @@ and only those.** `dsa.verify` answers False for a signature that does
 not verify: that is what the bool is for, and a caller filtering a list
 of them wants an answer and not an exception. A value of a type the
 signature does not declare is not such an answer — it is the caller's own
-mistake, it is a call mypy already refuses, and it leaves as a
-`BTClibEccTypeError` like any other. So `dsa.verify(msg, 12, sig)`
+mistake, it is a call mypy already refuses, and it leaves as an
+`EccTypeError` like any other. So `dsa.verify(msg, 12, sig)`
 raises, 12 being a private key in this package and never a public one,
 where a well-formed public key that simply did not sign is False.
 
-**`ecc`'s verifications carve one case out of that**, as `ecc.musig2` and
-`ecc.frost` do: a value of a declared type whose size or encoding makes it
-impossible to read as a signature, a key, a digest or an opening raises
-rather than answering False. The function is not saying the signature is
-forged, it is saying it has no way to find out (btclib-org/btclib#2170).
-So `dsa.verify(msg, "not a key", sig)` raises `BTClibEccValueError`,
-while a signature that is well formed and simply does not verify is False.
+**`ecc.ecc`'s verifications carve one case out of that**, as
+`ecc.ecc.musig2` and `ecc.ecc.frost` do: a value of a declared type whose
+size or encoding makes it impossible to read as a signature, a key, a
+digest or an opening raises rather than answering False. The function is
+not saying the signature is forged, it is saying it has no way to find out
+(btclib-org/btclib#2170). So `dsa.verify(msg, "not a key", sig)` raises
+`EccValueError`, while a signature that is well formed and simply does not
+verify is False.
 
 **What decides is whether the parameter declares a size**, which is what
 makes the carve-out one rule rather than a judgement per call site. A
@@ -325,7 +326,7 @@ reference reads the same way: `dleq_verify_proof` asserts
 asserts `len(m) == 32`, while `s >= GE.ORDER` and a challenge that does
 not match are its False.
 
-`ecc.dsa`'s malformed DER encoding is the one thing on the other side of
+`ecc.ecc.dsa`'s malformed DER encoding is the one thing on the other side of
 the line, and it is there because a measurement put it there rather than
 because the rule reaches it: its own wycheproof vectors ask that question
 over profiles built for it, and answer False.
@@ -335,15 +336,15 @@ thing on the raising side of the line that the rule does not put there:
 `Sequence[Sig]` declares no size. BIP340 reads an empty batch as valid,
 but a caller who built one by mistake learns nothing from True, and
 False would report a failed verification where there is no signature to
-fail (btclib-org/btclib-ecc#222).
+fail (btclib-org/ecc#222).
 
 A verification also raises where the caller asked to be refused instead of
 served by the Python arithmetic: under
 `set_libsecp256k1_serving(serving=True, required=True)`, a verification the
 bindings decline for something the caller chose — an `hf`, a MuSig2 adaptor
-— raises `BTClibEccRuntimeError` and does not answer False, since False
+— raises `EccRuntimeError` and does not answer False, since False
 would report a signature that failed where none was checked
-(btclib-org/btclib-ecc#224).
+(btclib-org/ecc#224).
 
 The line is the annotation, and deliberately not which built-in a helper
 happens to derive from: those two coincide only by accident
@@ -453,7 +454,7 @@ context `partial_sig_verify` aggregates. Both names of the pair are in
 `__all__`, so it is an offer to skip work the caller has already paid
 for, not a way past the validation above: `sign_` checks its `msg_hash`
 as `sign` checks its `msg`. The two conventions are independent, and
-`btclib_ecc.ecc.dsa._assert_as_valid_` carries both.
+`ecc.ecc.dsa._assert_as_valid_` carries both.
 
 Publishing both names is what makes their agreement a promise rather than
 a tidiness. A keyword added to `verify` is added to `verify_` or to
@@ -558,7 +559,7 @@ operands of 256 bits down to 64, as the ratio between the two ends:
     reduces its product mod `p` before the symbol, so its operands'
     size moves it by 1.08x, and the symbol's loop over that residue
     spreads it by 1.3x within one size, as Tonelli-Shanks's does; the
-    scripts are in issue btclib-org/btclib-ecc#195
+    scripts are in issue btclib-org/ecc#195
 - one modular inverse, in the layer above: `aff_from_jac_var` at 2.96x,
     `x_aff_from_jac_var` at 1.93x, `aff_from_jac_batch_var` at 1.67x and
     `y_aff_from_jac_var` at 1.42x follow the `Z` they are handed;
@@ -728,8 +729,8 @@ that do not are deliberate:
   them.
 - `uv build` and `uv run --no-project` install none of the project's
   dependencies.
-- The `dev-version` action re-locks after writing a rehearsal's version
-  suffix; `uv lock` keeps the versions already locked.
+- The `dev-version` action re-locks after writing a rehearsal's name and
+  version suffix; `uv lock` keeps the versions already locked.
 - `public-api`, in btclib-org/.github's `reusable-public-api.yml`, runs
   `uvx griffe==2.2.0`: a pinned version, with its own dependencies
   unlocked.
@@ -834,9 +835,9 @@ that environment, the bindings or gmpy2; CI's starts empty:
 ```shell
 UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
     uv run --exact --locked --no-default-groups --group harness \
-    python -c "from btclib_ecc._libsecp256k1 import INSTALLED;
+    python -c "from ecc._libsecp256k1 import INSTALLED;
 assert not INSTALLED, 'btclib_secp256k1 is installed';
-from btclib_ecc.curves import is_libsecp256k1_serving;
+from ecc.curves import is_libsecp256k1_serving;
 assert not is_libsecp256k1_serving()"
 UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
     COVERAGE_FILE=coverage-data-no-bindings \
@@ -863,7 +864,7 @@ configuration first and measures no coverage:
 UV_PROJECT_ENVIRONMENT=.venv-int-arithmetic \
     uv run --exact --locked --no-default-groups \
     --group harness --group bindings \
-    python -c "from btclib_ecc.curves import is_libsecp256k1_serving, secp256k1;
+    python -c "from ecc.curves import is_libsecp256k1_serving, secp256k1;
 assert is_libsecp256k1_serving();
 assert type(secp256k1._modulus) is int, 'gmpy2 is installed'"
 UV_PROJECT_ENVIRONMENT=.venv-int-arithmetic \
@@ -881,9 +882,9 @@ touches no issue. The environment assertion comes first, as above:
 ```shell
 UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
     uv run --exact --locked --no-default-groups --group harness \
-    python -c "from btclib_ecc._libsecp256k1 import INSTALLED;
+    python -c "from ecc._libsecp256k1 import INSTALLED;
 assert not INSTALLED, 'btclib_secp256k1 is installed';
-from btclib_ecc.curves import is_libsecp256k1_serving;
+from ecc.curves import is_libsecp256k1_serving;
 assert not is_libsecp256k1_serving()"
 UV_PROJECT_ENVIRONMENT=.venv-no-bindings \
     uv run --exact --locked --no-default-groups --group harness \
@@ -937,17 +938,17 @@ for extra in "" "[secp256k1]" "[gmpy2]"; do
   .venv/bin/python -c "
 import sys
 from importlib.metadata import requires, version
-import btclib_ecc
-from btclib_ecc.curves import is_libsecp256k1_serving, mult, secp256k1
-from btclib_ecc.ecc import dsa
+import ecc
+from ecc.curves import is_libsecp256k1_serving, mult, secp256k1
+from ecc.ecc import dsa
 
-print(version('btclib-ecc'), requires('btclib-ecc'))
-assert btclib_ecc.__version__ == version('btclib-ecc')
+print(version(ecc.name), requires(ecc.name))
+assert ecc.__version__ == version(ecc.name)
 assert is_libsecp256k1_serving() is (sys.argv[1] == '[secp256k1]')
 field = 'mpz' if sys.argv[1] == '[gmpy2]' else 'int'
 assert type(secp256k1._modulus).__name__ == field
-sig = dsa.sign(b'btclib_ecc', 1)
-assert dsa.verify(b'btclib_ecc', mult(1), sig)
+sig = dsa.sign(b'ecc', 1)
+assert dsa.verify(b'ecc', mult(1), sig)
 " "$extra"
 done
 ```

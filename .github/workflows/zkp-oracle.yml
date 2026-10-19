@@ -16,12 +16,12 @@ name: zkp-oracle
 #
 # Every oracle compares this package against libsecp256k1-zkp and moves
 # no run-time path: sign-to-contract in both directions
-# (`tests/ecc/commit_nonce_test.py`), the MuSig2 adaptor
-# (`tests/ecc/musig2_test.py`), the ECDSA adaptor
-# (`tests/ecc/ecdsa_adaptor_test.py`), the Pedersen commitment and generator
-# (`tests/ecc/pedersen_test.py`), the rangeproof codec and writer
-# (`tests/ecc/rangeproof_test.py`) and the Borromean ring signature
-# (`tests/ecc/borromean_test.py`).
+# (`tests/schemes/commit_nonce_test.py`), the MuSig2 adaptor
+# (`tests/schemes/musig2_test.py`), the ECDSA adaptor
+# (`tests/schemes/ecdsa_adaptor_test.py`), the Pedersen commitment and generator
+# (`tests/schemes/pedersen_test.py`), the rangeproof codec and writer
+# (`tests/schemes/rangeproof_test.py`) and the Borromean ring signature
+# (`tests/schemes/borromean_test.py`).
 #
 # `tests.needs_zkp` is the marker this job selects on and
 # `tests.ZKP_AVAILABLE` the flag that skips it everywhere else;
@@ -54,20 +54,20 @@ on:
       - .github/workflows/zkp-oracle.yml
       - tests/__init__.py
       - tests/conftest.py
-      - tests/ecc/borromean_test.py
-      - tests/ecc/commit_nonce_test.py
-      - tests/ecc/ecdsa_adaptor_test.py
-      - tests/ecc/musig2_test.py
-      - tests/ecc/pedersen_test.py
-      - tests/ecc/rangeproof_test.py
-      - tests/ecc/_data/zkp_rangeproof_vectors.json
-      - src/btclib_ecc/ecc/borromean.py
-      - src/btclib_ecc/ecc/dsa.py
-      - src/btclib_ecc/ecc/commit_nonce.py
-      - src/btclib_ecc/ecc/ecdsa_adaptor.py
-      - src/btclib_ecc/ecc/musig2.py
-      - src/btclib_ecc/ecc/pedersen.py
-      - src/btclib_ecc/ecc/rangeproof.py
+      - tests/schemes/borromean_test.py
+      - tests/schemes/commit_nonce_test.py
+      - tests/schemes/ecdsa_adaptor_test.py
+      - tests/schemes/musig2_test.py
+      - tests/schemes/pedersen_test.py
+      - tests/schemes/rangeproof_test.py
+      - tests/schemes/_data/zkp_rangeproof_vectors.json
+      - src/ecc/ecc/borromean.py
+      - src/ecc/ecc/dsa.py
+      - src/ecc/ecc/commit_nonce.py
+      - src/ecc/ecc/ecdsa_adaptor.py
+      - src/ecc/ecc/musig2.py
+      - src/ecc/ecc/pedersen.py
+      - src/ecc/ecc/rangeproof.py
 
 permissions:
   contents: read

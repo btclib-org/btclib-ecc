@@ -20,14 +20,14 @@ it that answers True, a wrong value for each position worth driving, and a
 structurally invalid one for each position where the two diverge. Three rules,
 asked one position at a time with the others left valid:
 
-- a **wrong type** leaves as a `BTClibEccTypeError`. A bool is an answer
+- a **wrong type** leaves as an `EccTypeError`. A bool is an answer
   about a value, so a type the signature does not declare is not
   something it answers about.
 - a **wrong value** of a declared type is `False`. That is what the bool
   is for, and what a caller filtering signatures off the wire relies on.
 - a value of a declared type whose size or encoding makes it **structurally
   invalid** -- one no valid input could ever carry, as opposed to one that is
-  merely not authentic -- is a `BTClibEccValueError`. A verification is
+  merely not authentic -- is an `EccValueError`. A verification is
   not the question that value answers, so it is refused rather than read as a
   forged signature. What decides is whether the position declares a size:
   `dsa.verify_`'s digest does and `dsa.verify`'s message does not, so the same
@@ -36,7 +36,7 @@ asked one position at a time with the others left valid:
 Issue btclib-org/btclib#814 settled the second against issue
 btclib-org/btclib#745's "total over everything it is handed", and this is
 where the decision is held to. Issue btclib-org/btclib#2170 is where the
-third was carved out of the second, for the `ecc` verifications: a
+third was carved out of the second, for the `ecc.ecc` verifications: a
 signature, a key or an opening whose size or encoding makes it impossible
 is refused there.
 
@@ -58,10 +58,10 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc.alias import INF
-from btclib_ecc.curves import bytes_from_point, mult, secp256k1
-from btclib_ecc.ecc import dleq, dsa, pedersen, ssa
-from btclib_ecc.hashes import reduce_to_hlen
+from ecc.alias import INF
+from ecc.curves import bytes_from_point, mult, secp256k1
+from ecc.ecc import dleq, dsa, pedersen, ssa
+from ecc.hashes import reduce_to_hlen
 
 _Q = 12
 _PUB = bytes_from_point(mult(_Q))
@@ -231,7 +231,7 @@ def test_a_wrong_type_leaves_as_a_type_error_of_the_package(case: _Case) -> None
     """The first rule, one position at a time, the others left valid."""
     for position in range(len(case.args)):
         for wrong in _WRONG_TYPES:
-            assert _outcome(case, position, wrong) == "BTClibEccTypeError"
+            assert _outcome(case, position, wrong) == "EccTypeError"
 
 
 @pytest.mark.parametrize("case", _CASES, ids=_IDS)
@@ -248,10 +248,10 @@ def test_a_structurally_invalid_value_raises(case: _Case) -> None:
     It is btclib-org/btclib#2170's.
 
     A signature or a public key whose size or encoding no valid input
-    could carry is not a value the equation ever reaches, so it is a
-    BTClibEccValueError rather than a False that would read as a forged
+    could carry is not a value the equation ever reaches, so it is an
+    EccValueError rather than a False that would read as a forged
     signature. `dsa.verify`'s malformed DER stays under the second rule
     instead, `_assert_structurally_valid_`'s own docstring measuring why.
     """
     for position, wrong in sorted(case.structurally_invalid_values.items()):
-        assert _outcome(case, position, wrong) == "BTClibEccValueError"
+        assert _outcome(case, position, wrong) == "EccValueError"

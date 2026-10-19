@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `btclib_ecc.curves.curve_group` module."""
+"""Tests for the `ecc.curves.curve_group` module."""
 
 import random
 from functools import partial
@@ -10,8 +10,8 @@ from functools import partial
 import pytest
 from typing_extensions import override
 
-from btclib_ecc.alias import INF, INFJ, JacPoint, Point
-from btclib_ecc.curves import (
+from ecc.alias import INF, INFJ, JacPoint, Point
+from ecc.curves import (
     Curve,
     CurveGroup,
     curve_group,
@@ -20,9 +20,9 @@ from btclib_ecc.curves import (
 )
 
 # the mult_* variants under test, and the helpers they are built on, come
-# from the module that defines them: btclib_ecc.curves exports mult,
+# from the module that defines them: ecc.curves exports mult,
 # double_mult_var and multi_mult_var, not a menu of implementations
-from btclib_ecc.curves.curve_group import (
+from ecc.curves.curve_group import (
     _MULTI_MULT_W,
     BOS_COSTER_THRESHOLD,
     MAX_W,
@@ -51,8 +51,8 @@ from btclib_ecc.curves.curve_group import (
     _wNAF_of_m_var,
     signed_odd_digits,
 )
-from btclib_ecc.ecc import second_generator
-from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
+from ecc.ecc import second_generator
+from ecc.exceptions import EccTypeError, EccValueError
 from tests.curves.curve_test import all_curves, low_card_curves
 
 ec23_31 = low_card_curves["ec23_31"]
@@ -78,7 +78,7 @@ def test_mult_recursive_aff() -> None:
         assert _mult_recursive_aff_var(ec.n, ec.G, ec) == INF
         assert _mult_recursive_aff_var(ec.n, INF, ec) == INF
 
-        with pytest.raises(BTClibEccValueError, match="negative m$"):
+        with pytest.raises(EccValueError, match="negative m$"):
             _mult_recursive_aff_var(-1, ec.G, ec)
 
     for ec in low_card_curves.values():
@@ -112,7 +112,7 @@ def test_mult_recursive_jac() -> None:
         assert ec.is_jac_equal(_mult_recursive_jac_var(ec.n, ec.GJ, ec), INFJ)
         assert ec.is_jac_equal(_mult_recursive_jac_var(ec.n, INFJ, ec), INFJ)
 
-        with pytest.raises(BTClibEccValueError, match="negative m$"):
+        with pytest.raises(EccValueError, match="negative m$"):
             _mult_recursive_jac_var(-1, ec.GJ, ec)
 
     ec = ec23_31
@@ -141,7 +141,7 @@ def test_mult_aff() -> None:
         assert _mult_aff_var(ec.n, ec.G, ec) == INF
         assert _mult_aff_var(ec.n, INF, ec) == INF
 
-        with pytest.raises(BTClibEccValueError, match="negative m$"):
+        with pytest.raises(EccValueError, match="negative m$"):
             _mult_aff_var(-1, ec.G, ec)
 
     for ec in low_card_curves.values():
@@ -175,7 +175,7 @@ def test_mult_jac() -> None:
         assert ec.is_jac_equal(_mult_jac_var(ec.n, ec.GJ, ec), INFJ)
         assert ec.is_jac_equal(_mult_jac_var(ec.n, INFJ, ec), INFJ)
 
-        with pytest.raises(BTClibEccValueError, match="negative m$"):
+        with pytest.raises(EccValueError, match="negative m$"):
             _mult_jac_var(-1, ec.GJ, ec)
 
     ec = ec23_31
@@ -204,7 +204,7 @@ def test_mont_ladder() -> None:
         assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, ec.GJ, ec), INFJ)
         assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
 
-        with pytest.raises(BTClibEccValueError, match="negative m$"):
+        with pytest.raises(EccValueError, match="negative m$"):
             _mult_mont_ladder_var(-1, ec.GJ, ec)
 
     ec = ec23_31
@@ -233,7 +233,7 @@ def test_mult_base_3() -> None:
         assert ec.is_jac_equal(_mult_base_3_var(ec.n, ec.GJ, ec), INFJ)
         assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
 
-        with pytest.raises(BTClibEccValueError, match="negative m$"):
+        with pytest.raises(EccValueError, match="negative m$"):
             _mult_base_3_var(-1, ec.GJ, ec)
 
     ec = ec23_31
@@ -252,7 +252,7 @@ def test_cached_multiples() -> None:
 def test_multiples() -> None:
     """Check the table of multiples, size by size, against additions."""
     ec = secp256k1
-    with pytest.raises(BTClibEccValueError, match="size too low: "):
+    with pytest.raises(EccValueError, match="size too low: "):
         _multiples(ec.GJ, 1, ec)
 
     T = [INFJ, ec.GJ]
@@ -334,10 +334,10 @@ def test_mult_fixed_window() -> None:
             )
             assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
 
-            with pytest.raises(BTClibEccValueError, match="negative m$"):
+            with pytest.raises(EccValueError, match="negative m$"):
                 _mult_fixed_window_var(-1, ec.GJ, ec, w, cached=False)
 
-            with pytest.raises(BTClibEccValueError, match="non positive w: "):
+            with pytest.raises(EccValueError, match="non positive w: "):
                 _mult_fixed_window_var(1, ec.GJ, ec, -w, cached=False)
 
     ec = ec23_31
@@ -363,25 +363,25 @@ def test_signed_odd_digits() -> None:
     assert signed_odd_digits(1, 4, 3) == [-15, -15, 1]
     assert signed_odd_digits(1, 4, 1) == [1]
 
-    # issue btclib-org/btclib-ecc#34: None used to reach `m < 0` and
+    # issue btclib-org/ecc#34: None used to reach `m < 0` and
     # leak Python's own bare TypeError instead of this package's
-    with pytest.raises(BTClibEccTypeError, match="non-integer m: None"):
+    with pytest.raises(EccTypeError, match="non-integer m: None"):
         signed_odd_digits(None, 4, 64)  # type: ignore[arg-type]
-    with pytest.raises(BTClibEccTypeError, match="non-integer w: None"):
+    with pytest.raises(EccTypeError, match="non-integer w: None"):
         signed_odd_digits(43, None, 64)  # type: ignore[arg-type]
-    with pytest.raises(BTClibEccTypeError, match="non-integer size: None"):
+    with pytest.raises(EccTypeError, match="non-integer size: None"):
         signed_odd_digits(43, 4, None)  # type: ignore[arg-type]
 
     err_msg = "negative m$"
-    with pytest.raises(BTClibEccValueError, match=err_msg):
+    with pytest.raises(EccValueError, match=err_msg):
         signed_odd_digits(-1, 4, 2)
-    with pytest.raises(BTClibEccValueError, match="non positive w: "):
+    with pytest.raises(EccValueError, match="non positive w: "):
         signed_odd_digits(1, 0, 2)
-    with pytest.raises(BTClibEccValueError, match="even m$"):
+    with pytest.raises(EccValueError, match="even m$"):
         signed_odd_digits(4, 4, 2)
-    with pytest.raises(BTClibEccValueError, match="size too low: "):
+    with pytest.raises(EccValueError, match="size too low: "):
         signed_odd_digits(1, 4, 0)
-    with pytest.raises(BTClibEccValueError, match="does not fit 1 digits$"):
+    with pytest.raises(EccValueError, match="does not fit 1 digits$"):
         signed_odd_digits(17, 4, 1)
 
 
@@ -459,9 +459,9 @@ class _CountingGroup(CurveGroup):
     others by:
 
         uv run python -c "
-        from btclib_ecc.curves import secp256k1
-        from btclib_ecc.curves.curve_group import _mult_regular_window
-        from btclib_ecc.curves.curve_group_2 import (
+        from ecc.curves import secp256k1
+        from ecc.curves.curve_group import _mult_regular_window
+        from ecc.curves.curve_group_2 import (
             _double_mult_regular_window, _mult_endomorphism_secp256k1)
         from tests.curves.curve_group_test import _CountingGroup
         for mult in (_mult_regular_window, _mult_endomorphism_secp256k1):
@@ -568,11 +568,11 @@ def test_mult_fixed_base() -> None:
                 ), (m, teeth, spacing, ec)
             assert ec.is_jac_equal(_mult_fixed_base(1, INFJ, ec, teeth, spacing), INFJ)
 
-            with pytest.raises(BTClibEccValueError, match="negative m$"):
+            with pytest.raises(EccValueError, match="negative m$"):
                 _mult_fixed_base(-1, ec.GJ, ec, teeth, spacing)
-            with pytest.raises(BTClibEccValueError, match="non positive teeth: "):
+            with pytest.raises(EccValueError, match="non positive teeth: "):
                 _mult_fixed_base(1, ec.GJ, ec, -teeth, spacing)
-            with pytest.raises(BTClibEccValueError, match="non positive spacing: "):
+            with pytest.raises(EccValueError, match="non positive spacing: "):
                 _mult_fixed_base(1, ec.GJ, ec, teeth, -spacing)
 
     ec = secp256k1
@@ -581,7 +581,7 @@ def test_mult_fixed_base() -> None:
             _mult_fixed_base(m, ec.GJ, ec, 8, 8), _mult_jac_var(m, ec.GJ, ec)
         ), m
 
-    with pytest.raises(BTClibEccValueError, match="does not fit"):
+    with pytest.raises(EccValueError, match="does not fit"):
         _mult_fixed_base(1 << ec.scalar_len, ec.GJ, ec, 8, 8)
 
 
@@ -629,10 +629,10 @@ def test_mult_regular_window() -> None:
             assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
             assert ec.is_jac_equal(_mult_regular_window(ec.n, ec.GJ, ec, w), INFJ)
 
-            with pytest.raises(BTClibEccValueError, match="negative m$"):
+            with pytest.raises(EccValueError, match="negative m$"):
                 _mult_regular_window(-1, ec.GJ, ec, w)
 
-            with pytest.raises(BTClibEccValueError, match="non positive w: "):
+            with pytest.raises(EccValueError, match="non positive w: "):
                 _mult_regular_window(1, ec.GJ, ec, -w)
 
     ec = ec23_31
@@ -684,10 +684,10 @@ def test_mult_fixed_window_cached() -> None:
             )
             assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
 
-            with pytest.raises(BTClibEccValueError, match="negative m$"):
+            with pytest.raises(EccValueError, match="negative m$"):
                 _mult_fixed_window_cached_var(-1, ec.GJ, ec, w=4)
 
-            with pytest.raises(BTClibEccValueError, match="non positive w: "):
+            with pytest.raises(EccValueError, match="non positive w: "):
                 _mult_fixed_window_cached_var(1, ec.GJ, ec, -1)
 
     ec = ec23_31
@@ -752,16 +752,16 @@ def test_assorted_jac_mult() -> None:
             assert ec.is_jac_equal(INFJ, _multi_mult_var([0, 0, 0, 0], points, ec))
 
             err_msg = "mismatch between number of scalars and points: "
-            with pytest.raises(BTClibEccValueError, match=err_msg):
+            with pytest.raises(EccValueError, match=err_msg):
                 _multi_mult_var([k1, k2, k3, k4], [ec.GJ, HJ, ec.GJ], ec)
 
             err_msg = "negative coefficient$"
-            with pytest.raises(BTClibEccValueError, match=err_msg):
+            with pytest.raises(EccValueError, match=err_msg):
                 _multi_mult_var([k1, k2, -k3], [ec.GJ, HJ, ec.GJ], ec)
 
-    with pytest.raises(BTClibEccValueError, match="negative first coefficient$"):
+    with pytest.raises(EccValueError, match="negative first coefficient$"):
         _double_mult_var(-5, HJ, 1, ec.GJ, ec)
-    with pytest.raises(BTClibEccValueError, match="negative second coefficient$"):
+    with pytest.raises(EccValueError, match="negative second coefficient$"):
         _double_mult_var(1, HJ, -5, ec.GJ, ec)
 
 
@@ -873,7 +873,7 @@ def test_multi_mult_w_NAF() -> None:
                 assert ec.is_jac_equal(got, expected), (scalars, w)
 
     ec = secp256k1
-    with pytest.raises(BTClibEccValueError, match="non positive w: "):
+    with pytest.raises(EccValueError, match="non positive w: "):
         _multi_mult_w_NAF_var([1, 1], [ec.GJ, ec.GJ], ec, 0, ec._fixed_points)
 
 
@@ -948,12 +948,12 @@ def test_multi_mult_dispatch() -> None:
         )
 
         err_msg = "mismatch between number of scalars and points: "
-        with pytest.raises(BTClibEccValueError, match=err_msg):
+        with pytest.raises(EccValueError, match=err_msg):
             _multi_mult_var(scalars, points[1:], ec)
-        with pytest.raises(BTClibEccValueError, match="negative coefficient$"):
+        with pytest.raises(EccValueError, match="negative coefficient$"):
             _multi_mult_var([-1, *scalars[1:]], points, ec)
 
-    with pytest.raises(BTClibEccValueError, match="not a multi_mult_var"):
+    with pytest.raises(EccValueError, match="not a multi_mult_var"):
         _multi_mult_var([1], [ec.GJ], ec)
 
 
@@ -1050,15 +1050,15 @@ def test_INF() -> None:
     """Verify INF's y is 0 and its x is no coordinate of secp256k1."""
     assert INF[1] == 0
 
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
+    with pytest.raises(EccValueError, match="invalid x-coordinate$"):
         secp256k1.y_var(INF[0])
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
+    with pytest.raises(EccValueError, match="invalid x-coordinate$"):
         secp256k1.y_var(INF[0] + secp256k1.n)
 
 
 def test_a_composite_p_is_refused_even_where_it_is_a_fermat_liar() -> None:
     """561 passes the Fermat base-2 test, and no curve is built over it."""
-    with pytest.raises(BTClibEccValueError, match="p is not prime: 561"):
+    with pytest.raises(EccValueError, match="p is not prime: 561"):
         CurveGroup(561, 1, 3)
 
 

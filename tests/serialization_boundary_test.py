@@ -6,8 +6,8 @@
 
 "Every public function validates its inputs", at the boundary where an
 object meets octets or text: a value of a type the signature does not
-declare leaves as a `BTClibEccTypeError`, a value of a declared
-type that no valid input carries as a `BTClibEccValueError`. Issue
+declare leaves as an `EccTypeError`, a value of a declared
+type that no valid input carries as an `EccValueError`. Issue
 btclib-org/btclib#867 is where the family was measured.
 
 **Not the contract `parse_contract_test.py` holds.** That file asks where
@@ -54,11 +54,11 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc.curves import bytes_from_point, secp256k1
-from btclib_ecc.ecc import dsa, ecies, ssa
-from btclib_ecc.ecc.borromean import BorromeanSig
-from btclib_ecc.ecc.rangeproof import RangeProof
-from btclib_ecc.exceptions import BTClibEccTypeError
+from ecc.curves import bytes_from_point, secp256k1
+from ecc.ecc import dsa, ecies, ssa
+from ecc.ecc.borromean import BorromeanSig
+from ecc.ecc.rangeproof import RangeProof
+from ecc.exceptions import EccTypeError
 from tests import module_names, public_classes_with
 
 # a value of no type any of these positions declares. `Any`, because
@@ -90,16 +90,17 @@ _TEXT_IDS = tuple(label for label, _, _ in _TEXT_DECODERS)
 
 # what any of these methods takes beyond the object it is about, the
 # octets it reads, and the `check_validity` that `check_validity_test.py`
-# owns. `magic` is driven below. `rsizes` is `tests/ecc/borromean_test.py`'s,
-# driven there with the ring sizes a real `pubk_rings` carries. `strict`
-# is a flag deciding whether a check runs -- Bitcoin Core's
-# IsValidSignatureEncoding, and `dsa.Sig.parse` says where it does it --
-# and is therefore read for its truth, as `check_validity` is
+# owns. `magic` is driven below. `rsizes` is
+# `tests/schemes/borromean_test.py`'s, driven there with the ring sizes a
+# real `pubk_rings` carries. `strict` is a flag deciding whether a check
+# runs -- Bitcoin Core's IsValidSignatureEncoding, and `dsa.Sig.parse`
+# says where it does it -- and is therefore read for its truth, as
+# `check_validity` is
 _EXTRA_ARGUMENTS = {
-    ("btclib_ecc.ecc.borromean.BorromeanSig", "parse"): "rsizes",
-    ("btclib_ecc.ecc.ecies.Envelope", "parse"): "magic",
-    ("btclib_ecc.ecc.ecies.Envelope", "b64decode"): "magic",
-    ("btclib_ecc.ecc.dsa.Sig", "parse"): "strict",
+    ("ecc.ecc.borromean.BorromeanSig", "parse"): "rsizes",
+    ("ecc.ecc.ecies.Envelope", "parse"): "magic",
+    ("ecc.ecc.ecies.Envelope", "b64decode"): "magic",
+    ("ecc.ecc.dsa.Sig", "parse"): "strict",
 }
 
 # the names issue btclib-org/btclib#867 measured, which is what the walk
@@ -118,7 +119,7 @@ def test_the_octets_boundary_refuses_what_is_no_octets(
 ) -> None:
     """`bytes_from_octets` is the one coercion, and it is the one refusal."""
     for wrong in _WRONG_TYPES:
-        with pytest.raises(BTClibEccTypeError, match="invalid octets type"):
+        with pytest.raises(EccTypeError, match="invalid octets type"):
             getattr(cls, method)(wrong)
 
 
@@ -133,7 +134,7 @@ def test_the_text_boundary_refuses_what_is_no_text(
     ASCII string" from underneath the package.
     """
     for wrong in _WRONG_TYPES:
-        with pytest.raises(BTClibEccTypeError, match="type"):
+        with pytest.raises(EccTypeError, match="type"):
             getattr(cls, method)(wrong)
 
 
@@ -150,9 +151,9 @@ def test_an_envelope_is_read_against_magic_bytes_that_are_bytes() -> None:
     assert ecies.Envelope.parse(_ENVELOPE.serialize(), magic=b"BIE1") == _ENVELOPE
 
     for wrong in _WRONG_TYPES:
-        with pytest.raises(BTClibEccTypeError, match="invalid magic type"):
+        with pytest.raises(EccTypeError, match="invalid magic type"):
             ecies.Envelope.parse(_ENVELOPE.serialize(), magic=wrong)
-        with pytest.raises(BTClibEccTypeError, match="invalid magic type"):
+        with pytest.raises(EccTypeError, match="invalid magic type"):
             ecies.Envelope.b64decode(armor, magic=wrong)
 
 

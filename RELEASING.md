@@ -1,4 +1,4 @@
-# Releasing btclib-ecc
+# Releasing ecc
 
 Releases are published by GitHub Actions
 ([release.yml](./.github/workflows/release.yml)), not from a developer
@@ -81,20 +81,20 @@ reads them as PEP 440 does.
 
 ## One-time setup
 
-Neither index holds the project until an upload creates it, so both entries
-below are added as *pending* publishers, on that same page: a publisher
-attached to a project can only be added to a project that exists, and a
-first upload has nothing else to authenticate with, there being no token
-anywhere. The upload PyPI accepts turns its pending entry into an ordinary
-one, and TestPyPI's rehearsal does the same there.
+PyPI holds `ecc` already, so its publisher is added on that project's own
+publishing page. TestPyPI holds no `ecc-test` until an upload creates it,
+so its entry is added as a *pending* publisher: a publisher attached to a
+project can only be added to a project that exists, and a first upload
+has nothing else to authenticate with, there being no token anywhere.
+TestPyPI's first rehearsal turns the pending entry into an ordinary one.
 
-1. On [PyPI](https://pypi.org/manage/account/publishing/), add a trusted
-   publisher: PyPI project name `btclib-ecc`, owner `btclib-org`,
-   repository `btclib-ecc`, workflow `release.yml`,
-   environment `pypi`.
+1. On [PyPI](https://pypi.org/manage/project/ecc/settings/publishing/),
+   add a trusted publisher to the project `ecc`: owner `btclib-org`,
+   repository `ecc`, workflow `release.yml`, environment `pypi`.
 
-1. On [TestPyPI](https://test.pypi.org/), add the same trusted publisher,
-   with environment `testpypi`.
+1. On [TestPyPI](https://test.pypi.org/manage/account/publishing/), add
+   the same trusted publisher as a pending one, with project name
+   `ecc-test` and environment `testpypi`.
 
 1. In the GitHub repository settings, create the `pypi` and `testpypi`
    environments. Both require a review from one of `fametrano`,
@@ -128,7 +128,7 @@ A rehearsal runs the identical pipeline — lint gate, test matrix, the
 `build` job's build and signature, the `dist` job's packaging checks
 (twine, check-wheel-contents, pyroma) and its wheel smoke test — and
 publishes the very files those checks passed to
-[TestPyPI](https://test.pypi.org/project/btclib-ecc/) instead of
+[TestPyPI](https://test.pypi.org/project/ecc-test/) instead of
 PyPI, so what `release.yml` publishes and what `test.yml` checked are
 the same files (issue btclib-org/btclib#1166).
 
@@ -152,7 +152,8 @@ the tag exercises the first.
    written: before, `public-api` reads the previous release's section and
    fails.
 
-1. The workflow appends `.dev<run*100+attempt>` to whatever
+1. The workflow publishes as `ecc-test` (the `dev-version` action says
+   why), and appends `.dev<run*100+attempt>` to whatever
    `pyproject.toml` declares on the branch dispatched — the outgoing
    cycle's placeholder if the version about to ship has not landed yet,
    which publishes something like `2026.9.dev401` and still tests the
@@ -184,8 +185,8 @@ the tag exercises the first.
    uv run --isolated --no-project \
      --index https://test.pypi.org/simple/ \
      --index-strategy unsafe-best-match \
-     --with "btclib-ecc==${dev:?}" \
-     python -c "import btclib_ecc; print(btclib_ecc.__version__)"
+     --with "ecc-test==${dev:?}" \
+     python -c "import ecc; print(ecc.__version__)"
    ```
 
 1. Check that the `build` job is green. It signs a rehearsal's files too,
@@ -260,7 +261,7 @@ result.
    whether the list is right, but whether it is complete:
 
    ```shell
-   uv run --locked --with griffe griffe check btclib_ecc \
+   uv run --locked --with griffe griffe check ecc \
        -s . -s src -a v<previous version>
    ```
 
@@ -379,7 +380,7 @@ result.
 1. Run each dependent's suite with this release in place of its PyPI
    version, whether or not the notes declare a break. Section 12 of the
    [organization standard](https://github.com/btclib-org/.github#12-releasing)
-   has the rule. The dependents of `btclib-ecc` are
+   has the rule. The dependents of `ecc` are
    `bitcoin-node-tests`, `btclib`, `btclib-benchmarks`,
    `btclib-mnemonics`, `btclib-node` and `btclib-wallet`. Re-derive
    them with the loop in that section before each release rather than
@@ -389,12 +390,12 @@ result.
    sha of the release pull request's head for `<sha>`, before it merges:
 
    ```shell
-   ref=git+https://github.com/btclib-org/btclib-ecc@<sha>
+   ref=git+https://github.com/btclib-org/ecc@<sha>
    ```
 
    ```shell
    uv run --locked --no-default-groups --group test \
-     --with "btclib-ecc @ ${ref:?}" \
+     --with "ecc @ ${ref:?}" \
      python -m pytest --no-cov
    ```
 
@@ -500,9 +501,9 @@ result.
 
    ```shell
    tagsha=$(gh api \
-     repos/btclib-org/btclib-ecc/git/refs/tags/"v${version:?}" \
+     repos/btclib-org/ecc/git/refs/tags/"v${version:?}" \
      --jq '.object.sha') &&
-   gh api repos/btclib-org/btclib-ecc/git/tags/"${tagsha:?}" \
+   gh api repos/btclib-org/ecc/git/tags/"${tagsha:?}" \
      --jq '.verification.verified'
    ```
 
@@ -554,7 +555,7 @@ result.
    ```shell
    gh api --paginate \
      --jq '.jobs[] | [.conclusion, (.steps|length), .name] | @tsv' \
-     "repos/btclib-org/btclib-ecc/actions/runs/${run:?}/jobs?per_page=100"
+     "repos/btclib-org/ecc/actions/runs/${run:?}/jobs?per_page=100"
    ```
 
    On a tag `Publish to TestPyPI` is `skipped`, its trigger being the
@@ -577,9 +578,9 @@ result.
    than one that may already hold it, and run something with it:
 
    ```shell
-   uv run --isolated --no-project --with btclib-ecc \
-     --refresh-package btclib-ecc \
-     python -c "import btclib_ecc; print(btclib_ecc.__version__)"
+   uv run --isolated --no-project --with ecc \
+     --refresh-package ecc \
+     python -c "import ecc; print(ecc.__version__)"
    ```
 
    from a directory that belongs to no checkout of this project: run
@@ -589,11 +590,11 @@ result.
 
    then check the attestations — the JSON API answers `null` for
    `provenance` even where they exist; the
-   [simple API](https://pypi.org/simple/btclib-ecc/) (`Accept:
+   [simple API](https://pypi.org/simple/ecc/) (`Accept:
    application/vnd.pypi.simple.v1+json`) carries the real link, under
    `/integrity/<project>/<version>/<filename>/provenance`, and
    `pypi-attestations verify pypi <file> --repository
-   https://github.com/btclib-org/btclib-ecc` checks the
+   https://github.com/btclib-org/ecc` checks the
    signature rather than merely its presence.
 
 1. Read the `published` job of the release run, which needs no dispatch:
@@ -637,7 +638,7 @@ result.
    replacing by hand if it ever fires.
 
 1. Read the bill of materials attached to the release,
-   `btclib_ecc-<version>.cdx.json`: a CycloneDX 1.6 document naming
+   `ecc-<version>.cdx.json`: a CycloneDX 1.6 document naming
    the distribution, its licence, the two files with their SHA-256, and
    one component per dependency the wheel's metadata declares. It is read
    out of the built wheel and not out of `pyproject.toml`, which is what
@@ -656,9 +657,9 @@ result.
    ```
 
    ```shell
-   gh release download "v${version:?}" --repo btclib-org/btclib-ecc &&
-   wheel=btclib_ecc-${version:?}-py3-none-any.whl &&
-   repo=btclib-org/btclib-ecc &&
+   gh release download "v${version:?}" --repo btclib-org/ecc &&
+   wheel=ecc-${version:?}-py3-none-any.whl &&
+   repo=btclib-org/ecc &&
    workflows=btclib-org/.github/.github/workflows &&
    signer=$workflows/reusable-build.yml@refs/heads/main &&
    gh attestation verify "$wheel" --repo "$repo" \
@@ -743,11 +744,11 @@ command, and both scripts below read the variable out of their own
 environment and refuse to run without it.
 
 ```shell
-git worktree add --detach /tmp/btclib-ecc-rebuild "v${version:?}" &&
-cd /tmp/btclib-ecc-rebuild &&
+git worktree add --detach /tmp/ecc-rebuild "v${version:?}" &&
+cd /tmp/ecc-rebuild &&
 python=$(grep -Ev '^[[:space:]]*(#|$)' .python-version) &&
 export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) &&
-repo=btclib-org/btclib-ecc &&
+repo=btclib-org/ecc &&
 workflows=btclib-org/.github/.github/workflows &&
 signer=$workflows/reusable-build.yml@refs/heads/main &&
 tag="v${version:?}" &&
@@ -768,11 +769,11 @@ git clone --depth 1 --filter=blob:none --sparse \
 git -C "$served" sparse-checkout set .github/scripts &&
 uv run --no-project --python "$python" \
   "$served"/.github/scripts/generate_sbom.py dist/ sbom/ &&
-gh attestation verify "dist/btclib_ecc-${version:?}.tar.gz" \
+gh attestation verify "dist/ecc-${version:?}.tar.gz" \
   --repo "$repo" --signer-workflow "$signer" --source-ref "refs/tags/$tag" &&
-gh attestation verify "dist/btclib_ecc-${version:?}-py3-none-any.whl" \
+gh attestation verify "dist/ecc-${version:?}-py3-none-any.whl" \
   --repo "$repo" --signer-workflow "$signer" --source-ref "refs/tags/$tag" &&
-gh attestation verify "sbom/btclib_ecc-${version:?}.cdx.json" \
+gh attestation verify "sbom/ecc-${version:?}.cdx.json" \
   --repo "$repo" --signer-workflow "$signer" --source-ref "refs/tags/$tag"
 ```
 
@@ -925,7 +926,7 @@ reading a mismatch as tampering:
   gh run download "${run:?}" -n sbom -D sbom &&
   gh run download "${run:?}" -n attestation -D attestation &&
   shasum -a 256 dist/* &&
-  curl -s "https://pypi.org/pypi/btclib-ecc/${version:?}/json" \
+  curl -s "https://pypi.org/pypi/ecc/${version:?}/json" \
     | python3 -c 'import json,sys; d=json.load(sys.stdin)
   [print(u["filename"], u["digests"]["sha256"]) for u in d["urls"]]' &&
 

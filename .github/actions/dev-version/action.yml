@@ -1,17 +1,19 @@
 ---
-# the rehearsal's version suffix, applied by reusable-build.yml's `build`
-# job before its `uv build`, which is what makes that job's build the one
-# build a rehearsal both checks and publishes (btclib-org/btclib#1166).
+# the rehearsal's version suffix and TestPyPI name, applied by
+# reusable-build.yml's `build` job before its `uv build`, which is what
+# makes that job's build the one build a rehearsal both checks and
+# publishes (btclib-org/btclib#1166).
 #
 # Referenced by path (`uses: ./.github/actions/dev-version`) and not by
 # commit SHA, which is the rule for every third-party action: this one is
 # the repository's own file, read from the same commit as the workflow
 # that calls it, so there is no owner who could move it.
-name: Append a dev suffix to the version
+name: Append a dev suffix to the version and take the TestPyPI name
 description: >-
-  Rewrites the version in pyproject.toml, appending the given suffix, and
-  re-locks so uv.lock agrees -- what a rehearsal needs before it builds a
-  version no index has already seen.
+  Rewrites the version in pyproject.toml, appending the given suffix,
+  renames the distribution `ecc-test`, and re-locks so uv.lock agrees --
+  what a rehearsal needs before it builds a version no index has already
+  seen.
 
 inputs:
   suffix:
@@ -26,10 +28,17 @@ runs:
     # line would find whichever table came first. The assignment is
     # rewritten whole, which leaves its spelling as the file had it.
     # --no-project, so this runs on the interpreter uv already fetched
-    # and installs nothing into the tree the caller is about to build
+    # and installs nothing into the tree the caller is about to build.
+    #
+    # The name: TestPyPI's `ecc` is another project's, so a rehearsal
+    # publishes as `ecc-test`. `name` in the package's `__init__.py` is the
+    # literal its metadata lookups read, so it is rewritten with
+    # pyproject.toml's, or the rehearsal's own install would look for a
+    # distribution it does not hold
     - shell: bash
       env:
         SUFFIX: ${{ inputs.suffix }}
+        TESTPYPI_NAME: ecc-test
       run: |
         uv run --no-project --python 3.15 python - <<'PY'
         import os
@@ -37,22 +46,32 @@ runs:
         import tomllib
         from pathlib import Path
 
-        path = Path("pyproject.toml")
-        text = path.read_text(encoding="utf-8")
-        declared = tomllib.loads(text)["project"]["version"]
-        match = re.search(rf'(?m)^version\s*=\s*"{re.escape(declared)}"\s*$', text)
-        if match is None:
-            msg = f"pyproject.toml declares {declared}, which is not a literal in it"
-            raise SystemExit(msg)
-        suffixed = declared + os.environ["SUFFIX"]
-        line = match.group().replace(declared, suffixed, 1)
-        path.write_text(text[: match.start()] + line + text[match.end() :], encoding="utf-8")
+
+        def rewrite(path, key, declared, value):
+            text = path.read_text(encoding="utf-8")
+            pattern = rf'(?m)^{key}\s*=\s*"{re.escape(declared)}"\s*$'
+            found = list(re.finditer(pattern, text))
+            if len(found) != 1:
+                msg = f"{path} does not hold {key} = {declared!r} once"
+                raise SystemExit(msg)
+            match = found[0]
+            line = match.group().replace(declared, value, 1)
+            path.write_text(text[: match.start()] + line + text[match.end() :], encoding="utf-8")
+
+
+        pyproject = Path("pyproject.toml")
+        project = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]
+        version, name = project["version"], project["name"]
+        rewrite(pyproject, "version", version, version + os.environ["SUFFIX"])
+        rewrite(pyproject, "name", name, os.environ["TESTPYPI_NAME"])
+        rewrite(Path("src/ecc/__init__.py"), "name", name, os.environ["TESTPYPI_NAME"])
         PY
-        grep -m1 '^version' pyproject.toml
-        # uv.lock carries the project version, so patching pyproject.toml
-        # leaves the two disagreeing, and every uv command that passes
-        # --locked then fails with "the lockfile needs to be updated". The
-        # re-lock is also what makes the sdist coherent: it ships uv.lock,
-        # which otherwise declared the unsuffixed version inside a
-        # distribution named for the suffixed one
+        grep -m2 -E '^(name|version) ' pyproject.toml
+        grep -m1 '^name ' src/ecc/__init__.py
+        # uv.lock carries the project name and version, so patching
+        # pyproject.toml leaves the two disagreeing, and every uv command
+        # that passes --locked then fails with "the lockfile needs to be
+        # updated". The re-lock is also what makes the sdist coherent: it
+        # ships uv.lock, which otherwise declared the unsuffixed version
+        # inside a distribution named for the suffixed one
         uv lock

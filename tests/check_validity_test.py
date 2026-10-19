@@ -23,10 +23,10 @@ import pathlib
 
 import pytest
 
-from btclib_ecc.curves import secp256k1
-from btclib_ecc.ecc import dsa, ssa
+from ecc.curves import secp256k1
+from ecc.ecc import dsa, ssa
 
-PACKAGE = pathlib.Path(__file__).parent.parent / "src" / "btclib_ecc"
+PACKAGE = pathlib.Path(__file__).parent.parent / "src" / "ecc"
 
 
 def _signatures() -> list[tuple[str, int, str, list[str], list[str]]]:
@@ -60,8 +60,8 @@ def test_check_validity_is_keyword_only() -> None:
     # not an assertion about the number, which changes: an assertion that
     # the walk found the signatures at all, a broken one passing vacuously
     found = {(path, name) for path, _, name, _, _ in signatures}
-    assert ("btclib_ecc/ecc/dsa.py", "parse") in found
-    assert ("btclib_ecc/ecc/ssa.py", "serialize") in found
+    assert ("ecc/ecc/dsa.py", "parse") in found
+    assert ("ecc/ecc/ssa.py", "serialize") in found
 
     offenders = [
         f"{path}:{lineno} {name}"

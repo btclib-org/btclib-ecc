@@ -21,9 +21,9 @@ btclib-org/btclib#856 named.
 ## The rule, and what the second half of it has to ask here
 
 CONTRIBUTING.md's "Every public function validates its inputs": a value
-of a type the signature does not declare leaves as a
-`BTClibEccTypeError`, and a value of a declared type that no valid
-input carries as a `BTClibEccValueError`.
+of a type the signature does not declare leaves as an
+`EccTypeError`, and a value of a declared type that no valid
+input carries as an `EccValueError`.
 
 The first half is the whole of the table below. The second half has
 nothing to ask here, because **every curve is a valid ec** -- that is
@@ -34,8 +34,8 @@ being unusual.
 A `bool` answer is no exemption from the first half either:
 `borromean.verify` and `pedersen.verify` answer `False` about a
 commitment or a ring, not about the curve they were told to work in, and
-their `except (ValueError, BTClibEccRuntimeError)` lets a
-`BTClibEccTypeError` through for the same reason `dsa.verify` does.
+their `except (ValueError, EccRuntimeError)` lets an
+`EccTypeError` through for the same reason `dsa.verify` does.
 
 ## The walk is what makes the table complete
 
@@ -69,8 +69,8 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc.curves import CurveGroup, secp256k1
-from btclib_ecc.curves.curve import (
+from ecc.curves import CurveGroup, secp256k1
+from ecc.curves.curve import (
     Curve,
     PreparedPoint,
     TweakChain,
@@ -81,8 +81,8 @@ from btclib_ecc.curves.curve import (
     sum_var,
     tweak_add_var,
 )
-from btclib_ecc.curves.curve_group_f import find_all_points, find_subgroup_points
-from btclib_ecc.curves.sec_point import (
+from ecc.curves.curve_group_f import find_all_points, find_subgroup_points
+from ecc.curves.sec_point import (
     bytes_from_point,
     bytes_from_prv_key_int,
     mult_pub_key,
@@ -91,14 +91,14 @@ from btclib_ecc.curves.sec_point import (
     prv_key_tweak_add,
     scalar_from_prv_key,
 )
-from btclib_ecc.ecc import borromean, dsa, ellswift, pedersen, ssa
-from btclib_ecc.ecc.bip340_nonce import bip340_nonce_
-from btclib_ecc.ecc.commit_nonce import commit_nonce_, commit_point_var_
-from btclib_ecc.ecc.dh import diffie_hellman
-from btclib_ecc.ecc.rfc6979_nonce import challenge_, rfc6979_nonce_
-from btclib_ecc.exceptions import BTClibEccTypeError
+from ecc.ecc import borromean, dsa, ellswift, pedersen, ssa
+from ecc.ecc.bip340_nonce import bip340_nonce_
+from ecc.ecc.commit_nonce import commit_nonce_, commit_point_var_
+from ecc.ecc.dh import diffie_hellman
+from ecc.ecc.rfc6979_nonce import challenge_, rfc6979_nonce_
+from ecc.exceptions import EccTypeError
 
-_LIBRARY = Path(__file__).parents[1] / "src" / "btclib_ecc"
+_LIBRARY = Path(__file__).parents[1] / "src" / "ecc"
 
 # a value of no type any `ec` declares, and both are calls mypy refuses
 _WRONG_TYPES: tuple[Any, ...] = (None, 1.5)
@@ -151,99 +151,99 @@ class _Case:
 
 
 _CASES = (
-    _Case("btclib_ecc.curves.curve.mult", mult, {"m_int": _PRV_KEY, "Q": _PUB_KEY}),
+    _Case("ecc.curves.curve.mult", mult, {"m_int": _PRV_KEY, "Q": _PUB_KEY}),
     # the constructor, `point` being what it calls the argument the
     # multiplications call Q: the guard runs before the point is looked
     # at, as everywhere else here
     _Case(
-        "btclib_ecc.curves.curve.PreparedPoint.__init__",
+        "ecc.curves.curve.PreparedPoint.__init__",
         PreparedPoint,
         {"point": _PUB_KEY},
     ),
     # the other constructor holding a point across calls
     _Case(
-        "btclib_ecc.curves.curve.TweakChain.__init__",
+        "ecc.curves.curve.TweakChain.__init__",
         TweakChain,
         {"base": _PUB_KEY},
     ),
     _Case(
-        "btclib_ecc.curves.curve.double_mult_var",
+        "ecc.curves.curve.double_mult_var",
         double_mult_var,
         {"u": _PRV_KEY, "H": _PUB_KEY, "v": _PRV_KEY_2, "Q": _PUB_KEY_2},
     ),
     _Case(
-        "btclib_ecc.curves.curve.multi_mult_var",
+        "ecc.curves.curve.multi_mult_var",
         multi_mult_var,
         {"scalars": [_PRV_KEY, _PRV_KEY_2], "points": [_PUB_KEY, _PUB_KEY_2]},
     ),
     _Case(
-        "btclib_ecc.curves.curve.is_x_coordinate_var",
+        "ecc.curves.curve.is_x_coordinate_var",
         is_x_coordinate_var,
         {"x": _PUB_KEY[0]},
     ),
     _Case(
-        "btclib_ecc.curves.curve.sum_var",
+        "ecc.curves.curve.sum_var",
         sum_var,
         {"points": [_PUB_KEY, _PUB_KEY_2]},
     ),
     _Case(
-        "btclib_ecc.curves.curve.tweak_add_var",
+        "ecc.curves.curve.tweak_add_var",
         tweak_add_var,
         {"P": _PUB_KEY, "t": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.curves.curve_group_f.find_all_points",
+        "ecc.curves.curve_group_f.find_all_points",
         find_all_points,
         ec=_GROUP,
     ),
     _Case(
-        "btclib_ecc.curves.curve_group_f.find_subgroup_points",
+        "ecc.curves.curve_group_f.find_subgroup_points",
         find_subgroup_points,
         {"G": _GROUP_G},
         ec=_GROUP,
     ),
     _Case(
-        "btclib_ecc.curves.sec_point.bytes_from_point",
+        "ecc.curves.sec_point.bytes_from_point",
         bytes_from_point,
         {"Q": _PUB_KEY},
     ),
     _Case(
-        "btclib_ecc.curves.sec_point.bytes_from_prv_key_int",
+        "ecc.curves.sec_point.bytes_from_prv_key_int",
         bytes_from_prv_key_int,
         {"prv_key_int": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.curves.sec_point.scalar_from_prv_key",
+        "ecc.curves.sec_point.scalar_from_prv_key",
         scalar_from_prv_key,
         {"prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.curves.sec_point.prv_key_tweak_add",
+        "ecc.curves.sec_point.prv_key_tweak_add",
         prv_key_tweak_add,
         {"prv_key": _PRV_KEY, "t": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.curves.sec_point.mult_pub_key",
+        "ecc.curves.sec_point.mult_pub_key",
         mult_pub_key,
         {"m": _PRV_KEY, "pub_key": _SEC},
     ),
     _Case(
-        "btclib_ecc.curves.sec_point.point_from_pub_key",
+        "ecc.curves.sec_point.point_from_pub_key",
         point_from_pub_key,
         {"pub_key": _SEC},
     ),
     _Case(
-        "btclib_ecc.curves.sec_point.point_from_octets_var",
+        "ecc.curves.sec_point.point_from_octets_var",
         point_from_octets_var,
         {"pub_key": _SEC},
     ),
     _Case(
-        "btclib_ecc.ecc.bip340_nonce.bip340_nonce_",
+        "ecc.ecc.bip340_nonce.bip340_nonce_",
         bip340_nonce_,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.borromean.sign",
+        "ecc.ecc.borromean.sign",
         borromean.sign,
         {
             "msg": _MSG,
@@ -254,7 +254,7 @@ _CASES = (
         },
     ),
     _Case(
-        "btclib_ecc.ecc.borromean.sign_",
+        "ecc.ecc.borromean.sign_",
         borromean.sign_,
         {
             "msg_hash": _MSG_HASH,
@@ -265,165 +265,165 @@ _CASES = (
         },
     ),
     _Case(
-        "btclib_ecc.ecc.borromean.verify",
+        "ecc.ecc.borromean.verify",
         borromean.verify,
         {"msg": _MSG, "sig": _BORROMEAN_SIG, "pubk_rings": _PUBK_RINGS},
     ),
     _Case(
-        "btclib_ecc.ecc.borromean.assert_as_valid",
+        "ecc.ecc.borromean.assert_as_valid",
         borromean.assert_as_valid,
         {"msg": _MSG, "sig": _BORROMEAN_SIG, "pubk_rings": _PUBK_RINGS},
     ),
     _Case(
-        "btclib_ecc.ecc.borromean.BorromeanSig.__init__",
+        "ecc.ecc.borromean.BorromeanSig.__init__",
         borromean.BorromeanSig,
         {"e0": _MSG_HASH, "s": [[1]]},
     ),
     _Case(
-        "btclib_ecc.ecc.commit_nonce.commit_nonce_",
+        "ecc.ecc.commit_nonce.commit_nonce_",
         commit_nonce_,
         {"commit_hash": _MSG_HASH, "nonce": _PRV_KEY, "tag": b"tag"},
     ),
     _Case(
-        "btclib_ecc.ecc.commit_nonce.commit_point_var_",
+        "ecc.ecc.commit_nonce.commit_point_var_",
         commit_point_var_,
         {"commit_hash": _MSG_HASH, "receipt": _PUB_KEY, "tag": b"tag"},
     ),
     _Case(
-        "btclib_ecc.ecc.dh.diffie_hellman",
+        "ecc.ecc.dh.diffie_hellman",
         diffie_hellman,
         {"dU": _PRV_KEY, "QV": _PUB_KEY_2, "size": 32},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.Sig.__init__",
+        "ecc.ecc.dsa.Sig.__init__",
         dsa.Sig,
         {"r": _DSA_SIG.r, "s": _DSA_SIG.s},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.Signer.__init__",
+        "ecc.ecc.dsa.Signer.__init__",
         dsa.Signer,
         {"prv_key": _PRV_KEY},
     ),
-    _Case("btclib_ecc.ecc.dsa.gen_keys", dsa.gen_keys, {"prv_key": _PRV_KEY}),
+    _Case("ecc.ecc.dsa.gen_keys", dsa.gen_keys, {"prv_key": _PRV_KEY}),
     # the same function with the key it draws itself, which is the branch
     # that reads n off the curve rather than reaching scalar_from_prv_key
     _Case(
-        "btclib_ecc.ecc.dsa.gen_keys",
+        "ecc.ecc.dsa.gen_keys",
         dsa.gen_keys,
         {"prv_key": None},
-        label="btclib_ecc.ecc.dsa.gen_keys(None)",
+        label="ecc.ecc.dsa.gen_keys(None)",
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.sign_",
+        "ecc.ecc.dsa.sign_",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
-    _Case("btclib_ecc.ecc.dsa.sign", dsa.sign, {"msg": _MSG, "prv_key": _PRV_KEY}),
+    _Case("ecc.ecc.dsa.sign", dsa.sign, {"msg": _MSG, "prv_key": _PRV_KEY}),
     _Case(
-        "btclib_ecc.ecc.dsa.sign_recoverable_",
+        "ecc.ecc.dsa.sign_recoverable_",
         dsa.sign_recoverable_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.sign_recoverable",
+        "ecc.ecc.dsa.sign_recoverable",
         dsa.sign_recoverable,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.anti_exfil_signer_commit",
+        "ecc.ecc.dsa.anti_exfil_signer_commit",
         dsa.anti_exfil_signer_commit,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY, "host_commitment": _MSG_HASH},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.anti_exfil_sign",
+        "ecc.ecc.dsa.anti_exfil_sign",
         dsa.anti_exfil_sign,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY, "rho": _MSG_HASH},
     ),
     _Case(
-        "btclib_ecc.ecc.ellswift.create",
+        "ecc.ecc.ellswift.create",
         ellswift.create,
         {"prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.ellswift.encode_var",
+        "ecc.ecc.ellswift.encode_var",
         ellswift.encode_var,
         {"pub_key": _PUB_KEY},
     ),
-    _Case("btclib_ecc.ecc.ellswift.decode_var", ellswift.decode_var, {"ell": _ELL}),
-    _Case("btclib_ecc.ecc.pedersen.second_generator", pedersen.second_generator),
+    _Case("ecc.ecc.ellswift.decode_var", ellswift.decode_var, {"ell": _ELL}),
+    _Case("ecc.ecc.pedersen.second_generator", pedersen.second_generator),
     _Case(
-        "btclib_ecc.ecc.pedersen.commit",
+        "ecc.ecc.pedersen.commit",
         pedersen.commit,
         {"r": 1, "v": 2, "gen": _GEN},
     ),
     _Case(
-        "btclib_ecc.ecc.pedersen.assert_as_valid",
+        "ecc.ecc.pedersen.assert_as_valid",
         pedersen.assert_as_valid,
         {"r": 1, "v": 2, "commitment": _COMMITMENT, "gen": _GEN},
     ),
     _Case(
-        "btclib_ecc.ecc.pedersen.verify",
+        "ecc.ecc.pedersen.verify",
         pedersen.verify,
         {"r": 1, "v": 2, "commitment": _COMMITMENT, "gen": _GEN},
     ),
     _Case(
-        "btclib_ecc.ecc.rfc6979_nonce.challenge_",
+        "ecc.ecc.rfc6979_nonce.challenge_",
         challenge_,
         {"msg_hash": _MSG_HASH},
     ),
     _Case(
-        "btclib_ecc.ecc.rfc6979_nonce.rfc6979_nonce_",
+        "ecc.ecc.rfc6979_nonce.rfc6979_nonce_",
         rfc6979_nonce_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.Sig.__init__",
+        "ecc.ecc.ssa.Sig.__init__",
         ssa.Sig,
         {"r": _SSA_SIG.r, "s": _SSA_SIG.s},
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.Signer.__init__",
+        "ecc.ecc.ssa.Signer.__init__",
         ssa.Signer,
         {"prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.point_from_bip340pub_key_var",
+        "ecc.ecc.ssa.point_from_bip340pub_key_var",
         ssa.point_from_bip340pub_key_var,
         {"x_Q": _PUB_KEY[0]},
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.pub_key_tweak_add_var",
+        "ecc.ecc.ssa.pub_key_tweak_add_var",
         ssa.pub_key_tweak_add_var,
         {"x_Q": _PUB_KEY[0], "t": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.prv_key_tweak_add",
+        "ecc.ecc.ssa.prv_key_tweak_add",
         ssa.prv_key_tweak_add,
         {"prv_key": _PRV_KEY, "t": _PRV_KEY},
     ),
-    _Case("btclib_ecc.ecc.ssa.gen_keys", ssa.gen_keys, {"prv_key": _PRV_KEY}),
+    _Case("ecc.ecc.ssa.gen_keys", ssa.gen_keys, {"prv_key": _PRV_KEY}),
     _Case(
-        "btclib_ecc.ecc.ssa.gen_keys",
+        "ecc.ecc.ssa.gen_keys",
         ssa.gen_keys,
         {"prv_key": None},
-        label="btclib_ecc.ecc.ssa.gen_keys(None)",
+        label="ecc.ecc.ssa.gen_keys(None)",
     ),
     # ec and hf are required here, this being the prepared-challenge
     # spelling BIP340 verification is built on
     _Case(
-        "btclib_ecc.ecc.ssa.challenge_",
+        "ecc.ecc.ssa.challenge_",
         ssa.challenge_,
         {"msg": _MSG, "x_Q": _PUB_KEY[0], "x_K": _SSA_SIG.r, "hf": sha256},
     ),
-    _Case("btclib_ecc.ecc.ssa.sign_", ssa.sign_, {"msg": _MSG, "prv_key": _PRV_KEY}),
-    _Case("btclib_ecc.ecc.ssa.sign", ssa.sign, {"msg": _MSG, "prv_key": _PRV_KEY}),
+    _Case("ecc.ecc.ssa.sign_", ssa.sign_, {"msg": _MSG, "prv_key": _PRV_KEY}),
+    _Case("ecc.ecc.ssa.sign", ssa.sign, {"msg": _MSG, "prv_key": _PRV_KEY}),
     _Case(
-        "btclib_ecc.ecc.ssa.anti_exfil_signer_commit",
+        "ecc.ecc.ssa.anti_exfil_signer_commit",
         ssa.anti_exfil_signer_commit,
         {"msg": _MSG, "prv_key": _PRV_KEY, "host_commitment": _MSG_HASH},
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.anti_exfil_sign",
+        "ecc.ecc.ssa.anti_exfil_sign",
         ssa.anti_exfil_sign,
         {"msg": _MSG, "prv_key": _PRV_KEY, "rho": _MSG_HASH},
     ),
@@ -498,14 +498,14 @@ def test_the_call_works(case: _Case) -> None:
 def test_a_wrong_type_leaves_as_a_type_error_of_the_package(case: _Case) -> None:
     """The rule, with every other argument left valid.
 
-    `BTClibEccTypeError` and not `BTClibEccException`, which is
+    `EccTypeError` and not `EccException`, which is
     where the class is the point: the two failures this is around are an
     `AttributeError` from underneath the package -- a field read off
-    whatever arrived -- and a `BTClibEccValueError`, which would be
+    whatever arrived -- and an `EccValueError`, which would be
     the package calling a caller's mistake a fact about the curve.
     """
     for wrong in _WRONG_TYPES:
-        with pytest.raises(BTClibEccTypeError, match="invalid ec type"):
+        with pytest.raises(EccTypeError, match="invalid ec type"):
             case.function(**case.args, **{case.parameter: wrong})
 
 
@@ -518,7 +518,7 @@ def test_a_curve_group_is_not_a_curve(case: _Case) -> None:
     for the subclass: the group has p, a and b, so a check spelled against
     it would pass an ec that the very next line reads an `n` or a `G` off.
     """
-    with pytest.raises(BTClibEccTypeError, match="invalid ec type: CurveGroup"):
+    with pytest.raises(EccTypeError, match="invalid ec type: CurveGroup"):
         case.function(**case.args, **{case.parameter: _GROUP})
 
 
@@ -541,13 +541,13 @@ def test_the_walk_reaches_what_it_claims() -> None:
     """
     found = _curve_parameters()
     # a defaulted ec, a required one, and a constructor's
-    assert "btclib_ecc.ecc.dsa.sign" in found
-    assert "btclib_ecc.curves.curve_group_f.find_all_points" in found
-    assert "btclib_ecc.ecc.dsa.Sig.__init__" in found
+    assert "ecc.ecc.dsa.sign" in found
+    assert "ecc.curves.curve_group_f.find_all_points" in found
+    assert "ecc.ecc.dsa.Sig.__init__" in found
 
     # the guards themselves, which take an ec and are what the rest call
-    assert "btclib_ecc.curves.curve._assert_valid_ec" not in found
-    assert "btclib_ecc.curves.curve_group._assert_valid_ec" not in found
+    assert "ecc.curves.curve._assert_valid_ec" not in found
+    assert "ecc.curves.curve_group._assert_valid_ec" not in found
     # a function of another name, and one with no ec at all
-    assert "btclib_ecc.ecc.dsa.verify" not in found
-    assert "btclib_ecc.hashes.reduce_to_hlen" not in found
+    assert "ecc.ecc.dsa.verify" not in found
+    assert "ecc.hashes.reduce_to_hlen" not in found

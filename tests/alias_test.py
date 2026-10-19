@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the type aliases of btclib_ecc.alias.
+"""Tests for the type aliases of ecc.alias.
 
 HashF is the constructor that every hf in the package is, and it returns
 a Protocol rather than Any.
@@ -21,8 +21,8 @@ from typing import Any, get_args, get_type_hints
 
 import pytest
 
-from btclib_ecc.alias import HashF, HashObject
-from btclib_ecc.hashes import reduce_to_hlen, tagged_hash
+from ecc.alias import HashF, HashObject
+from ecc.hashes import reduce_to_hlen, tagged_hash
 
 
 def _one_shot(data: bytes) -> bytes:

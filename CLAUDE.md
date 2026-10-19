@@ -15,23 +15,23 @@ against.
 
 ## Architecture
 
-`src/btclib_ecc/` is the package, and it imports nothing of this
+`src/ecc/` is the package, and it imports nothing of this
 organization's other packages but the optional `btclib_secp256k1`: it is
 the arithmetic they are built on, and `tests/imports_test.py` imports each
 module alone to hold that.
 `btclib-secp256k1` is an optional extra, never a dependency.
 
-Layers, bottom-up: `number_theory` and `hashes`, then `curves/` (curve
-arithmetic, SEC 1 octet encodings), then `ecc/` (dsa, ssa, musig2, frost,
-dleq, dh, ellswift, ecies, pedersen, borromean, rangeproof, and the
-rfc6979, bip340 and sign-to-contract nonces). `ecc` imports `curves`, and
-never the reverse. `alias`, `exceptions` and the private `_utils` are the
-substrate every layer uses, and `_libsecp256k1` is the one module that
-imports the bindings at run time.
+Layers, bottom-up: `number_theory` and `hashes`, then `ecc.curves` (curve
+arithmetic, SEC 1 octet encodings), then `ecc.ecc` (dsa, ssa, musig2,
+frost, dleq, dh, ellswift, ecies, pedersen, borromean, rangeproof, and the
+rfc6979, bip340 and sign-to-contract nonces). `ecc.ecc` imports
+`ecc.curves`, and never the reverse. `alias`, `exceptions` and the private
+`_utils` are the substrate every layer uses, and `_libsecp256k1` is the one
+module that imports the bindings at run time.
 
 secp256k1 arithmetic is delegated to the bindings conditionally, which is
-the single most important thing to know before touching `curves/` or
-`ecc/`. One predicate, `curves.curve._libsecp256k1_serves`, asks for a
+the single most important thing to know before touching `ecc.curves` or
+`ecc.ecc`. One predicate, `curves.curve._libsecp256k1_serves`, asks for a
 process-wide switch, secp256k1 as the curve and sha256 or no hash
 function; a caller's choice that the bindings do not take goes to it as a
 keyword, only a condition on an input's value is and-ed on by the call site,
@@ -40,7 +40,7 @@ predicate declines runs the Python arithmetic of `curves/curve_group.py`,
 which is not dead code and not constant-time: it serves every other
 curve, other hash functions and caller-supplied nonces, and the suite
 validates it against the bindings, which are the authority on the
-answer. `BTCLIB_ECC_NO_LIBSECP256K1` in the environment turns the
+answer. `ECC_NO_LIBSECP256K1` in the environment turns the
 switch off from the first call.
 
 `gmpy2` is the other optional extra, for that Python arithmetic. Where it
@@ -118,7 +118,7 @@ constraints. Do not use Fable unless instructed.
 - **mypy is a *local* hook shelling out to uv on purpose.** The
   mirrors-mypy hook injects `--ignore-missing-imports`, and it type
   checks in an isolated environment where the project is not installed —
-  so `import btclib_ecc` in a test would be `Any` and every assertion
+  so `import ecc` in a test would be `Any` and every assertion
   about it would pass vacuously.
 - **The version is declared once**, in `pyproject.toml`.
   `docs/source/conf.py` parses that file (not the metadata, which would

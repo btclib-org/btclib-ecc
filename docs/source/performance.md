@@ -20,9 +20,9 @@ and 125 doublings are secp256k1's own.
 ## The conditions
 
 The Python figures: one run of one script, `all.py`, in a comment on
-issue btclib-org/btclib-ecc#212, on CPython 3.15.0rc2, macOS arm64
+issue btclib-org/ecc#212, on CPython 3.15.0rc2, macOS arm64
 (Apple silicon), one-minute load average under 2, the bindings off by
-`BTCLIB_ECC_NO_LIBSECP256K1=1`, secp256k1. A per-call figure is the
+`ECC_NO_LIBSECP256K1=1`, secp256k1. A per-call figure is the
 best of seven repetitions over the same twenty random 256-bit scalars;
 a per-operation figure the best of seven over a fixed set of random
 operands, the counts in the script. The same comment holds the script's
@@ -188,7 +188,7 @@ it is.
     modulus converts too). The `gmpy2` extra takes this lever: each
     curve converts its modulus to an `mpz` once, and what leaves the
     package is converted back to `int`. A comment on issue
-    btclib-org/btclib-ecc#213 measures `mult(m, P)` with the extra
+    btclib-org/ecc#213 measures `mult(m, P)` with the extra
     against without, with its script and conditions.
 1. **PyPy.** On PyPy 3.11.15 the left-to-right double-and-add runs in
     497 µs, 1.7x, and `mult(m, P)` in 333 µs, 1.5x, with no change to

@@ -15,8 +15,8 @@
 
 [cosmic-ray]
 module-path = [
-    "src/btclib_ecc/ecc/ssa.py",
-    "src/btclib_ecc/ecc/dsa.py",
+    "src/ecc/ecc/ssa.py",
+    "src/ecc/ecc/dsa.py",
 ]
 
 # each module's own file; der_test.py is dsa.py's DER codec;
@@ -24,8 +24,8 @@ module-path = [
 # sign-to-contract paths, the tests that call `ssa.sign_custom`; and
 # parse_contract_test.py is the parse and serialize boundary convention
 test-command = """python -m pytest -x -q -n0 -p no:randomly \
-  tests/ecc/ssa_test.py tests/ecc/dsa_test.py tests/ecc/der_test.py \
-  tests/ecc/dsa_anti_exfil_test.py tests/ecc/commit_nonce_test.py \
+  tests/schemes/ssa_test.py tests/schemes/dsa_test.py tests/schemes/der_test.py \
+  tests/schemes/dsa_anti_exfil_test.py tests/schemes/commit_nonce_test.py \
   tests/parse_contract_test.py"""
 
 # seconds of wall clock: a timeout is reported KILLED, so slack is the
@@ -41,7 +41,7 @@ excluded-modules = []
 # under deferred annotation evaluation (PEP 649), and read as that class
 # in the survivors file:
 #
-#   grep -n ' | ' src/btclib_ecc/ecc/ssa.py src/btclib_ecc/ecc/dsa.py
+#   grep -n ' | ' src/ecc/ecc/ssa.py src/ecc/ecc/dsa.py
 
 [cosmic-ray.distributor]
 name = "local"
