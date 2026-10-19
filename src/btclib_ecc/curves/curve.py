@@ -1455,10 +1455,10 @@ def _tweak_add_var(P: Point, t: int, ec: Curve) -> Point:
     multiplication is the cost this exists not to pay.
 
     BIP32's public derivation and BIP341's output key are this shape as
-    well and do not come through here: each has a libsecp256k1 entry point
-    of its own -- `keys.PubkeyTweakChain`, which holds the parsed point
-    across a whole path, and `xonly.tweak_add`, which carries the parity
-    BIP341 commits to.
+    well, and each has a libsecp256k1 entry point of its own that does not
+    come through here: `keys.PubkeyTweakChain`, which `TweakChain` holds
+    across a whole path, and `xonly.tweak_add`, which
+    `ssa.pub_key_tweak_add_var` calls for the parity BIP341 commits to.
 
     The Python arm is the pair above, and answers what the bindings
     decline: an infinite P, a curve that is not secp256k1, and the sum at

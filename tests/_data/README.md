@@ -446,6 +446,23 @@ builds each.
 `s >= n` is reached by the verification file only at `s == n`; the test
 adds the largest value an s field holds.
 
+### `tests/ecc/_data/wallet-test-vectors.json`
+
+```text
+repo    bitcoin/bips
+path    bip-0341/wallet-test-vectors.json
+commit  e35a46ecf3031c21dc7f7fdb694986789a3a8144  2021-11-12
+blob    11261b00ba24afb90b62109505d9ca5ddd773b3b
+pulled  2026-10-19
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical**. BIP341's wallet vectors, under upstream's own
+name. `tests/ecc/ssa_tweak_test.py` reads the internal key, the tweak, the
+output key and the control blocks of every `scriptPubKey` vector, and the
+internal and tweaked private keys of every `keyPathSpending` input. The
+script trees, addresses and signature hashes are read by nothing here.
+
 ## siv2r/bip-frost-signing
 
 ### BIP445 (FROST signing): files under `tests/ecc/_data/bip445/`
@@ -1607,8 +1624,9 @@ git ls-files 'tests/_data/*' 'tests/*/_data/*' | grep -cv 'README.md'
 
 Against a pinned upstream blob:
 
-- identical byte for byte: the BIP327 vector files, the Wycheproof
-  vector files and `ecdsa_adaptor.json`.
+- identical byte for byte: the BIP327 vector files,
+  `wallet-test-vectors.json`, the Wycheproof vector files and
+  `ecdsa_adaptor.json`.
 - identical but for a trailing newline: `WYCHEPROOF_COPYING`,
   `dlc_schnorr_test.json` and the BIP445 vector files.
 - identical but for CRLF against LF: `bip340_test_vectors.csv`, the

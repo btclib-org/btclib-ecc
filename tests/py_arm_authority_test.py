@@ -120,6 +120,7 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
     ),
     "ecc/rfc6979_test.py": ("rfc6979.json",),
     "ecc/ssa_test.py": ("bip340_test_vectors.csv",),
+    "ecc/ssa_tweak_test.py": ("wallet-test-vectors.json",),
     "ecc/wycheproof_test.py": (
         "ecdh_secp256k1_test.json",
         "ecdsa_secp256k1_sha256_bitcoin_test.json",
@@ -156,6 +157,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/musig2_test.py",
         "ecc/rfc6979_test.py",
         "ecc/ssa_test.py",
+        "ecc/ssa_tweak_test.py",
         "ecc/wycheproof_test.py",
     ),
     "curves.curve._multi_mult_x_only_var": ("ecc/ssa_test.py",),
@@ -168,6 +170,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "curves/curve_test.py",
         "ecc/frost_test.py",
         "ecc/musig2_test.py",
+        "ecc/ssa_tweak_test.py",
     ),
     "curves.curve._x_octets": (
         "curves/curve_test.py",
@@ -181,6 +184,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/musig2_test.py",
         "ecc/rfc6979_test.py",
         "ecc/ssa_test.py",
+        "ecc/ssa_tweak_test.py",
         "ecc/wycheproof_test.py",
     ),
     "curves.curve.double_mult_var": (
@@ -198,6 +202,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.sec_point._mult_sec": (),
     "curves.sec_point.bytes_from_prv_key_int": ("ecc/musig2_test.py",),
+    "curves.sec_point.prv_key_tweak_add": (),
     "ecc.commit_nonce.commit_nonce_": ("ecc/ssa_test.py",),
     "ecc.dh.diffie_hellman": ("ecc/wycheproof_test.py",),
     "ecc.dsa.Signer.__init__": (),
@@ -228,6 +233,8 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "ecc/ssa_test.py",
     ),
     "ecc.ssa.assert_batch_as_valid_": ("ecc/ssa_test.py",),
+    "ecc.ssa.prv_key_tweak_add": ("ecc/ssa_tweak_test.py",),
+    "ecc.ssa.pub_key_tweak_add_var": ("ecc/ssa_tweak_test.py",),
     "ecc.ssa.sign_": ("ecc/ssa_test.py",),
 }
 
@@ -249,9 +256,13 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 #   of `_THIRD_PARTY_VECTORS` for the reason `tests/_data/README.md` gives
 #   in its entry for `bitcoin_core_compact_vectors.json`.
 #   A recoverable signature made by another implementation would close it.
+# - `curves.sec_point.prv_key_tweak_add`, a private key plus a tweak. BIP32's
+#   private derivation is this sum, so its test vectors, vendored, would
+#   close it.
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
+        "curves.sec_point.prv_key_tweak_add",
         "ecc.dsa.Signer.__init__",
         "ecc.dsa.Signer.sign_",
         "ecc.dsa.sign_recoverable_",
