@@ -444,8 +444,8 @@ def prv_key_tweak_add(prv_key: Integer, t: Integer, ec: Curve = secp256k1) -> in
 
     On secp256k1 the bindings compute it,
     `secp256k1_keypair_xonly_tweak_add`, in constant time in the key; the
-    tweak is taken as public, as BIP341's is, and libsecp256k1 multiplies
-    the generator by it in variable time. The Python arm is not
+    tweak is not treated as a secret, and libsecp256k1 multiplies the
+    generator by it in variable time. The Python arm is not
     constant-time. `curves.prv_key_tweak_add` is the sum without the
     negation.
     """

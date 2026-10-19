@@ -344,8 +344,8 @@ package is used to teach and to prototype as much as to build:
     and `curves.prv_key_tweak_add`, are `secp256k1_ec_seckey_tweak_add`,
     which adds scalars; and `ssa.prv_key_tweak_add` is
     `secp256k1_keypair_xonly_tweak_add`, which negates the key where its
-    point has an odd y before adding. It takes the tweak as public, as
-    BIP341's is: `src/ctime_tests.c` marks it defined before that call.
+    point has an odd y before adding. It does not treat the tweak as a
+    secret, and `src/ctime_tests.c` marks it defined before that call.
     These calls and `secp256k1_ecdh` are
     among the entry points libsecp256k1's own `src/ctime_tests.c`
     declassifies a secret for, and
