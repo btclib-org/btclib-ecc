@@ -60,6 +60,7 @@ from typing import Any
 
 import pytest
 
+import ecc
 from ecc import _libsecp256k1
 from ecc._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
 from ecc.curves import (
@@ -368,7 +369,7 @@ def test_an_installed_but_too_old_package_is_not_read_as_absent() -> None:
     assert "btclib-secp256k1 is installed, version 0.8.0.6," in message
     assert "cannot import name 'shared_point'" in message
     assert f"requires btclib-secp256k1{_declared_floor()}" in message
-    assert "ecc[secp256k1]" in message
+    assert f"{ecc.name}[secp256k1]" in message
     assert "pip install --upgrade btclib-secp256k1" in message
 
 
@@ -442,8 +443,8 @@ def test_the_message_survives_metadata_that_cannot_be_read(
     assert mismatch.name == "btclib_secp256k1.ecdh"
     message = str(mismatch)
     assert "installed, a version it could not read," in message
-    assert "requires the release the `secp256k1` extra of ecc names" in message
-    assert "ecc[secp256k1]" in message
+    assert f"requires the release the `secp256k1` extra of {ecc.name} names" in message
+    assert f"{ecc.name}[secp256k1]" in message
 
 
 @pytest.mark.parametrize(
