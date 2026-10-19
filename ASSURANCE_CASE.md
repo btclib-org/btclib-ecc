@@ -271,7 +271,8 @@ to, and what counters each.
   The other exception tests are in `tests/exception_echo_test.py`,
   `tests/curves/sec_point_test.py`, `tests/ecc/dsa_test.py`,
   `tests/ecc/ecies_test.py`, `tests/ecc/nonce_bound_test.py`,
-  `tests/ecc/rangeproof_test.py` and `tests/utils_test.py`.
+  `tests/ecc/rangeproof_test.py`, `tests/ecc/ssa_tweak_test.py` and
+  `tests/utils_test.py`.
 - **Type confusion (CWE-843).** mypy runs with `strict = true`
   (`pyproject.toml`) as a hook of the lint gate in
   `.pre-commit-config.yaml`, and `tests/integer_policy_test.py` refuses a
