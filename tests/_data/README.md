@@ -476,11 +476,14 @@ that collision.
 The BIP is a draft, at version 0.12.1 in `siv2r/bip-frost-signing`. Its
 pull request to `bitcoin/bips`, `bitcoin/bips#2070`, also reads 0.12.1 at
 its head `363f69340b6731368db4a514147c7dec8eb5fd99`, but lacks
-`siv2r/bip-frost-signing`'s `75318bc740428c435ec137842442879980fff1d5`
-(2026-10-12): the rule that an input of the wrong length fails, and the
-tweak vector file without its wrong-length tweak. The pins below follow
+`siv2r/bip-frost-signing`'s commits from
+`75318bc740428c435ec137842442879980fff1d5` (2026-10-12) to
+`123f274a9197ca6c98e52b04a88b8c95f4c51dfe` (2026-10-13): the rule that an
+input of the wrong length fails, the tweak vector file without its
+wrong-length tweak, and the vectors at the largest number of participants
+the BIP allows and for a zero tweak. The pins below follow
 `siv2r/bip-frost-signing` for that reason, and move back to
-`bitcoin/bips#2070` once it carries that commit. Each file is pinned to
+`bitcoin/bips#2070` once it carries those commits. Each file is pinned to
 the commit on that repository's default branch, `master`, that last
 touched it, the same distinction the BIP327 entry above draws for
 `sign_verify_vectors.json` and `sig_agg_vectors.json`.
@@ -532,10 +535,10 @@ Verdict: **identical but for a trailing newline**, which the
 ```text
 repo    siv2r/bip-frost-signing
 path    python/vectors/sign_verify_vectors.json
-commit  762bd48c42eed9a00f6f62fb846f2826013664ac  2026-10-10
-blob    3f08e8e8a9a64f5c0c7f0d965541d0a8d0182c08
-ours    ddc130d13e418062be1cacfa123a262d4c6b7657
-pulled  2026-09-17, refreshed 2026-10-09, 2026-10-14
+commit  123f274a9197ca6c98e52b04a88b8c95f4c51dfe  2026-10-13
+blob    e6ba168ab31bf8a92b65e55a785f828300c78ed2
+ours    ead9f54efff825cdc302516704298d92e287adbf
+pulled  2026-09-17, refreshed 2026-10-09, 2026-10-14, 2026-10-19
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -547,10 +550,10 @@ Verdict: **identical but for a trailing newline**, which the
 ```text
 repo    siv2r/bip-frost-signing
 path    python/vectors/tweak_vectors.json
-commit  75318bc740428c435ec137842442879980fff1d5  2026-10-12
-blob    498fb90c755a9caf3a53b229e95cc1c4aed482fb
-ours    01290469e9946aa4d25cdca1c1dad66608395149
-pulled  2026-09-17, refreshed 2026-10-09, 2026-10-14
+commit  d64e6a9887d8903ee840544683eda051a424e57e  2026-10-13
+blob    eeaa93d7fec48165b4f4e9c8b2712f536d432ffa
+ours    938cd98273fe66074c78955bbc45dda48e653474
+pulled  2026-09-17, refreshed 2026-10-09, 2026-10-14, 2026-10-19
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -592,10 +595,10 @@ Verdict: **identical but for a trailing newline**, which the
 ```text
 repo    siv2r/bip-frost-signing
 path    python/vectors/threshold_info_vectors.json
-commit  762bd48c42eed9a00f6f62fb846f2826013664ac  2026-10-10
-blob    3d0904cab63830b0645a31176c325df9c653d6ef
-ours    f0a3cb4145ebe6372065b0ff1a979339edc75b8f
-pulled  2026-10-14
+commit  d64e6a9887d8903ee840544683eda051a424e57e  2026-10-13
+blob    63c8a92159942132ecc46dffa8e1a8ec6e92c624
+ours    70a6dbc84597f48e2c82a6e92495acdaef72dd8a
+pulled  2026-10-14, refreshed 2026-10-19
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -609,7 +612,7 @@ Verdict: **identical but for a trailing newline**, which the
 ```text
 repo    bitcoin-core/secp256k1
 path    src
-commit  186eec1c1b93d71d2131cd228ca16b4b97738f60  2026-10-02
+commit  04b91ce295dad7b827ae18eeeed062135a918dae  2026-10-12
 ours    633cb36fc1c9f08d0069a510277dccac1835492c
 pulled  2026-09-10, refreshed 2026-09-14 and 2026-10-07
 behind  0 revisions; that commit is the tip of the path
@@ -1138,8 +1141,8 @@ Pulled 2020-05-08, refreshed 2020-11-29 and 2023-01-04.
 ```text
 repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/rangeproof/tests_impl.h
-commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
-blob    1137404643ab667715e2c5eedd3463dcb20740e6
+commit  6a01f71674cd3550e42d725420ddfb9e8571e223  2026-10-17
+blob    d594ee382fa7e6df00a1cadcc78030f6feb2ff0c
 ours    572c4e396cffc71a03aaab2e3bef968fed4b6d24
 pulled  2026-09-09, refreshed 2026-09-10
 behind  0 revisions; that commit is the tip of the path
@@ -1195,8 +1198,8 @@ own, and `tests/ecc/rangeproof_test.py` is where those are rewound.
 ```text
 repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/generator/tests_impl.h
-commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
-blob    a5dd39f8b2b645ed23988f62fc2bfd612a3c4358
+commit  6a01f71674cd3550e42d725420ddfb9e8571e223  2026-10-17
+blob    2943ea7b528d5a8f41f01ef1f4a5f68c5897c9fe
 ours    455c1177bf612d12fcb0897b5f33fabc4f877af8
 pulled  2026-09-11
 behind  0 revisions; that commit is the tip of the path
@@ -1220,11 +1223,12 @@ against the sage program it keeps beside the code. The bindings
 `uv.lock` resolves vendor a fork of that repository,
 `fametrano/secp256k1-zkp` at
 `a8f6b86a804cdfd455dfb943937d254ec6ccc70a`; the blob at this path there
-is `14ec95dc94780126a796866b05eeafa2093bf22f` and not the one above. They
-differ only where the loop of `test_shallue_van_de_woestijne`
-calls `secp256k1_fe_set_int` there and `secp256k1_fe_set_int_unchecked`
-above, so the arrays this entry transcribes read the same in both and
-the transcription's source is the code the bindings run.
+is `14ec95dc94780126a796866b05eeafa2093bf22f` and not the one above. Of the
+functions this entry transcribes, `test_generator_generate` reads the same
+in both, and `test_shallue_van_de_woestijne` differs only where its loop
+calls `secp256k1_fe_set_int` in the fork and `secp256k1_fe_set_int_unchecked`
+above. The arrays read the same in both, so the transcription's source is
+the code the bindings run.
 
 `tests/ecc/pedersen_test.py` is what reads it: the first array against
 `ecc.pedersen._shallue_van_de_woestijne` and the second against
@@ -1267,8 +1271,8 @@ reports. `tests/ecc/ssa_adaptor_test.py` runs every block.
 ```text
 repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/ecdsa_s2c/tests_impl.h
-commit  624615379452804b319fc89f8647afc420d7c714  2026-09-10
-blob    88eeb1e9e7156d8c99a032ce3eef4423825792c9
+commit  6a01f71674cd3550e42d725420ddfb9e8571e223  2026-10-17
+blob    701b5ae56795a717b2e6b22f7e2ee349cfd3131d
 ours    d6ae47ad1802c65b55d52eff6ada843b9c84b5c2
 pulled  2026-08-02, refreshed 2026-08-06, 2026-08-07, 2026-08-09,
         2026-08-13, 2026-08-14, 2026-09-10 and 2026-09-26
