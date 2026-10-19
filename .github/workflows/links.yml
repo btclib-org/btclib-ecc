@@ -1,8 +1,8 @@
 ---
 name: links
 
-# every link the tree's markdown and reStructuredText carry, but those
-# .lycheeignore names, fetched:
+# every link the tree's markdown and reStructuredText carry, except those
+# .lycheeignore lists, fetched:
 # lychee over the files `targets` names, with --include-fragments, so a
 # link into a heading is checked as an anchor. Nothing else fetches a URL
 # -- `sphinx-build -n -W` resolves cross-references and fetches none -- so
