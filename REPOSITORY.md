@@ -85,7 +85,10 @@ being the endpoint's generic `Not Found` document.
 
 **Section 3 asks that the repository be named after the distribution,
 hyphenated, and it is.** `pyproject.toml` declares
-`name = "ecc"`, and the repository is `btclib-org/ecc`.
+`name = "ecc"`, and the repository is `btclib-org/ecc`. The name does not
+say btclib: the package is multi-curve and holds no transaction, script or
+address code
+([btclib-org/ecc#306](https://github.com/btclib-org/ecc/issues/306)).
 
 The maintainer had decided otherwise in
 [btclib-org/btclib#2282](https://github.com/btclib-org/btclib/issues/2282)
@@ -94,15 +97,10 @@ the import package `btclib_ecc` the way `btclib-secp256k1` pairs with
 `btclib_secp256k1`, while the repository stayed `ellipticcurves`. That
 decision was reversed on 2026-09-28, when the repository was renamed from
 `ellipticcurves` to `btclib-ecc`, ending the mismatch the 2026-09-26
-decision had accepted. On 2026-10-19 the repository was renamed again, to
-`ecc`, with the distribution and the import package
-([btclib-org/ecc#306](https://github.com/btclib-org/ecc/issues/306)):
-the package is multi-curve and holds no transaction, script or address
-code, so its name does not say btclib. `gh repo create` and the first
-`git push` under *Creating the repository* above still read
-`ellipticcurves`, being the literal commands typed that day; every other
-command in this file reads back the settings of the repository as it is
-named now.
+decision had accepted. `gh repo create` and the first `git push` under
+*Creating the repository* above still read `ellipticcurves`, being the
+literal commands typed that day; every other command in this file reads
+back the settings of the repository as it is named now.
 
 The organization's alignment suite carries the mismatch as
 [btclib-org/.github#1392](https://github.com/btclib-org/.github/issues/1392),
@@ -468,27 +466,11 @@ gh api "$env/deployment-branch-policies" \
 # ["v*","tag"]
 ```
 
-The two pending publishers for `btclib-ecc`, on PyPI and on TestPyPI,
-were in place on 2026-09-26, adding them being an account action and the maintainer's.
-That rests on the maintainer's statement rather than on a call: none
-here reads a pending publisher back, and each index answers `404` for
-the project until its first upload, publisher or not.
-
-Both projects exist now, read on 2026-10-19:
-
-```shell
-curl -s -o /dev/null -w '%{http_code}\n' \
-  https://pypi.org/pypi/btclib-ecc/json
-# 200
-curl -s -o /dev/null -w '%{http_code}\n' \
-  https://test.pypi.org/pypi/btclib-ecc/json
-# 200
-```
-
-From 2026-10-19 (btclib-org/ecc#306) the distribution publishes as `ecc`
-on PyPI, and a rehearsal as `ecc-test` on TestPyPI, for the reason
-`.github/actions/dev-version` gives. Their publishers are not recorded
-here.
+The distribution publishes as `ecc` on PyPI, and a rehearsal as
+`ecc-test` on TestPyPI, for the reason `.github/actions/dev-version`
+gives. Their trusted publishers are the ones `RELEASING.md`'s *One-time
+setup* names. Adding them is an account action and the maintainer's, and
+no call here reads a publisher back.
 
 **The repository's `.homepage` names this tree's own documentation
 site**, set under *Creating the repository* and read back here rather
@@ -515,7 +497,7 @@ curl -sL -o /dev/null -w '%{http_code} %{url_effective}\n' \
 ```
 
 The project's public API answers without a token. The `repository`
-and `.homepage` answers were read on 2026-10-19, after the rename:
+and `.homepage` answers were read on 2026-10-19:
 
 ```shell
 p=https://app.readthedocs.org/api/v3/projects/btclib-ecc
