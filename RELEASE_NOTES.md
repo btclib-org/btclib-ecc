@@ -9,6 +9,81 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.10.20
+
+- **The package is `ecc`, on PyPI and on import, with no alias**
+  (issue #306). The distribution `btclib-ecc` is `ecc`, and the import
+  package `btclib_ecc` is `ecc`; the module tree under it is unchanged, so
+  `btclib_ecc.ecc.dsa` is `ecc.ecc.dsa`. `import btclib_ecc` fails with
+  `ModuleNotFoundError` where only `ecc` is installed.
+
+  Act on it: install `ecc` in place of `btclib-ecc`, and import `ecc`
+  wherever you imported `btclib_ecc`.
+- **The exception classes drop the `BTClib` prefix, with no alias.**
+  `BTClibEccException`, `BTClibEccValueError`, `BTClibEccTypeError` and
+  `BTClibEccRuntimeError` are `EccException`, `EccValueError`,
+  `EccTypeError` and `EccRuntimeError`, in `ecc.exceptions`. Each derives
+  from the same built-in as before.
+
+  Act on it if you catch or raise one by name: use the new name.
+- **The switch that refuses the bindings is `ECC_NO_LIBSECP256K1`.**
+  `BTCLIB_ECC_NO_LIBSECP256K1` is ignored.
+
+  Act on it if you set it: set `ECC_NO_LIBSECP256K1` instead.
+- **`ellswift.create_var` is `ellswift.create`, with no alias**
+  (closes #312). The signature is unchanged.
+
+  Act on it if you call it: rename the import and the call.
+- **Public names whose work is variable-time take the `_var` suffix, with no
+  alias** (issue btclib-org/btclib#2687). In `ecc.ecc`:
+  `rangeproof.RangeProof.pubk_rings`, `commit_nonce.commit_point_`,
+  `dlc_oracle.sig_point_`, `ssa_adaptor.extract` and `extract_adaptor`,
+  `pedersen.commitment_from_octets`, `generator_from_octets`,
+  `bytes_from_commitment` and `bytes_from_generator`, `musig2.key_agg`,
+  `apply_tweak`, `nonce_agg` and `key_agg_and_tweak`, and
+  `frost.tweak_ctx_init`, `apply_tweak`, `nonce_agg` and
+  `thresh_pubkey_and_tweak` are the same names with `_var`. A trailing
+  underscore stays last: `commit_point_var_`, `sig_point_var_`.
+
+  Act on it if you call one: add the suffix.
+- **The release's files are named after `ecc`.** The sdist, the wheel and
+  the bill of materials are `ecc-<version>.tar.gz`,
+  `ecc-<version>-py3-none-any.whl` and `ecc-<version>.cdx.json`, where
+  earlier releases attach `btclib_ecc-<version>…`. `gh attestation verify`
+  takes `--repo btclib-org/ecc`, with the same `--signer-workflow` and
+  `--source-ref`. Releases v2026.9.28 to v2026.10.17 take
+  `--repo btclib-org/btclib-ecc`, the name their certificates carry, and
+  v2026.9.26 takes `--repo btclib-org/ellipticcurves`.
+
+  Act on it if a script downloads or verifies a release by name: use the
+  new names for this release on.
+- **The nonce derivations give up after 256 candidates** (closes #275).
+  `rfc6979_nonce`, `bip340_nonce` and `commit_nonce` raise
+  `EccRuntimeError` where a hash function never yields a candidate in
+  1..n-1, so `dsa.sign_` and `ssa.sign_` raise where they looped for ever.
+
+  Act on it if you sign with such a hash function: pass one that behaves
+  as a hash.
+- **`RangeProof` refuses a ring commitment or a header field that is no
+  integer as `EccTypeError`** (issue #276, issue #277). A bool or float
+  ring commitment was accepted, and a header field of the wrong type left
+  as a builtin `TypeError` or `AttributeError` under
+  `check_validity=False`. `max_value` refuses a `min_value` of 0.0 or "",
+  which it read as 0.
+
+  Act on it if you build a `RangeProof` by hand: pass ints.
+- **`rangeproof`'s refusals no longer quote the value they refuse**
+  (closes #301, closes #310). The exponent, minimum value, bit count and
+  mantissa are out of the messages.
+
+  Act on it if you match the old text: match the new one.
+- **On PyPy, the Python arithmetic leaves gmpy2 unused** (closes #290). A
+  gmpy2 installed there no longer makes `Curve.aff_from_jac_var` raise, and
+  the `number_theory` functions refuse an `mpz` operand.
+
+  Act on it if you run PyPy and uninstalled gmpy2 for v2026.10.16: nothing
+  needs it uninstalled now. Pass `int`s to `number_theory`.
+
 ## v2026.10.17
 
 - **`rangeproof` refuses more malformed proofs** (closes #279).
