@@ -25,12 +25,13 @@ broadcast rather than after the funds are gone. A signature would not
 catch it -- a wrongly derived output script is consensus-valid.
 
 The generator is an argument, which no other BIP in this library makes
-it: BIP374 passes G in so that the algorithm serves another curve, and
-the vectors exercise arbitrary generators. What is *not* an argument is
-the curve or the hash function, as in `ecc.ecc.musig2`: BIP374 is
-defined for secp256k1 with sha256, the 33-byte compressed points, the
-32-byte scalars and the three tags below are that pair's serialization,
-and there is no other pair for which a test vector exists.
+it: BIP374 passes G in so that the algorithm serves another generator on
+secp256k1, and the vectors exercise arbitrary generators. What is *not*
+an argument is the curve or the hash function, as in `ecc.ecc.musig2`:
+BIP374 is defined for secp256k1 with sha256, the 33-byte compressed
+points, the 32-byte scalars and the three tags below are that pair's
+serialization, and there is no other pair for which a test vector
+exists.
 
 The message is optional and, when present, exactly 32 bytes -- BIP374's
 own restriction, and unlike the arbitrary-size message of
