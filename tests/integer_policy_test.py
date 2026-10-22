@@ -5,7 +5,7 @@
 """Tests for the one policy on integer fields: a bool is not a number.
 
 One file rather than a case per module, because the decision is one and
-`btclib_ecc._utils.is_integer` states it. What makes it worth a
+`ecc._utils.is_integer` states it. What makes it worth a
 refusal is the json boundary: `true` decodes to `True`, and a schema
 mistake would otherwise become a scalar of one, a coordinate of one or
 an index of one instead of failing beside the input that caused it.
@@ -20,13 +20,13 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc._utils import (
+from ecc._utils import (
     bytes_from_octets,
     hex_string,
     int_from_integer,
     is_integer,
 )
-from btclib_ecc.curves import (
+from ecc.curves import (
     PreparedPoint,
     bytes_from_point,
     mult,
@@ -34,16 +34,16 @@ from btclib_ecc.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
-from btclib_ecc.ecc import frost
-from btclib_ecc.ecc.borromean import BorromeanSig
-from btclib_ecc.ecc.dsa import recover_pub_key_, recover_sec_
-from btclib_ecc.ecc.dsa import sign as dsa_sign
-from btclib_ecc.ecc.ssa import challenge_ as ssa_challenge_
-from btclib_ecc.ecc.ssa import point_from_bip340pub_key_var
-from btclib_ecc.ecc.ssa import sign as ssa_sign
-from btclib_ecc.ecc.ssa import verify as ssa_verify
-from btclib_ecc.exceptions import BTClibEccTypeError
-from btclib_ecc.number_theory import mod_inv, mod_inv_batch_var, mod_inv_var
+from ecc.ecc import frost
+from ecc.ecc.borromean import BorromeanSig
+from ecc.ecc.dsa import recover_pub_key_, recover_sec_
+from ecc.ecc.dsa import sign as dsa_sign
+from ecc.ecc.ssa import challenge_ as ssa_challenge_
+from ecc.ecc.ssa import point_from_bip340pub_key_var
+from ecc.ecc.ssa import sign as ssa_sign
+from ecc.ecc.ssa import verify as ssa_verify
+from ecc.exceptions import EccTypeError
+from ecc.number_theory import mod_inv, mod_inv_batch_var, mod_inv_var
 
 # the key is 1, so the x-only public key it verifies under is `secp256k1.G[0]`
 _SSA_SIG = ssa_sign(b"msg", 1)
@@ -87,7 +87,7 @@ _CASES: list[tuple[str, Callable[[Any], object]]] = [
     ("BIP340 x-only key", point_from_bip340pub_key_var),
     # not the converter twice: `verify` answers False where it cannot
     # verify, so what this pins is that the refusal is not one of those
-    # answers -- `BTClibEccTypeError` is a `TypeError` and the except
+    # answers -- `EccTypeError` is a `TypeError` and the except
     # there takes `ValueError`, which is issue btclib-org/btclib#814's rule
     ("BIP340 verification key", lambda v: ssa_verify(b"msg", v, _SSA_SIG)),
     # the trailing-underscore layer, which takes a bare `int` without
@@ -151,7 +151,7 @@ def test_a_bool_is_not_an_integer_field(
     `isinstance(True, int)` is what would let each of these through as
     one or zero.
     """
-    with pytest.raises(BTClibEccTypeError):
+    with pytest.raises(EccTypeError):
         call(value)
 
 
@@ -223,7 +223,7 @@ def test_which_check_refuses_the_bool_decides_the_sentence(
     call: Callable[[Any], object], message: str
 ) -> None:
     """Each wording, held to what is raised."""
-    with pytest.raises(BTClibEccTypeError, match=message):
+    with pytest.raises(EccTypeError, match=message):
         call(True)
 
 
@@ -261,9 +261,9 @@ def test_what_is_no_integer_at_all_is_refused_the_same_way() -> None:
     answering "not iterable" from underneath it.
     """
     for out_size in (1.5, object(), "1"):
-        with pytest.raises(BTClibEccTypeError, match="invalid output size type"):
+        with pytest.raises(EccTypeError, match="invalid output size type"):
             bytes_from_octets(b"x", out_size)  # type: ignore[arg-type]
-    with pytest.raises(BTClibEccTypeError, match="invalid output size type"):
+    with pytest.raises(EccTypeError, match="invalid output size type"):
         bytes_from_octets(b"x", [1.5])  # type: ignore[list-item]
 
 

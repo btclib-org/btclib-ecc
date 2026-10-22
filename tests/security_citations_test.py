@@ -68,7 +68,7 @@ _ROOT = Path(__file__).parents[1]
 _SECURITY = _ROOT / "SECURITY.md"
 
 # a path in this repository, with the line number it may carry: the
-# slash is what keeps `btclib_ecc.ecc.musig2` and the dotted names beside it
+# slash is what keeps `ecc.ecc.musig2` and the dotted names beside it
 # from reading as citations
 _CITATION = re.compile(r"^(?P<path>[\w.-]+(?:/[\w.-]+)+\.py)(?::(?P<line>\d+))?$")
 # a dotted name, which is how the prose spells the definition a citation
@@ -207,7 +207,7 @@ def _defect(anchor: str, path: str, line: str, root: Path = _ROOT) -> str:
 
 
 # the module the controls below cite, written to a directory of their
-# own: a control aimed at src/btclib_ecc would be measuring the tree it is
+# own: a control aimed at src/ecc would be measuring the tree it is
 # meant to be independent of, and would stop tampering the day that tree
 # moved under it
 _CONTROL_SOURCE = '''\

@@ -1,7 +1,7 @@
 # Vendored test vectors
 
 This file is about `tests/**/_data/`, and about the one test module that
-carries its vectors inline, `tests/ecc/dsa_anti_exfil_test.py`.
+carries its vectors inline, `tests/schemes/dsa_anti_exfil_test.py`.
 
 Upstream prose that this package *paraphrases* has no entry here: a
 BIP's reasoning, a Core comment, a C library header's rationale are
@@ -10,7 +10,7 @@ paraphrase admits no byte comparison, so there is nothing for the weekly
 job to ask. What such a citation carries is decided by what it names. A
 file needs no revision -- the repository and the path keep their names,
 and a reader who opens it reads the reasoning upstream holds now, which
-is what a paraphrase sends them for -- and `btclib_ecc.ecc.dsa`'s
+is what a paraphrase sends them for -- and `ecc.ecc.dsa`'s
 anti-exfil docstrings cite `include/secp256k1_ecdsa_s2c.h` of
 BlockstreamResearch/secp256k1-zkp that way. A line needs one: a line
 number is the one thing that moves under a file that keeps its name, so
@@ -123,7 +123,7 @@ commit=<the pin the entry gives>
 ```
 
 ```shell
-git hash-object tests/ecc/_data/key_agg_vectors.json
+git hash-object tests/schemes/_data/key_agg_vectors.json
 gh api "repos/bitcoin/bips/git/trees/${commit:?}:bip-0327/vectors" \
     --jq '.tree[] | select(.path == "key_agg_vectors.json") | .sha'
 ```
@@ -152,7 +152,7 @@ is staged, so the blob to compare is never the one just fetched.
 
 ## bitcoin/bips
 
-### `tests/ecc/_data/bip340_test_vectors.csv`
+### `tests/schemes/_data/bip340_test_vectors.csv`
 
 ```text
 repo    bitcoin/bips
@@ -175,7 +175,7 @@ take one, and no 32-byte gate sends these four down the Python path.
 All four pass on either arithmetic: `verify_` accepts each, and `sign_`
 reproduces each signature byte for byte.
 
-### BIP327 (MuSig2): files under `tests/ecc/_data/`
+### BIP327 (MuSig2): files under `tests/schemes/_data/`
 
 The vectors of `bip-0327/vectors/`, vendored whole
 and under upstream's own names: `key_sort_vectors.json`,
@@ -197,7 +197,7 @@ once more again, at `1c6ac0c4cf1f39ea806b8594d6060b6d52fd1439`
 placeholder cited as the tip of all eight paths, when it is the tip of
 only that one.
 
-56 cases between them, and `tests/ecc/musig2_test.py` runs every one:
+56 cases between them, and `tests/schemes/musig2_test.py` runs every one:
 1 sorting, 4 + 5 aggregations valid and failing, 4 nonce derivations,
 2 + 3 nonce aggregations, 6 + 6 + 3 + 2 signatures (valid, refused at
 signing, false on verification, refused on verification), 5 + 1
@@ -208,13 +208,13 @@ each file is as load-bearing as the valid half.
 
 What the files are measured against is `bip-0327/reference.py`, pinned
 separately at `9297c12729670d09f9149ec6d8bad967d8161bfe` (2025-10-03,
-the tip of that path): `src/btclib_ecc/ecc/musig2.py` follows it
+the tip of that path): `src/ecc/ecc/musig2.py` follows it
 function for function, and copies four of its error message strings
 verbatim because the `error.message` field of a case is compared byte
 for byte. That file is not vendored — it is an implementation, not data,
 and this package's is the one under test.
 
-### `tests/ecc/_data/key_sort_vectors.json`
+### `tests/schemes/_data/key_sort_vectors.json`
 
 ```text
 repo    bitcoin/bips
@@ -227,7 +227,7 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**.
 
-### `tests/ecc/_data/key_agg_vectors.json`
+### `tests/schemes/_data/key_agg_vectors.json`
 
 ```text
 repo    bitcoin/bips
@@ -240,7 +240,7 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**.
 
-### `tests/ecc/_data/nonce_gen_vectors.json`
+### `tests/schemes/_data/nonce_gen_vectors.json`
 
 ```text
 repo    bitcoin/bips
@@ -253,7 +253,7 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**.
 
-### `tests/ecc/_data/nonce_agg_vectors.json`
+### `tests/schemes/_data/nonce_agg_vectors.json`
 
 ```text
 repo    bitcoin/bips
@@ -266,7 +266,7 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**.
 
-### `tests/ecc/_data/sign_verify_vectors.json`
+### `tests/schemes/_data/sign_verify_vectors.json`
 
 ```text
 repo    bitcoin/bips
@@ -279,7 +279,7 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**.
 
-### `tests/ecc/_data/tweak_vectors.json`
+### `tests/schemes/_data/tweak_vectors.json`
 
 ```text
 repo    bitcoin/bips
@@ -292,7 +292,7 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**.
 
-### `tests/ecc/_data/det_sign_vectors.json`
+### `tests/schemes/_data/det_sign_vectors.json`
 
 ```text
 repo    bitcoin/bips
@@ -305,7 +305,7 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**.
 
-### `tests/ecc/_data/sig_agg_vectors.json`
+### `tests/schemes/_data/sig_agg_vectors.json`
 
 ```text
 repo    bitcoin/bips
@@ -318,7 +318,7 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**.
 
-### BIP324 (ElligatorSwift): files under `tests/ecc/_data/`
+### BIP324 (ElligatorSwift): files under `tests/schemes/_data/`
 
 `ellswift_decode_test_vectors.csv` and `xswiftec_inv_test_vectors.csv`,
 under upstream's own names, both genuinely tipped by the same commit --
@@ -328,7 +328,7 @@ per pin, rather than to one placeholder path standing in for both: a
 placeholder is not a path GitHub's own "commits touching a path" API can
 be asked about, which is what kept the pair out of the weekly check.
 
-### `tests/ecc/_data/ellswift_decode_test_vectors.csv`
+### `tests/schemes/_data/ellswift_decode_test_vectors.csv`
 
 ```text
 repo    bitcoin/bips
@@ -345,7 +345,7 @@ repository is LF throughout, which `mixed-line-ending` enforces with
 `--fix=lf`, so our blob is `bcc5b319` rather than the one above, the
 same exception `bip340_test_vectors.csv` above documents.
 
-### `tests/ecc/_data/xswiftec_inv_test_vectors.csv`
+### `tests/schemes/_data/xswiftec_inv_test_vectors.csv`
 
 ```text
 repo    bitcoin/bips
@@ -361,7 +361,7 @@ Verdict: **identical but for line endings**, the same exception, our
 blob `135958f6` rather than the one above.
 
 The files test the two halves of the map, and both halves are
-this package's own Python: `tests/ecc/ellswift_test.py` runs the decode file
+this package's own Python: `tests/schemes/ellswift_test.py` runs the decode file
 against `_xswiftec` and the inverse file against `_xswiftec_inv`, whose
 eight `case` columns are eight assertions per row rather than one — an
 empty cell is a case with no preimage, and asserting that it *has* none
@@ -379,7 +379,7 @@ authority named in the entry that has no file to cite.
 directory and is **not** vendored: it is the v2 transport's, which this
 package does not implement.
 
-### BIP374 (DLEQ): files under `tests/ecc/_data/`
+### BIP374 (DLEQ): files under `tests/schemes/_data/`
 
 `test_vectors_generate_proof.csv` and `test_vectors_verify_proof.csv`,
 under upstream's own names, which is the whole of `bip-0374/`'s vector
@@ -392,7 +392,7 @@ The names are unusually bare for a vendored file -- nothing in either
 says BIP374 -- and they keep them anyway, the naming rule above being
 that upstream's name is the one thing a citation cannot drift away from.
 
-### `tests/ecc/_data/test_vectors_generate_proof.csv`
+### `tests/schemes/_data/test_vectors_generate_proof.csv`
 
 ```text
 repo    bitcoin/bips
@@ -414,7 +414,7 @@ secp256k1's, three over secp256k1's own, and three failure cases -- a zero
 scalar, a scalar equal to n, and a B at infinity, which the file spells
 `INVALID` in the proof column and `INFINITY` in the point column.
 
-### `tests/ecc/_data/test_vectors_verify_proof.csv`
+### `tests/schemes/_data/test_vectors_verify_proof.csv`
 
 ```text
 repo    bitcoin/bips
@@ -438,7 +438,7 @@ challenge would have accepted is a defect the generation file alone could
 not show.
 
 BIP374's failure conditions R1 and R2 landing on infinity have no vector
-in either file and are covered by `tests/ecc/dleq_test.py` instead.
+in either file and are covered by `tests/schemes/dleq_test.py` instead.
 Neither is a proof anybody generates -- an infinite R needs s == e over
 A == G or B == C -- so upstream's generator produces none and the test
 builds each.
@@ -446,7 +446,7 @@ builds each.
 `s >= n` is reached by the verification file only at `s == n`; the test
 adds the largest value an s field holds.
 
-### `tests/ecc/_data/wallet-test-vectors.json`
+### `tests/schemes/_data/wallet-test-vectors.json`
 
 ```text
 repo    bitcoin/bips
@@ -458,17 +458,17 @@ behind  0 revisions; that commit is the tip of the path
 ```
 
 Verdict: **identical**. BIP341's wallet vectors, under upstream's own
-name. `tests/ecc/ssa_tweak_test.py` reads the internal key, the tweak, the
+name. `tests/schemes/ssa_tweak_test.py` reads the internal key, the tweak, the
 output key and the control blocks of every `scriptPubKey` vector, and the
 internal and tweaked private keys of every `keyPathSpending` input. The
 script trees, addresses and signature hashes are read by nothing here.
 
 ## siv2r/bip-frost-signing
 
-### BIP445 (FROST signing): files under `tests/ecc/_data/bip445/`
+### BIP445 (FROST signing): files under `tests/schemes/_data/bip445/`
 
 The JSON files of `python/vectors/`, vendored whole and under upstream's
-own names, in a subdirectory rather than flat under `tests/ecc/_data/`:
+own names, in a subdirectory rather than flat under `tests/schemes/_data/`:
 BIP327 above already publishes files of these same names there, and a
 vendored file keeps the name upstream gave it rather than losing it to
 that collision.
@@ -488,19 +488,19 @@ the commit on that repository's default branch, `master`, that last
 touched it, the same distinction the BIP327 entry above draws for
 `sign_verify_vectors.json` and `sig_agg_vectors.json`.
 
-`tests/ecc/frost_test.py` runs every case of every file. An error case
+`tests/schemes/frost_test.py` runs every case of every file. An error case
 carries what should be raised -- which party contributed what, or the
 text of a plain value error -- and is checked against it, the same
 discipline the BIP327 entry above states.
 
-`src/btclib_ecc/ecc/frost.py` follows `python/frost_ref/signing.py`
+`src/ecc/ecc/frost.py` follows `python/frost_ref/signing.py`
 function for function, checked against it rather than assumed from the
 BIP327 ancestry the reference's own header claims: several shapes that
 read alike are not the same function, the tweak-range error message
 among them. That file is not vendored -- it is an implementation, not
 data, and this package's is the one under test.
 
-### `tests/ecc/_data/bip445/nonce_gen_vectors.json`
+### `tests/schemes/_data/bip445/nonce_gen_vectors.json`
 
 ```text
 repo    siv2r/bip-frost-signing
@@ -515,7 +515,7 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical but for a trailing newline**, which the
 `end-of-file-fixer` hook added.
 
-### `tests/ecc/_data/bip445/nonce_agg_vectors.json`
+### `tests/schemes/_data/bip445/nonce_agg_vectors.json`
 
 ```text
 repo    siv2r/bip-frost-signing
@@ -530,7 +530,7 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical but for a trailing newline**, which the
 `end-of-file-fixer` hook added.
 
-### `tests/ecc/_data/bip445/sign_verify_vectors.json`
+### `tests/schemes/_data/bip445/sign_verify_vectors.json`
 
 ```text
 repo    siv2r/bip-frost-signing
@@ -545,7 +545,7 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical but for a trailing newline**, which the
 `end-of-file-fixer` hook added.
 
-### `tests/ecc/_data/bip445/tweak_vectors.json`
+### `tests/schemes/_data/bip445/tweak_vectors.json`
 
 ```text
 repo    siv2r/bip-frost-signing
@@ -560,7 +560,7 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical but for a trailing newline**, which the
 `end-of-file-fixer` hook added.
 
-### `tests/ecc/_data/bip445/det_sign_vectors.json`
+### `tests/schemes/_data/bip445/det_sign_vectors.json`
 
 ```text
 repo    siv2r/bip-frost-signing
@@ -575,7 +575,7 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical but for a trailing newline**, which the
 `end-of-file-fixer` hook added.
 
-### `tests/ecc/_data/bip445/sig_agg_vectors.json`
+### `tests/schemes/_data/bip445/sig_agg_vectors.json`
 
 ```text
 repo    siv2r/bip-frost-signing
@@ -590,7 +590,7 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical but for a trailing newline**, which the
 `end-of-file-fixer` hook added.
 
-### `tests/ecc/_data/bip445/threshold_info_vectors.json`
+### `tests/schemes/_data/bip445/threshold_info_vectors.json`
 
 ```text
 repo    siv2r/bip-frost-signing
@@ -695,7 +695,7 @@ credit spelling it would pass and land its reader on a function upstream
 does not have. What neither pin answers is whether the installed
 bindings expose a name, that being a fact about their own surface.
 
-### `tests/ecc/_data/secp256k1_recovery_vectors.json`
+### `tests/schemes/_data/secp256k1_recovery_vectors.json`
 
 ```text
 repo    bitcoin-core/secp256k1
@@ -733,7 +733,7 @@ print(sys.argv[1].lower() in h.lower())" "${value:?}"
 The outcomes are libsecp256k1's own assertions, so a Python arm held to
 them agrees with that library's accept and refuse pattern and not with a
 derivation of its own, and for that reason the module reading the file,
-`tests/ecc/dsa_secp256k1_recovery_test.py`, is not an authority in
+`tests/schemes/dsa_secp256k1_recovery_test.py`, is not an authority in
 `tests/py_arm_authority_test.py`. Upstream's comment says `sig64` was made
 with secret key zero, which is not a valid key. This package refuses a
 zero r or s where upstream parses it; the test asks `recover_pub_key_`
@@ -741,7 +741,7 @@ for the refusal.
 
 ## Other projects
 
-### `tests/ecc/_data/bitcoin_core_compact_vectors.json`
+### `tests/schemes/_data/bitcoin_core_compact_vectors.json`
 
 ```text
 repo    bitcoin/bitcoin
@@ -761,11 +761,11 @@ a flag byte, which carries the recovery id and whether the key is
 compressed, then r and s. The message is hashed with Core's `Hash`, which
 is double SHA256, and the test applies that. Core's test also recovers the
 key from a compact signature and compares it with the key of the WIF, as
-`tests/ecc/dsa_recovery_test.py` does. The expected compact signatures
+`tests/schemes/dsa_recovery_test.py` does. The expected compact signatures
 are libsecp256k1's output inside Core: `CKey::SignCompact` calls
 `secp256k1_ecdsa_sign_recoverable` at the pinned commit. What is
 independent of it is that the recovered key equals the key of the WIF.
-`tests/ecc/dsa_sign_recoverable_test.py` checks signing against the
+`tests/schemes/dsa_sign_recoverable_test.py` checks signing against the
 signatures and is not counted as an authority.
 Every string in the file is in the pinned blob:
 
@@ -797,7 +797,7 @@ Verdict: **reformatted**. 349 vectors, JSON-equal to the upstream blob;
 ours is pretty-printed at four spaces. Re-checked on 2026-07-30: still
 JSON-equal, and that blob is still the one on master.
 
-### `tests/ecc/_data/ecdsa_sig.json`
+### `tests/schemes/_data/ecdsa_sig.json`
 
 ```text
 repo    rustyrussell/secp256k1-py
@@ -811,7 +811,7 @@ behind  0 revisions; still the blob on master
 
 Verdict: **reformatted**. 199 vectors, JSON-equal.
 
-### `tests/ecc/_data/ecdsa_custom_nonce_sig.json`
+### `tests/schemes/_data/ecdsa_custom_nonce_sig.json`
 
 ```text
 repo    rustyrussell/secp256k1-py
@@ -825,7 +825,7 @@ behind  0 revisions; still the blob on master
 
 Verdict: **reformatted**. 199 vectors, JSON-equal.
 
-### C2SP/wycheproof: the ECDSA and ECDH files under `tests/ecc/_data/`
+### C2SP/wycheproof: the ECDSA and ECDH files under `tests/schemes/_data/`
 
 The adversarial vectors, and the one upstream here published under a
 licence that is not MIT: Apache-2.0, whose condition on redistribution
@@ -837,7 +837,7 @@ Each entry below is pinned to its own path's last commit rather than to
 one commit shared by all of them, since the files do not all move
 together. All live in `testvectors_v1/`. Not `testvectors/`, which
 upstream removed on 2025-09-02 and which no refresh can reach again.
-They are read by `tests/ecc/wycheproof_test.py`, which is also where
+They are read by `tests/schemes/wycheproof_test.py`, which is also where
 the split between the two ECDSA profiles is explained, and where the
 difference the files under a hash other than sha256 make is:
 `_libsecp256k1_serves` admits sha256 alone, so those reach the Python
@@ -847,7 +847,7 @@ rather than twice.
 The SHAKE files need one thing the others do not, and it is a type
 rather than a reader: `hashlib.shake_128` is not a `HashF`, an
 extendable-output function having no output length of its own, so
-`_PinnedXof` in that module pins one and `src/btclib_ecc/alias.py`
+`_PinnedXof` in that module pins one and `src/ecc/alias.py`
 says why the package does not. The pinned length is `n_size` and any
 length above it is the same test, `challenge_` reading the leftmost
 `nlen` bits of a digest whose longer forms have these very bytes as
@@ -862,7 +862,7 @@ object per test group, `version` carrying the same string. Vendored
 regardless of the schema's presence or absence, which is what
 bitcoin-core/secp256k1 and secp256k1lab both do with it.
 
-### `tests/ecc/_data/ecdsa_secp256k1_sha256_bitcoin_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_sha256_bitcoin_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -885,7 +885,7 @@ in a test group of its own: an `invalid` signature whose r + n equals
 x(kG) modulo p but is not below p. Every other test group and case is
 unchanged; `numberOfTests` counts the new one.
 
-### `tests/ecc/_data/ecdsa_secp256k1_sha256_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_sha256_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -902,7 +902,7 @@ general-purpose ECDSA verifier must accept. It is therefore also the
 oracle for the exemption named above — a key and a signature `valid` here
 and `invalid` there differ by the low-s rule and by nothing else.
 
-### `tests/ecc/_data/ecdsa_secp256k1_sha256_p1363_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_sha256_p1363_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -916,7 +916,7 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical**. IEEE P1363 encoding, raw `r` and `s` side by
 side, which reaches `Sig` with no DER in front of it.
 
-### `tests/ecc/_data/ecdsa_secp256k1_sha512_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_sha512_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -931,7 +931,7 @@ Verdict: **identical**. A digest wider than the order, so `challenge_`'s
 truncation to the leftmost `nlen` bits is under adversarial input here
 and nowhere else.
 
-### `tests/ecc/_data/ecdsa_secp256k1_sha3_256_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_sha3_256_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -946,7 +946,7 @@ Verdict: **identical**. A Keccak digest of the order's own width, which
 is the pair to the file above: same width as sha256, different function,
 so what it varies is the dispatch and not the arithmetic.
 
-### `tests/ecc/_data/ecdsa_secp256k1_sha3_512_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_sha3_512_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -960,7 +960,7 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical**. Wide digest and Keccak both, the fourth corner
 of the two the files above vary one at a time.
 
-### `tests/ecc/_data/ecdsa_secp256k1_sha512_p1363_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_sha512_p1363_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -975,7 +975,7 @@ Verdict: **identical**. The wide digest without DER around it, which is
 what says the P1363 size rule is the encoding's and not the hash's: r
 and s stay `n_size` each while the message hash doubles.
 
-### `tests/ecc/_data/ecdsa_secp256k1_shake128_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_shake128_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -991,7 +991,7 @@ fixed size, which is the one thing here that needed something built for
 it: `_PinnedXof` in the test module, because `HashF` is a constructor of
 digests that report their own length and a SHAKE's is 0.
 
-### `tests/ecc/_data/ecdsa_secp256k1_shake256_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_shake256_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -1010,7 +1010,7 @@ evidence that upstream generated this file at a length wider than the
 order, and that reading the stream at `n_size` reads the leftmost bits
 it read.
 
-### `tests/ecc/_data/ecdsa_secp256k1_shake128_p1363_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_shake128_p1363_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -1025,7 +1025,7 @@ Verdict: **identical**. The XOF with no DER around it: `Sig` answers for
 r and s alone, as under sha256 and sha512, the adapter changing what the
 message hashes to and nothing about the encoding.
 
-### `tests/ecc/_data/ecdsa_secp256k1_shake256_p1363_test.json`
+### `tests/schemes/_data/ecdsa_secp256k1_shake256_p1363_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -1039,7 +1039,7 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical**. The fourth corner, and it carries the
 `Untruncatedhash` case of the pair as tcId 190.
 
-### `tests/ecc/_data/ecdh_secp256k1_test.json`
+### `tests/schemes/_data/ecdh_secp256k1_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -1052,9 +1052,9 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**. Key agreement, with the public key X.509-encoded
 rather than a bare point: the invalid-curve, twist and wrong-curve cases
-`btclib_ecc.ecc.dh` has no other vectors for.
+`ecc.ecc.dh` has no other vectors for.
 
-### `tests/ecc/_data/ecdh_secp256k1_webcrypto_test.json`
+### `tests/schemes/_data/ecdh_secp256k1_webcrypto_test.json`
 
 ```text
 repo    C2SP/wycheproof
@@ -1070,7 +1070,7 @@ above with the keys JWK-encoded (RFC 7517) rather than X.509: `WrongCurve`
 here attacks the JWK `crv` field where that file's attacks the DER OID,
 and its valid cases' shared secrets are exactly that file's own.
 
-### `tests/ecc/_data/WYCHEPROOF_COPYING`
+### `tests/schemes/_data/WYCHEPROOF_COPYING`
 
 ```text
 repo    C2SP/wycheproof
@@ -1091,13 +1091,13 @@ to carry.
 
 Renamed, against the naming rule above, and the reason is what the rule
 is for. Upstream calls it `LICENSE`, and a file of that name inside
-`tests/ecc/_data/` would read as licensing the directory it sits in --
+`tests/schemes/_data/` would read as licensing the directory it sits in --
 which is false, the BIP and rustyrussell files beside it having their
 own terms and this repository's own `LICENSE` being at the root. The upstream
 name is in the entry above instead, where the pin already is. It is the
 name bitcoin-core/secp256k1 gives its copy for the same reason.
 
-### `tests/ecc/_data/ecdsa_adaptor.json`
+### `tests/schemes/_data/ecdsa_adaptor.json`
 
 ```text
 repo    discreetlogcontracts/dlcspecs
@@ -1112,7 +1112,7 @@ Verdict: **identical**. The specification's own file, whose cases
 libsecp256k1-zkp carries in `src/modules/ecdsa_adaptor/tests_impl.h` as
 `test_ecdsa_adaptor_spec_vectors`.
 
-### `tests/ecc/_data/dlc_schnorr_test.json`
+### `tests/schemes/_data/dlc_schnorr_test.json`
 
 ```text
 repo    discreetlogcontracts/dlcspecs
@@ -1127,16 +1127,16 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical but for a trailing newline**, which the
 `end-of-file-fixer` hook added.
 
-### `tests/ecc/_data/rfc6979.json`
+### `tests/schemes/_data/rfc6979.json`
 
 Verdict: **transcribed**. Appendix A.2 of RFC 6979 gives 50 vectors, ten each
-for NIST P-192, P-224, P-256, P-384 and P-521, as `tests/ecc/rfc6979_test.py`
+for NIST P-192, P-224, P-256, P-384 and P-521, as `tests/schemes/rfc6979_test.py`
 says. An RFC number is already an immutable reference — there is no commit to
 pin, and `rfc-editor.org/rfc/rfc6979` is the document.
 
 Pulled 2020-05-08, refreshed 2020-11-29 and 2023-01-04.
 
-### `tests/ecc/_data/zkp_rangeproof_fixed_vectors.json`
+### `tests/schemes/_data/zkp_rangeproof_fixed_vectors.json`
 
 ```text
 repo    BlockstreamResearch/secp256k1-zkp
@@ -1183,17 +1183,17 @@ those under `pc.data`, and `secp256k1_pedersen_commitment_parse` ends by
 copying its input into `commit->data` verbatim, so what a rewind reads
 there is the leading octets of the `commitment` above, one scalar wide.
 The message a rewind also answers is left out,
-`tests/ecc/rangeproof_fixed_vectors_test.py` holding what upstream
+`tests/schemes/rangeproof_fixed_vectors_test.py` holding what upstream
 signed each entry with instead.
 
 That module asks for the octets back out, the range the header proves,
-the rings the value's digits index, `ecc.rangeproof.verify` against the
+the rings the value's digits index, `ecc.ecc.rangeproof.verify` against the
 commitment published beside each proof, and a rewind of every entry.
 The entries of
-`tests/ecc/_data/zkp_rangeproof_vectors.json` record a nonce of their
-own, and `tests/ecc/rangeproof_test.py` is where those are rewound.
+`tests/schemes/_data/zkp_rangeproof_vectors.json` record a nonce of their
+own, and `tests/schemes/rangeproof_test.py` is where those are rewound.
 
-### `tests/ecc/_data/zkp_generator_vectors.json`
+### `tests/schemes/_data/zkp_generator_vectors.json`
 
 ```text
 repo    BlockstreamResearch/secp256k1-zkp
@@ -1230,12 +1230,12 @@ calls `secp256k1_fe_set_int` in the fork and `secp256k1_fe_set_int_unchecked`
 above. The arrays read the same in both, so the transcription's source is
 the code the bindings run.
 
-`tests/ecc/pedersen_test.py` is what reads it: the first array against
-`ecc.pedersen._shallue_van_de_woestijne` and the second against
+`tests/schemes/pedersen_test.py` is what reads it: the first array against
+`ecc.ecc.pedersen._shallue_van_de_woestijne` and the second against
 `generator_from_seed`, at no blinding factor and at a zero one, which is
 the pair of calls upstream's own loop makes of each entry.
 
-### `tests/ecc/_data/zkp_schnorr_adaptor_vectors.json`
+### `tests/schemes/_data/zkp_schnorr_adaptor_vectors.json`
 
 ```text
 repo    siv2r/secp256k1-zkp
@@ -1256,7 +1256,7 @@ block's comment, each hex field is the `0x` array of that name, and
 them. A block that only asks whether a key or an adaptor point parses
 carries the parse function's name, set to false. The pass that produced
 the file is not committed, and what re-derives it is reading those arrays
-again; the command in the entry of `tests/ecc/dsa_anti_exfil_test.py`
+again; the command in the entry of `tests/schemes/dsa_anti_exfil_test.py`
 finds each value in the pinned blob.
 
 The pin is the branch of the fork the pull request is opened from, which
@@ -1264,16 +1264,16 @@ The pin is the branch of the fork the pull request is opened from, which
 pull request's head, c2f270985d, holds the same blob. The module is on
 no branch of secp256k1-zkp itself, so the file is a reference and not an
 authority: a revision of the pull request is what the weekly check
-reports. `tests/ecc/ssa_adaptor_test.py` runs every block.
+reports. `tests/schemes/ssa_adaptor_test.py` runs every block.
 
-### `tests/ecc/dsa_anti_exfil_test.py`
+### `tests/schemes/dsa_anti_exfil_test.py`
 
 ```text
 repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/ecdsa_s2c/tests_impl.h
 commit  6a01f71674cd3550e42d725420ddfb9e8571e223  2026-10-17
 blob    701b5ae56795a717b2e6b22f7e2ee349cfd3131d
-ours    d6ae47ad1802c65b55d52eff6ada843b9c84b5c2
+ours    ddefb3ccb2c582e17352087ea93fb96386abc242
 pulled  2026-08-02, refreshed 2026-08-06, 2026-08-07, 2026-08-09,
         2026-08-13, 2026-08-14, 2026-09-10 and 2026-09-26
 behind  0 revisions; that commit is the tip of the path
@@ -1313,7 +1313,7 @@ workflow reads it.
 
 ## Not vendored from anywhere
 
-### `tests/ecc/_data/zkp_rangeproof_vectors.json`
+### `tests/schemes/_data/zkp_rangeproof_vectors.json`
 
 ```text
 program   btclib-secp256k1 0.8.0.5, built from its sdist with
@@ -1339,10 +1339,10 @@ file holds: each entry below is one proof
 libsecp256k1-zkp signed for this tree, kept verbatim, beside the
 arguments that produced it and what that library then said about it.
 
-It is here because `tests/ecc/rangeproof_test.py` would otherwise
+It is here because `tests/schemes/rangeproof_test.py` would otherwise
 measure nothing in an unflagged build: the flagged extension those
 calls need is what a btclib-secp256k1 installed from its sdist with
-`BTCLIB_LIBSECP256K1_ZKP` has, and `btclib_ecc.ecc.rangeproof` reads a
+`BTCLIB_LIBSECP256K1_ZKP` has, and `ecc.ecc.rangeproof` reads a
 format no other vector file in this tree carries.
 
 **Recording another is this file's own arguments.** A rangeproof draws
@@ -1352,7 +1352,7 @@ from the caller's -- so `sign` called again with an entry's `blind`,
 byte for byte. `test_the_vectors_are_what_zkp_signs_today` is that
 check, so the procedure is a test rather than a note here, and it runs
 wherever the extension does. The same determinism makes the entries an
-oracle for what this package writes: `ecc.rangeproof.sign` builds a proof
+oracle for what this package writes: `ecc.ecc.rangeproof.sign` builds a proof
 from an entry's own `blind`, `value`, `nonce` and `sign arguments`, and
 `test_sign_writes_the_octets_zkp_signed` holds it to these octets
 wherever the suite runs, extension or not.
@@ -1369,7 +1369,7 @@ to libsecp256k1-zkp's rather than to its own; what `info` says
 nothing about -- the sign bits, the ring commitments and the borromean
 signature -- is held by the proof going back out byte for byte.
 
-### `tests/ecc/_data/der_length_vectors.json`
+### `tests/schemes/_data/der_length_vectors.json`
 
 ```text
 program   cryptography (pyca/cryptography)
@@ -1390,7 +1390,7 @@ length octets to a parser it did not write: `libsecp256k1_dsa` answers
 for `secp256k1` alone, and a decoder or a copy of the encoder written
 beside the fix would share its author and the same reading of the
 standard, proving nothing about whether that reading is the standard's
-own. `tests/ecc/der_test.py`'s `test_der_matches_a_vendored_der_oracle`
+own. `tests/schemes/der_test.py`'s `test_der_matches_a_vendored_der_oracle`
 compares `serialize()` to each entry's `der` field, byte for byte.
 
 **Recording another** is `dsa.sign`'s own deterministic nonce for each
@@ -1398,8 +1398,8 @@ curve entry, and a synthetic scalar pair for the wide-element one:
 
 ```shell
 uv run --locked --with cryptography python - <<'EOF'
-from btclib_ecc.curves.curve import CURVES
-from btclib_ecc.ecc import dsa
+from ecc.curves.curve import CURVES
+from ecc.ecc import dsa
 from cryptography.hazmat.primitives.asymmetric.utils import (
     encode_dss_signature)
 
@@ -1539,7 +1539,7 @@ bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
   prints (secp112r2 and secp128r2):
 
   ```shell
-  uv run python -c "from btclib_ecc.curves.curve import CURVES; \
+  uv run python -c "from ecc.curves.curve import CURVES; \
   print([n for n, c in CURVES.items() if c.cofactor > 1])"
   ```
 

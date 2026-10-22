@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `btclib_ecc.curves.curve` module."""
+"""Tests for the `ecc.curves.curve` module."""
 
 import copy
 import functools
@@ -18,13 +18,13 @@ from typing import Any
 import pytest
 from typing_extensions import override
 
-from btclib_ecc._libsecp256k1 import (
+from ecc._libsecp256k1 import (
     pubkey_from_prvkey as libsecp256k1_pubkey_from_prvkey,
 )
-from btclib_ecc._libsecp256k1 import pubkey_sum as libsecp256k1_pubkey_sum
-from btclib_ecc._libsecp256k1 import shared_point as libsecp256k1_shared_point
-from btclib_ecc.alias import INF, INFJ, Integer, JacPoint, Point
-from btclib_ecc.curves import (
+from ecc._libsecp256k1 import pubkey_sum as libsecp256k1_pubkey_sum
+from ecc._libsecp256k1 import shared_point as libsecp256k1_shared_point
+from ecc.alias import INF, INFJ, Integer, JacPoint, Point
+from ecc.curves import (
     Curve,
     CurveGroup,
     PreparedPoint,
@@ -42,7 +42,7 @@ from btclib_ecc.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
-from btclib_ecc.curves.curve import (
+from ecc.curves.curve import (
     CURVES,
     NIST,
     Brainpool,
@@ -70,17 +70,17 @@ from btclib_ecc.curves.curve import (
 )
 
 # _cached_multiples and _jac_from_aff are implementation helpers of curve_group,
-# not part of what btclib_ecc.curves exports: they are taken from the module
+# not part of what ecc.curves exports: they are taken from the module
 # that defines them
-from btclib_ecc.curves.curve_group import (
+from ecc.curves.curve_group import (
     _cached_multiples,
     _jac_from_aff,
     _mult,
     _mult_jac_var,
 )
-from btclib_ecc.ecc import second_generator
-from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
-from btclib_ecc.number_theory import _is_prime_var, mod_inv_var, mod_sqrt_var
+from ecc.ecc import second_generator
+from ecc.exceptions import EccTypeError, EccValueError
+from ecc.number_theory import _is_prime_var, mod_inv_var, mod_sqrt_var
 from tests import both_arms, load, needs_bindings, vector_id
 
 # test curves: very low cardinality. The name is p and n, in that order,
@@ -102,17 +102,17 @@ low_card_curves["ec13_19"] = Curve(13, 0, 2, (1, 9), 19, 1, False)
 #
 # 13 points, brute force over every (x, y) plus INF, so cofactor 1: this
 # curve was built with a false cofactor of 2 until issue
-# btclib-org/btclib-ecc#32, back when #19's bug forced it -- Curve()
+# btclib-org/ecc#32, back when #19's bug forced it -- Curve()
 # accepted no other value for an n this close to p. A curve of cofactor 2
 # has a rational two-torsion point at y = 0, which affine coordinates
 # cannot tell from INF: `Curve.is_on_curve` refuses it (issue
-# btclib-org/btclib-ecc#16), and cofactor_curves below holds one
+# btclib-org/ecc#16), and cofactor_curves below holds one
 low_card_curves["ec17_13"] = Curve(17, 6, 8, (0, 12), 13, 1, False)
 low_card_curves["ec17_23"] = Curve(17, 3, 5, (1, 14), 23, 1, False)
 # 19 % 4 = 3; 19 % 8 = 3
 #
 # 13 points, cofactor 1 for the same reason (issue
-# btclib-org/btclib-ecc#32)
+# btclib-org/ecc#32)
 low_card_curves["ec19_13"] = Curve(19, 0, 2, (4, 16), 13, 1, False)
 low_card_curves["ec19_23"] = Curve(19, 2, 9, (0, 16), 23, 1, False)
 # 23 % 4 = 3; 23 % 8 = 7
@@ -158,7 +158,7 @@ ec23_31 = low_card_curves["ec23_31"]
 
 # the very same curve as secp256k1, in another object: nothing that
 # dispatches to the libsecp256k1 bindings may tell the two apart, and
-# the ecc tests import this one to check that none of them does
+# the tests under tests/schemes import this one to check that none of them does
 secp256k1_bis: Curve = eval(repr(secp256k1))  # noqa: S307
 
 
@@ -212,52 +212,52 @@ def test_exceptions() -> None:
     # good curve
     Curve(13, 0, 2, (1, 9), 19, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match="p is not prime: "):
+    with pytest.raises(EccValueError, match="p is not prime: "):
         Curve(15, 0, 2, (1, 9), 19, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match="negative a: "):
+    with pytest.raises(EccValueError, match="negative a: "):
         Curve(13, -1, 2, (1, 9), 19, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match="p <= a: "):
+    with pytest.raises(EccValueError, match="p <= a: "):
         Curve(13, 13, 2, (1, 9), 19, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match="negative b: "):
+    with pytest.raises(EccValueError, match="negative b: "):
         Curve(13, 0, -2, (1, 9), 19, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match="p <= b: "):
+    with pytest.raises(EccValueError, match="p <= b: "):
         Curve(13, 0, 13, (1, 9), 19, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match="zero discriminant"):
+    with pytest.raises(EccValueError, match="zero discriminant"):
         Curve(11, 7, 7, (1, 9), 19, 1, False)
 
     err_msg = "generator must be a sequence\\[int, int\\]"
-    with pytest.raises(BTClibEccValueError, match=err_msg):
+    with pytest.raises(EccValueError, match=err_msg):
         Curve(13, 0, 2, (1, 9, 1), 19, 1, False)  # type: ignore[arg-type]
 
-    with pytest.raises(BTClibEccValueError, match="Generator is not on the curve"):
+    with pytest.raises(EccValueError, match="Generator is not on the curve"):
         Curve(13, 0, 2, (2, 9), 19, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match="n is not prime: "):
+    with pytest.raises(EccValueError, match="n is not prime: "):
         Curve(13, 0, 2, (1, 9), 20, 1, False)
 
     # 341 = 11 * 31 and 561 = 3 * 11 * 17 are base-2 Fermat pseudoprimes
-    with pytest.raises(BTClibEccValueError, match="n is not prime: 341"):
+    with pytest.raises(EccValueError, match="n is not prime: 341"):
         Curve(307, 1, 66, (0, 56), 341, 1, False)
-    with pytest.raises(BTClibEccValueError, match="n is not prime: 561"):
+    with pytest.raises(EccValueError, match="n is not prime: 561"):
         Curve(307, 1, 66, (0, 56), 561, 1, False)
     # no factor up to 37 and a strong base-2 pseudoprime: the Lucas step
-    with pytest.raises(BTClibEccValueError, match="n is not prime: 3215031751"):
+    with pytest.raises(EccValueError, match="n is not prime: 3215031751"):
         Curve(307, 1, 66, (0, 56), 3215031751, 1, False)
-    with pytest.raises(BTClibEccValueError, match="p is not prime: 341"):
+    with pytest.raises(EccValueError, match="p is not prime: 341"):
         Curve(341, 1, 66, (0, 56), 19, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match=r"cofactor\*n not in "):
+    with pytest.raises(EccValueError, match=r"cofactor\*n not in "):
         Curve(13, 0, 2, (1, 9), 71, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match="INF point cannot be a generator"):
+    with pytest.raises(EccValueError, match="INF point cannot be a generator"):
         Curve(13, 0, 2, INF, 19, 1, False)
 
-    with pytest.raises(BTClibEccValueError, match="n is not the group order: "):
+    with pytest.raises(EccValueError, match="n is not the group order: "):
         Curve(13, 0, 2, (1, 9), 17, 1, False)
 
     # the same curve, with the group order check turned off: everything
@@ -265,14 +265,14 @@ def test_exceptions() -> None:
     Curve(13, 0, 2, (1, 9), 17, 1, False, order_check=False)
 
     with pytest.raises(
-        BTClibEccValueError, match=r"invalid cofactor: 2, cofactor\*n not in "
+        EccValueError, match=r"invalid cofactor: 2, cofactor\*n not in "
     ):
         Curve(13, 0, 2, (1, 9), 19, 2, False)
 
-    with pytest.raises(BTClibEccValueError, match=r"invalid cofactor: 0, "):
+    with pytest.raises(EccValueError, match=r"invalid cofactor: 0, "):
         Curve(13, 0, 2, (1, 9), 19, 0, False)
 
-    with pytest.raises(BTClibEccValueError, match="weak curve: the embedding degree"):
+    with pytest.raises(EccValueError, match="weak curve: the embedding degree"):
         Curve(11, 2, 7, (6, 9), 7, 2, True)
 
 
@@ -281,7 +281,7 @@ def test_cofactor_ambiguous_below_hasse_threshold() -> None:
 
     y^2 = x^3 + 2x + 7 over F_11 has 7 points (brute force over every
     (x, y) plus INF), so G = (6, 9) generates the whole group and its
-    cofactor is 1 -- issue btclib-org/btclib-ecc#19's own
+    cofactor is 1 -- issue btclib-org/ecc#19's own
     reproduction, which the constructor used to refuse. delta =
     isqrt(4*11) = 6 and n = 7 is below 2*delta, so h = 2 (14, also
     inside [6, 18]) is accepted too, since nothing short of counting the
@@ -300,7 +300,7 @@ def test_cofactor_ambiguous_below_hasse_threshold() -> None:
     ec2 = Curve(11, 2, 7, (6, 9), 7, 2, False)
     assert ec2.cofactor == 2
 
-    with pytest.raises(BTClibEccValueError, match=r"invalid cofactor: 3, "):
+    with pytest.raises(EccValueError, match=r"invalid cofactor: 3, "):
         Curve(11, 2, 7, (6, 9), 7, 3, False)
 
 
@@ -316,7 +316,7 @@ def test_cofactor_ambiguous_below_hasse_threshold() -> None:
 @pytest.mark.parametrize("p", [13, "0x0d", b"\x0d"], ids=["int", "str", "bytes"])
 def test_anomalous_curve(p: Integer) -> None:
     """Refuse the n == p anomalous curve, however p is spelled."""
-    with pytest.raises(BTClibEccValueError, match="n=p weak curve: "):
+    with pytest.raises(EccValueError, match="n=p weak curve: "):
         Curve(p, 1, 6, (2, 9), 13, 1)
 
 
@@ -333,7 +333,7 @@ def test_curves_with_n_above_p() -> None:
     curve of order 19 fits in a test.
 
     What n > p decides is whether `r = x_K % ec.n` can reduce, and it
-    cannot: x_K < p < n. tests/ecc/dsa_test.py draws the consequence for
+    cannot: x_K < p < n. tests/schemes/dsa_test.py draws the consequence for
     key recovery.
     """
     above = {name for name, ec in low_card_curves.items() if ec.n > ec.p}
@@ -382,7 +382,7 @@ def test_hasse_half_width_is_exact() -> None:
         assert delta * delta <= 4 * ec.p < (delta + 1) * (delta + 1)
         # the curve was built, so cofactor*n -- the curve's own order --
         # is inside the Hasse interval delta bounds; that is all the
-        # constructor requires (issue btclib-org/btclib-ecc#19)
+        # constructor requires (issue btclib-org/ecc#19)
         assert ec.p + 1 - delta <= ec.cofactor * ec.n <= ec.p + 1 + delta
 
     # every catalogued curve has n > 2*delta, where at most one multiple
@@ -412,7 +412,7 @@ def test_hasse_half_width_is_exact() -> None:
 def test_catalogued_curves() -> None:
     """Rebuild the catalogue from its json data, with every check on.
 
-    btclib_ecc.curves.curve builds it with order_check=False and
+    ecc.curves.curve builds it with order_check=False and
     weakness_check=False, and without testing p and n prime, since
     re-deriving them at every interpreter start would cost most of a
     module import; this is where they happen instead, the constructor
@@ -452,10 +452,10 @@ def test_aff_jac_conversions() -> None:
 
         assert ec.aff_from_jac_var(_jac_from_aff(INF)) == INF
 
-        with pytest.raises(BTClibEccValueError, match="INF has no x-coordinate"):
+        with pytest.raises(EccValueError, match="INF has no x-coordinate"):
             ec.x_aff_from_jac_var(INFJ)
 
-        with pytest.raises(BTClibEccValueError, match="INF has no y-coordinate"):
+        with pytest.raises(EccValueError, match="INF has no y-coordinate"):
             ec.y_aff_from_jac_var(INFJ)
 
 
@@ -611,7 +611,7 @@ def test_point_addition_exhaustive_with_cofactor() -> None:
 
     Their small-order points are added to everything, and the real
     two-torsion point of the two curves that have one is handled in
-    Jacobian coordinates only (issue btclib-org/btclib-ecc#16).
+    Jacobian coordinates only (issue btclib-org/ecc#16).
     """
     for name, ec in cofactor_curves.items():
         two_torsion = tuple((x, 0) for x in range(ec.p) if ec._y2(x) == 0)
@@ -640,7 +640,7 @@ def test_assert_in_subgroup_on_a_cofactor_curve(name: str) -> None:
     for Q in points:
         if Q[1] == 0:  # the two-torsion point, which is_on_curve refuses
             err_msg = f"ambiguous point: .* two-torsion point at x = {Q[0]}$"
-            with pytest.raises(BTClibEccValueError, match=err_msg):
+            with pytest.raises(EccValueError, match=err_msg):
                 ec.is_on_curve(Q)
             continue
         assert ec.is_on_curve(Q)
@@ -648,7 +648,7 @@ def test_assert_in_subgroup_on_a_cofactor_curve(name: str) -> None:
             _assert_in_subgroup(Q, ec)
         else:
             err_msg = "point not in the subgroup generated by G"
-            with pytest.raises(BTClibEccValueError, match=err_msg):
+            with pytest.raises(EccValueError, match=err_msg):
                 _assert_in_subgroup(Q, ec)
 
     order, torsion = small_order_points[name]
@@ -671,7 +671,7 @@ def test_the_constructor_accepts_a_false_cofactor() -> None:
     """Hasse's interval, not the point count, is what the cofactor is held to.
 
     These curves have a cofactor other than the one given and build
-    all the same, which is the limit of issue btclib-org/btclib-ecc#19: a
+    all the same, which is the limit of issue btclib-org/ecc#19: a
     cofactor is only as true as the caller's word for it.
     """
     for name, false_cofactor in (("ec17_11h2", 1), ("ec31_13h3", 2), ("ec43_11h5", 4)):
@@ -1004,40 +1004,40 @@ def test_is_on_curve() -> None:
     for ec in all_curves.values():
         # the type first, `len` of what is not sized being a TypeError
         # about a builtin rather than a word about the argument
-        with pytest.raises(BTClibEccTypeError, match="invalid point type: str"):
+        with pytest.raises(EccTypeError, match="invalid point type: str"):
             ec.is_on_curve("not a point")  # type: ignore[arg-type]
 
-        with pytest.raises(BTClibEccValueError, match="point must be a tuple"):
+        with pytest.raises(EccValueError, match="point must be a tuple"):
             ec.is_on_curve((1, 2, 3))  # type: ignore[arg-type]
 
-        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1$"):
+        with pytest.raises(EccValueError, match="x-coordinate not in 0..p-1$"):
             ec.y_var(ec.p)
 
         # just a point, not INF
         Q = ec.G
-        with pytest.raises(BTClibEccValueError, match="y-coordinate not in 1..p-1$"):
+        with pytest.raises(EccValueError, match="y-coordinate not in 1..p-1$"):
             ec.is_on_curve((Q[0], ec.p))
 
         # x is reduced mod p by _y2, which read x + p and x - p back as
         # the same point Q names, both a second SEC octet encoding of a
         # key already accepted and, for x - p, a negative int no encoding
-        # can even carry (issue btclib-org/btclib-ecc#7)
-        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1$"):
+        # can even carry (issue btclib-org/ecc#7)
+        with pytest.raises(EccValueError, match="x-coordinate not in 0..p-1$"):
             ec.is_on_curve((Q[0] + ec.p, Q[1]))
-        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1$"):
+        with pytest.raises(EccValueError, match="x-coordinate not in 0..p-1$"):
             ec.is_on_curve((Q[0] - ec.p, Q[1]))
         # the x check ahead of the y == 0 shortcut too, an out-of-range x
         # otherwise slipping through as a fourth spelling of infinity
-        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1$"):
+        with pytest.raises(EccValueError, match="x-coordinate not in 0..p-1$"):
             ec.is_on_curve((Q[0] + ec.p, 0))
 
         # a bool coordinate before either check above: `Q[1] == 0` is how
         # infinity is recognized, and `False == 0` in Python, so a bool y used
         # to be read as infinity for any x (issue btclib-org/btclib#1249)
         for y in (True, False):
-            with pytest.raises(BTClibEccTypeError, match="non-integer x-coordinate"):
+            with pytest.raises(EccTypeError, match="non-integer x-coordinate"):
                 ec.is_on_curve((y, Q[1]))
-            with pytest.raises(BTClibEccTypeError, match="non-integer y-coordinate"):
+            with pytest.raises(EccTypeError, match="non-integer y-coordinate"):
                 ec.is_on_curve((Q[0], y))
 
 
@@ -1047,7 +1047,7 @@ def secp112r2_order_4_point() -> Point:
     secp112r2 is cofactor 4, and gcd(4, n) == 1, n being an odd prime, so
     n*P always lands in the curve's own 4-element subgroup {INF, T0, 2T0,
     -T0} for any P on the curve -- the derivation the issue itself walks
-    through (issues btclib-org/btclib-ecc#15 and #16). Of those four,
+    through (issues btclib-org/ecc#15 and #16). Of those four,
     only T0 and -T0 have y != 0: INF and 2T0, the real two-torsion point,
     both have y == 0, a point of order 2 having no other affine shape. x
     = 2 is a fixed, already-checked case of that: its own n*P lands on
@@ -1077,7 +1077,7 @@ def test_is_on_curve_refuses_the_real_two_torsion_point() -> None:
     Doubling the order-4 point above lands on the curve's real two-torsion
     point, which the affine y == 0 convention cannot tell apart from
     infinity: is_on_curve refuses it rather than reading it either way
-    (issue btclib-org/btclib-ecc#16), and add_var, which validates its
+    (issue btclib-org/ecc#16), and add_var, which validates its
     operands through is_on_curve, refuses to add it to anything.
     """
     ec = CURVES["secp112r2"]
@@ -1086,9 +1086,9 @@ def test_is_on_curve_refuses_the_real_two_torsion_point() -> None:
     assert T2[1] == 0
     assert ec._y2(T2[0]) == 0  # a genuine root, not an arbitrary INF x
 
-    with pytest.raises(BTClibEccValueError, match="ambiguous point"):
+    with pytest.raises(EccValueError, match="ambiguous point"):
         ec.is_on_curve(T2)
-    with pytest.raises(BTClibEccValueError, match="ambiguous point"):
+    with pytest.raises(EccValueError, match="ambiguous point"):
         ec.add_var(T, T2)
 
     # an x with no real two-torsion point at it is still read as INF, the
@@ -1104,7 +1104,7 @@ def test_order_check_refuses_a_generator_whose_true_order_is_2n() -> None:
     INF under the affine y == 0 convention -- without being G's order,
     which is 26. order_check exists to catch precisely an n that
     annihilates G without being its order, and used to accept this one
-    (issue btclib-org/btclib-ecc#39): its own check reached the
+    (issue btclib-org/ecc#39): its own check reached the
     windowed `_mult`, whose table of odd multiples of G is built in
     affine coordinates and fed through `_jac_from_aff` to seed the
     accumulator, so the very table entry that answers digit 13 is already
@@ -1120,7 +1120,7 @@ def test_order_check_refuses_a_generator_whose_true_order_is_2n() -> None:
     assert ec.aff_from_jac_var(thirteen_G)[1] == 0  # the real two-torsion point
     assert _mult_jac_var(26, _jac_from_aff(G), ec)[2] == 0  # G's true order
 
-    with pytest.raises(BTClibEccValueError, match="n is not the group order: "):
+    with pytest.raises(EccValueError, match="n is not the group order: "):
         Curve(17, 3, 0, G, 13, 2, False)
 
     # the same curve, with the group order check turned off: everything
@@ -1147,9 +1147,7 @@ def test_assert_in_subgroup_refuses_a_point_whose_true_order_is_2n() -> None:
     assert _mult_jac_var(13, QJ, ec)[2] != 0  # the real two-torsion point
     assert _mult_jac_var(26, QJ, ec)[2] == 0  # Q's true order, 2n
 
-    with pytest.raises(
-        BTClibEccValueError, match="point not in the subgroup generated by G"
-    ):
+    with pytest.raises(EccValueError, match="point not in the subgroup generated by G"):
         _assert_in_subgroup(Q, ec)
 
 
@@ -1174,10 +1172,10 @@ def test_negate() -> None:
         minus_INFJ = ec.negate_jac(INFJ)
         assert ec.is_jac_equal(minus_INFJ, INFJ)
 
-        with pytest.raises(BTClibEccTypeError, match="not a point"):
+        with pytest.raises(EccTypeError, match="not a point"):
             ec.negate(ec.GJ)  # type: ignore[arg-type]
 
-        with pytest.raises(BTClibEccTypeError, match="not a Jacobian point"):
+        with pytest.raises(EccTypeError, match="not a Jacobian point"):
             ec.negate_jac(ec.G)  # type: ignore[arg-type]
 
 
@@ -1206,13 +1204,13 @@ def test_symmetry() -> None:
             assert quad_res == (root * root) % ec.p
 
             assert ec.p - quad_res not in hasRoot
-            with pytest.raises(BTClibEccValueError, match="no root mod "):
+            with pytest.raises(EccValueError, match="no root mod "):
                 mod_sqrt_var(ec.p - quad_res, ec.p)
         else:
             assert ec.p % 4 == 1
             # cannot use y_quadratic_residue_var in this case
             err_msg = "field prime is not equal to 3 mod 4: "
-            with pytest.raises(BTClibEccValueError, match=err_msg):
+            with pytest.raises(EccValueError, match=err_msg):
                 ec.y_quadratic_residue_var(x_Q)
 
             y_even_var = ec.y_even_var(x_Q)
@@ -1232,16 +1230,16 @@ def test_symmetry() -> None:
                 assert y_even_var == (root * root) % ec.p
             else:
                 err_msg = "no root mod "
-                with pytest.raises(BTClibEccValueError, match=err_msg):
+                with pytest.raises(EccValueError, match=err_msg):
                     mod_sqrt_var(y_odd, ec.p)
-                with pytest.raises(BTClibEccValueError, match=err_msg):
+                with pytest.raises(EccValueError, match=err_msg):
                     mod_sqrt_var(y_even_var, ec.p)
 
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
+    with pytest.raises(EccValueError, match="invalid x-coordinate$"):
         secp256k1.y_even_var(INF[0])
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
+    with pytest.raises(EccValueError, match="invalid x-coordinate$"):
         secp256k1.y_low_var(INF[0])
-    with pytest.raises(BTClibEccValueError, match="invalid x-coordinate$"):
+    with pytest.raises(EccValueError, match="invalid x-coordinate$"):
         secp256k1.y_quadratic_residue_var(INF[0])
 
 
@@ -1292,7 +1290,7 @@ def test_assorted_mult() -> None:
             assert multi_mult_var([0, 0, 0, 0], points, ec) == INF
 
             err_msg = "mismatch between number of scalars and points: "
-            with pytest.raises(BTClibEccValueError, match=err_msg):
+            with pytest.raises(EccValueError, match=err_msg):
                 multi_mult_var([k1, k2, k3, k4], [ec.G, H, ec.G], ec)
 
 
@@ -1313,7 +1311,7 @@ def test_multi_mult() -> None:
 
     btclib-org/btclib#175's pairs are among the cases.
     """
-    with pytest.raises(BTClibEccValueError, match="not a multi_mult_var"):
+    with pytest.raises(EccValueError, match="not a multi_mult_var"):
         multi_mult_var([1], [secp256k1.G])
 
     H = second_generator(secp256k1)
@@ -1375,12 +1373,12 @@ def no_bindings_anywhere(monkeypatch: pytest.MonkeyPatch) -> None:
     `no_bindings` above answers for `curve.py`'s own names and the one class
     beside them, which is what every arm gated on the curve and the hash
     function alone reaches through. An arm gated on availability alone can hold
-    a binding of its own a module further out -- `ecc.dsa`'s own
+    a binding of its own a module further out -- `ecc.ecc.dsa`'s own
     `_libsecp256k1_recover_sec_` binds `recovery` -- and `from ... import x as
     y` copies the object rather than looking it up again, so a patch on the
     module the bindings live in does not reach a name already copied out of it.
 
-    So this walks every module already loaded under `btclib_ecc` or
+    So this walks every module already loaded under `ecc` or
     `btclib_secp256k1` and replaces every callable there whose
     `__module__` traces back to the bindings with one that raises,
     whichever module holds the name; `_libsecp256k1_available` is cleared
@@ -1401,7 +1399,7 @@ def no_bindings_anywhere(monkeypatch: pytest.MonkeyPatch) -> None:
         return asked
 
     for mod_name, mod in list(sys.modules.items()):
-        if mod_name.split(".")[0] not in {"btclib_ecc", "btclib_secp256k1"}:
+        if mod_name.split(".")[0] not in {"ecc", "btclib_secp256k1"}:
             continue
         for attr, value in list(vars(mod).items()):
             if isinstance(value, types.ModuleType) or not callable(value):
@@ -1445,7 +1443,7 @@ def test_tweak_add_var(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
     assert _tweak_add_var(mult(7), ec.n - 7, ec) == INF
 
     # a point that is not on the curve is refused rather than delegated
-    with pytest.raises(BTClibEccValueError, match="point not on curve"):
+    with pytest.raises(EccValueError, match="point not on curve"):
         _tweak_add_var((ec.G[0], ec.G[1] + 1), 7, ec)
 
     # and a curve the bindings do not serve takes the same lines
@@ -1508,7 +1506,7 @@ def test_tweak_chain(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
 
     # a point that is not on the curve is refused where it is handed
     # over, rather than at the first tweak of it
-    with pytest.raises(BTClibEccValueError, match="point not on curve"):
+    with pytest.raises(EccValueError, match="point not on curve"):
         TweakChain((ec.G[0], ec.G[1] + 1), ec)
 
     # and a curve the bindings do not serve is the same answer again,
@@ -1558,7 +1556,7 @@ def test_sum_var(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
     assert _sum_var([mult(3), mult(7), ec.negate(mult(10))], ec) == INF
 
     # a point that is not on the curve is refused rather than summed
-    with pytest.raises(BTClibEccValueError, match="point not on curve"):
+    with pytest.raises(EccValueError, match="point not on curve"):
         _sum_var([ec.G, (ec.G[0], ec.G[1] + 1)], ec)
 
     # and a curve the bindings do not serve takes the same lines
@@ -1681,7 +1679,7 @@ def test_public_spellings_check_what_their_twins_trust(
 
     The twins take what the library has already validated: an int, a
     Curve, a sequence. What the public name adds is the refusal of
-    anything else as a `BTClibEccTypeError`, and the reduction of a tweak
+    anything else as an `EccTypeError`, and the reduction of a tweak
     handed over as any `Integer`. `TweakChain` checks its own arguments,
     and its base and curve are read-only: the chain holds the base on
     the far side, so a reassigned one would split its two arms.
@@ -1698,28 +1696,28 @@ def test_public_spellings_check_what_their_twins_trust(
     assert not is_x_coordinate_var(-1)
     assert not is_x_coordinate_var(ec.p)
     for x in (1.5, "01", True):
-        with pytest.raises(BTClibEccTypeError, match="non-integer x-coordinate"):
+        with pytest.raises(EccTypeError, match="non-integer x-coordinate"):
             is_x_coordinate_var(x)  # type: ignore[arg-type]
 
     assert sum_var([P, Q]) == _sum_var([P, Q], ec)
     assert sum_var([]) == INF
-    with pytest.raises(BTClibEccTypeError, match="invalid points type"):
+    with pytest.raises(EccTypeError, match="invalid points type"):
         sum_var(None)  # type: ignore[arg-type]
-    with pytest.raises(BTClibEccValueError, match="point not on curve"):
+    with pytest.raises(EccValueError, match="point not on curve"):
         sum_var([P, (ec.G[0], ec.G[1] + 1)])
 
     assert tweak_add_var(P, 5) == _tweak_add_var(P, 5, ec)
     assert tweak_add_var(P, ec.n + 5) == tweak_add_var(P, 5)
     assert tweak_add_var(P, "05") == tweak_add_var(P, 5)
-    with pytest.raises(BTClibEccTypeError):
+    with pytest.raises(EccTypeError):
         tweak_add_var(P, 1.5)  # type: ignore[arg-type]
-    with pytest.raises(BTClibEccTypeError, match="invalid ec type"):
+    with pytest.raises(EccTypeError, match="invalid ec type"):
         tweak_add_var(P, 5, None)  # type: ignore[arg-type]
 
     chain = TweakChain(P)
     assert chain.point(ec.n + 5) == _tweak_add_var(P, 5, ec)
     assert chain.point("05") == _tweak_add_var(P, 5, ec)
-    with pytest.raises(BTClibEccTypeError):
+    with pytest.raises(EccTypeError):
         chain.point(1.5)  # type: ignore[arg-type]
     for attribute, value in (("base", Q), ("ec", CURVES["secp256r1"])):
         with pytest.raises(AttributeError):
@@ -1911,7 +1909,7 @@ def test_libsecp256k1_mult_refuses_what_mult_gates_out() -> None:
     # and through `mult`, each of them answered rather than raised
     assert mult(0, H) == INF
     assert mult(n + 1, H) == H
-    with pytest.raises(BTClibEccValueError, match="point not on curve"):
+    with pytest.raises(EccValueError, match="point not on curve"):
         mult(2, (H[0], H[1] + 1))
 
 
@@ -1946,15 +1944,13 @@ def test_x_coordinate_lift(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> N
     for x in range(400):
         try:
             y_even_var = ec.y_even_var(x)
-        except BTClibEccValueError as e:
+        except EccValueError as e:
             refused += 1
             python_msg = str(e)
             assert not _is_x_coordinate_var(x, ec)
             # the refusal stays curve_group's to phrase rather than the
             # bindings' to raise, and names no value
-            with pytest.raises(
-                BTClibEccValueError, match="invalid x-coordinate$"
-            ) as err:
+            with pytest.raises(EccValueError, match="invalid x-coordinate$") as err:
                 _y_even_var(x, ec)
             assert str(err.value) == python_msg
         else:
@@ -1972,7 +1968,7 @@ def test_x_coordinate_lift(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> N
     # p-size serialization to ask the bindings about either
     for x in (-1, ec.p, ec.p + 1, 2**256):
         assert not _is_x_coordinate_var(x, ec)
-        with pytest.raises(BTClibEccValueError, match="x-coordinate not in 0..p-1"):
+        with pytest.raises(EccValueError, match="x-coordinate not in 0..p-1"):
             _y_even_var(x, ec)
 
 
@@ -1988,9 +1984,9 @@ def test_x_coordinate_lift_of_every_other_curve() -> None:
         for x in range(min(ec.p, 24)):
             try:
                 y_even_var = ec.y_even_var(x)
-            except BTClibEccValueError:
+            except EccValueError:
                 assert not _is_x_coordinate_var(x, ec)
-                with pytest.raises(BTClibEccValueError, match="x-coordinate"):
+                with pytest.raises(EccValueError, match="x-coordinate"):
                     _y_even_var(x, ec)
             else:
                 assert _is_x_coordinate_var(x, ec)
@@ -2051,16 +2047,14 @@ def test_prepared_point_refuses_a_point_with_no_tables() -> None:
     first multiplication, which is what preparing is -- validating once so
     that nothing after it has to.
     """
-    with pytest.raises(
-        BTClibEccValueError, match="cannot prepare the point at infinity"
-    ):
+    with pytest.raises(EccValueError, match="cannot prepare the point at infinity"):
         PreparedPoint(INF)
-    with pytest.raises(BTClibEccValueError, match="point not on curve"):
+    with pytest.raises(EccValueError, match="point not on curve"):
         PreparedPoint((secp256k1.G[0], secp256k1.G[1] + 1))
     # a point of another curve is that same refusal, and it is why the
     # one-line unwrapping at each converter needs no curve comparison of
     # its own
-    with pytest.raises(BTClibEccValueError, match="point not on curve"):
+    with pytest.raises(EccValueError, match="point not on curve"):
         PreparedPoint(secp256k1.G, CURVES["secp256r1"])
 
 

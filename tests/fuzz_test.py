@@ -11,7 +11,7 @@ assert that a decoder accepts the right things -- the vectors do that --
 but that it *fails the way the package says it fails*, whatever it is
 handed: an IndexError off a short slice, an OverflowError off an
 unchecked size or a silent short read reaches a caller who catches
-`BTClibEccValueError` to reject bad input and has no reason to
+`EccValueError` to reject bad input and has no reason to
 expect anything else.
 
 `fuzz/`'s atheris harnesses ask the same question of the signature and
@@ -34,9 +34,9 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from btclib_ecc.curves import mult, secp256k1
-from btclib_ecc.curves.sec_point import bytes_from_point, point_from_octets_var
-from btclib_ecc.ecc import (
+from ecc.curves import mult, secp256k1
+from ecc.curves.sec_point import bytes_from_point, point_from_octets_var
+from ecc.ecc import (
     dleq,
     dsa,
     ecdsa_adaptor,
@@ -48,21 +48,21 @@ from btclib_ecc.ecc import (
     ssa,
     ssa_adaptor,
 )
-from btclib_ecc.ecc.borromean import BorromeanSig
-from btclib_ecc.ecc.rangeproof import RangeProof
-from btclib_ecc.exceptions import (
-    BTClibEccRuntimeError,
-    BTClibEccTypeError,
-    BTClibEccValueError,
+from ecc.ecc.borromean import BorromeanSig
+from ecc.ecc.rangeproof import RangeProof
+from ecc.exceptions import (
+    EccRuntimeError,
+    EccTypeError,
+    EccValueError,
 )
 from tests import public_classes_with
 
 # What a decoder of this package is allowed to raise. Anything else
-# leaves the contract src/btclib_ecc/exceptions.py documents
+# leaves the contract src/ecc/exceptions.py documents
 CONTRACT = (
-    BTClibEccValueError,
-    BTClibEccTypeError,
-    BTClibEccRuntimeError,
+    EccValueError,
+    EccTypeError,
+    EccRuntimeError,
 )
 
 # Bounded because these are decoders, not benchmarks: what a length field
@@ -183,7 +183,7 @@ def test_text_parser_honors_the_exception_contract(
 # mutation lands in: a flipped length asks for octets the buffer does
 # not hold, and a flipped integer length moves the boundary between r
 # and s
-DSA_SIG_BIN = dsa.sign(b"btclib_ecc", 1).serialize()
+DSA_SIG_BIN = dsa.sign(b"ecc", 1).serialize()
 # a BIE1 envelope, whose magic, ephemeral key, ciphertext and MAC sit at
 # fixed offsets: a truncation or an extension lands in the ciphertext's
 # block alignment, and a flipped octet in the key's prefix or on its

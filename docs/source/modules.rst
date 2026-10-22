@@ -1,7 +1,7 @@
-btclib_ecc
-==========
+ecc
+===
 
 .. toctree::
    :maxdepth: 4
 
-   btclib_ecc
+   ecc

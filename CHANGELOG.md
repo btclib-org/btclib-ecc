@@ -23,6 +23,83 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.10.20
+
+### The package is `ecc`
+
+The distribution and the import package are `ecc`, with no alias, and so are
+the release's files. `BTClibEcc*` is `Ecc*`, and `BTCLIB_ECC_NO_LIBSECP256K1`
+is `ECC_NO_LIBSECP256K1` (issue #306).
+
+### The private-key tweak and BIP341's x-only tweaks
+
+`curves.prv_key_tweak_add`, `ssa.prv_key_tweak_add` and
+`ssa.pub_key_tweak_add_var` are new; they run on the bindings for secp256k1
+and refuse a tweak outside 0..n-1 and a zero sum (issue #304).
+
+### Variable-time public names take `_var`
+
+CONTRIBUTING.md states btclib's `_var` criterion, and public names in
+`rangeproof`, `commit_nonce`, `dlc_oracle`, `ssa_adaptor`, `pedersen`, `musig2`
+and `frost` take the suffix, with no alias (issue btclib-org/btclib#2687).
+
+### `ellswift.create_var` is `create`
+
+On the Python path the key reaches only `mult`, whose algorithm does not follow
+its value, so the plain name holds, with no alias (closes #312).
+
+### The nonce derivations stop at 256 candidates
+
+`rfc6979_nonce`, `bip340_nonce` and `commit_nonce` raise `EccRuntimeError`
+where a hash function never yields a valid candidate, so signing no longer
+hangs (closes #275).
+
+### `rangeproof` refuses what is no integer
+
+A ring commitment or header field that is no integer is refused as
+`EccTypeError` (issue #276, issue #277).
+
+### `rangeproof`'s refusals quote no refused value
+
+They leave out the exponent, minimum value, bit count and mantissa, and a
+zero-mantissa proof skips the exponent scaling (closes #301, closes #310).
+
+### gmpy2 is left unused off CPython
+
+On PyPy, `number_theory` keeps to `int`, so an installed gmpy2 no longer makes
+`mod_inv_var` raise (closes #290).
+
+### The FROST vectors move to upstream's tips
+
+The vendored files of siv2r/bip-frost-signing are pinned at its tip of
+2026-10-19, with a 2-of-128 group and a zero tweak (closes #320).
+
+### `uv.lock` takes aiohttp 3.14.5
+
+It is past the three advisories `uv audit` refuses in 3.14.3 (closes #324).
+
+### CONTRIBUTING.md takes the organization's shared half
+
+The tree's docs drop the maintainer's bypass (issue btclib-org/.github#1740).
+
+### SECURITY.md asks for a fast fix of an easy defect
+
+It takes the organization's paragraph on a defect easy to rediscover (issue
+btclib-org/.github#1771).
+
+### The `secret_free` helper refuses a secret printed in groups
+
+It is the organization's, byte for byte (issue btclib-org/.github#1697).
+
+### The pyroma hook builds nothing from source
+
+It takes `--no-build` (issue btclib-org/.github#1763).
+
+### Docs
+
+CONTRIBUTING.md says most wrong values are true, not every one (closes #309),
+and ASSURANCE_CASE.md names two more exception tests (closes #311).
+
 ## v2026.10.17
 
 ### `rangeproof` checks what it serializes

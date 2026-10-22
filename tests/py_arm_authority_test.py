@@ -24,7 +24,7 @@ call to `_libsecp256k1_serves` is an arm -- so one added without an entry
 here fails. And the entries were measured, not reasoned:
 
     uv run --locked --no-default-groups --group harness \
-        pytest <one module> --cov=btclib_ecc --cov-report=json \
+        pytest <one module> --cov=ecc --cov-report=json \
         --cov-fail-under=0
 
 in an environment with no bindings installed, reading back which lines of
@@ -76,7 +76,7 @@ import ast
 from collections.abc import Iterator
 from pathlib import Path
 
-_LIBRARY = Path(__file__).parents[1] / "src" / "btclib_ecc"
+_LIBRARY = Path(__file__).parents[1] / "src" / "ecc"
 _TESTS = Path(__file__).parent
 
 # the vendored vectors each module below is built on, by the name they
@@ -88,22 +88,22 @@ _TESTS = Path(__file__).parent
 # on them closes the circle this file exists to break
 _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
     "curves/curve_test.py": ("pubkey.json",),
-    "ecc/der_test.py": ("der_length_vectors.json",),
-    "ecc/dleq_test.py": (
+    "schemes/der_test.py": ("der_length_vectors.json",),
+    "schemes/dleq_test.py": (
         "test_vectors_generate_proof.csv",
         "test_vectors_verify_proof.csv",
     ),
-    "ecc/dlc_oracle_test.py": ("dlc_schnorr_test.json",),
+    "schemes/dlc_oracle_test.py": ("dlc_schnorr_test.json",),
     # what it checks is that the recovered key is the WIF's key, which no
     # libsecp256k1 output supplies; `tests/_data/README.md` has the details in
     # its entry for `bitcoin_core_compact_vectors.json`
-    "ecc/dsa_recovery_test.py": ("bitcoin_core_compact_vectors.json",),
-    "ecc/ecdsa_adaptor_test.py": ("ecdsa_adaptor.json",),
-    "ecc/ellswift_test.py": (
+    "schemes/dsa_recovery_test.py": ("bitcoin_core_compact_vectors.json",),
+    "schemes/ecdsa_adaptor_test.py": ("ecdsa_adaptor.json",),
+    "schemes/ellswift_test.py": (
         "ellswift_decode_test_vectors.csv",
         "xswiftec_inv_test_vectors.csv",
     ),
-    "ecc/frost_test.py": (
+    "schemes/frost_test.py": (
         "det_sign_vectors.json",
         "nonce_agg_vectors.json",
         "nonce_gen_vectors.json",
@@ -112,16 +112,16 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
         "threshold_info_vectors.json",
         "tweak_vectors.json",
     ),
-    "ecc/musig2_test.py": (
+    "schemes/musig2_test.py": (
         "key_agg_vectors.json",
         "nonce_gen_vectors.json",
         "sig_agg_vectors.json",
         "sign_verify_vectors.json",
     ),
-    "ecc/rfc6979_test.py": ("rfc6979.json",),
-    "ecc/ssa_test.py": ("bip340_test_vectors.csv",),
-    "ecc/ssa_tweak_test.py": ("wallet-test-vectors.json",),
-    "ecc/wycheproof_test.py": (
+    "schemes/rfc6979_test.py": ("rfc6979.json",),
+    "schemes/ssa_test.py": ("bip340_test_vectors.csv",),
+    "schemes/ssa_tweak_test.py": ("wallet-test-vectors.json",),
+    "schemes/wycheproof_test.py": (
         "ecdh_secp256k1_test.json",
         "ecdsa_secp256k1_sha256_bitcoin_test.json",
         "ecdsa_secp256k1_sha256_test.json",
@@ -135,107 +135,107 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.curve.TweakChain.__init__": ("curves/curve_test.py",),
     "curves.curve._add": ("curves/curve_test.py",),
     "curves.curve._jac_double_mult_var": (
-        "ecc/der_test.py",
-        "ecc/dlc_oracle_test.py",
-        "ecc/dsa_recovery_test.py",
-        "ecc/ecdsa_adaptor_test.py",
-        "ecc/frost_test.py",
-        "ecc/musig2_test.py",
-        "ecc/rfc6979_test.py",
-        "ecc/ssa_test.py",
-        "ecc/wycheproof_test.py",
+        "schemes/der_test.py",
+        "schemes/dlc_oracle_test.py",
+        "schemes/dsa_recovery_test.py",
+        "schemes/ecdsa_adaptor_test.py",
+        "schemes/frost_test.py",
+        "schemes/musig2_test.py",
+        "schemes/rfc6979_test.py",
+        "schemes/ssa_test.py",
+        "schemes/wycheproof_test.py",
     ),
     "curves.curve._mult_checked": (
         "curves/curve_test.py",
-        "ecc/der_test.py",
-        "ecc/dlc_oracle_test.py",
-        "ecc/dleq_test.py",
-        "ecc/dsa_recovery_test.py",
-        "ecc/ecdsa_adaptor_test.py",
-        "ecc/ellswift_test.py",
-        "ecc/frost_test.py",
-        "ecc/musig2_test.py",
-        "ecc/rfc6979_test.py",
-        "ecc/ssa_test.py",
-        "ecc/ssa_tweak_test.py",
-        "ecc/wycheproof_test.py",
+        "schemes/der_test.py",
+        "schemes/dlc_oracle_test.py",
+        "schemes/dleq_test.py",
+        "schemes/dsa_recovery_test.py",
+        "schemes/ecdsa_adaptor_test.py",
+        "schemes/ellswift_test.py",
+        "schemes/frost_test.py",
+        "schemes/musig2_test.py",
+        "schemes/rfc6979_test.py",
+        "schemes/ssa_test.py",
+        "schemes/ssa_tweak_test.py",
+        "schemes/wycheproof_test.py",
     ),
-    "curves.curve._multi_mult_x_only_var": ("ecc/ssa_test.py",),
+    "curves.curve._multi_mult_x_only_var": ("schemes/ssa_test.py",),
     "curves.curve._sum_var": (
         "curves/curve_test.py",
-        "ecc/frost_test.py",
-        "ecc/musig2_test.py",
+        "schemes/frost_test.py",
+        "schemes/musig2_test.py",
     ),
     "curves.curve._tweak_add_var": (
         "curves/curve_test.py",
-        "ecc/frost_test.py",
-        "ecc/musig2_test.py",
-        "ecc/ssa_tweak_test.py",
+        "schemes/frost_test.py",
+        "schemes/musig2_test.py",
+        "schemes/ssa_tweak_test.py",
     ),
     "curves.curve._x_octets": (
         "curves/curve_test.py",
-        "ecc/der_test.py",
-        "ecc/dlc_oracle_test.py",
-        "ecc/dleq_test.py",
-        "ecc/dsa_recovery_test.py",
-        "ecc/ecdsa_adaptor_test.py",
-        "ecc/ellswift_test.py",
-        "ecc/frost_test.py",
-        "ecc/musig2_test.py",
-        "ecc/rfc6979_test.py",
-        "ecc/ssa_test.py",
-        "ecc/ssa_tweak_test.py",
-        "ecc/wycheproof_test.py",
+        "schemes/der_test.py",
+        "schemes/dlc_oracle_test.py",
+        "schemes/dleq_test.py",
+        "schemes/dsa_recovery_test.py",
+        "schemes/ecdsa_adaptor_test.py",
+        "schemes/ellswift_test.py",
+        "schemes/frost_test.py",
+        "schemes/musig2_test.py",
+        "schemes/rfc6979_test.py",
+        "schemes/ssa_test.py",
+        "schemes/ssa_tweak_test.py",
+        "schemes/wycheproof_test.py",
     ),
     "curves.curve.double_mult_var": (
         "curves/curve_test.py",
-        "ecc/dlc_oracle_test.py",
-        "ecc/dleq_test.py",
-        "ecc/ecdsa_adaptor_test.py",
-        "ecc/ssa_test.py",
+        "schemes/dlc_oracle_test.py",
+        "schemes/dleq_test.py",
+        "schemes/ecdsa_adaptor_test.py",
+        "schemes/ssa_test.py",
     ),
     "curves.curve.multi_mult_var": (
         "curves/curve_test.py",
-        "ecc/frost_test.py",
-        "ecc/musig2_test.py",
-        "ecc/ssa_test.py",
+        "schemes/frost_test.py",
+        "schemes/musig2_test.py",
+        "schemes/ssa_test.py",
     ),
     "curves.sec_point._mult_sec": (),
-    "curves.sec_point.bytes_from_prv_key_int": ("ecc/musig2_test.py",),
+    "curves.sec_point.bytes_from_prv_key_int": ("schemes/musig2_test.py",),
     "curves.sec_point.prv_key_tweak_add": (),
-    "ecc.commit_nonce.commit_nonce_": ("ecc/ssa_test.py",),
-    "ecc.dh.diffie_hellman": ("ecc/wycheproof_test.py",),
+    "ecc.commit_nonce.commit_nonce_": ("schemes/ssa_test.py",),
+    "ecc.dh.diffie_hellman": ("schemes/wycheproof_test.py",),
     "ecc.dsa.Signer.__init__": (),
     "ecc.dsa.Signer.sign_": (),
     "ecc.dsa.assert_as_valid_": (
-        "ecc/ecdsa_adaptor_test.py",
-        "ecc/rfc6979_test.py",
-        "ecc/wycheproof_test.py",
+        "schemes/ecdsa_adaptor_test.py",
+        "schemes/rfc6979_test.py",
+        "schemes/wycheproof_test.py",
     ),
-    "ecc.dsa.recover_pub_key_": ("ecc/dsa_recovery_test.py",),
-    "ecc.dsa.recover_pub_keys_": ("ecc/dsa_recovery_test.py",),
-    "ecc.dsa.recover_sec_": ("ecc/dsa_recovery_test.py",),
+    "ecc.dsa.recover_pub_key_": ("schemes/dsa_recovery_test.py",),
+    "ecc.dsa.recover_pub_keys_": ("schemes/dsa_recovery_test.py",),
+    "ecc.dsa.recover_sec_": ("schemes/dsa_recovery_test.py",),
     "ecc.dsa.sign_": (
-        "ecc/der_test.py",
-        "ecc/rfc6979_test.py",
+        "schemes/der_test.py",
+        "schemes/rfc6979_test.py",
     ),
     "ecc.dsa.sign_recoverable_": (),
-    "ecc.ellswift.create": ("ecc/ellswift_test.py",),
-    "ecc.ellswift.decode_var": ("ecc/ellswift_test.py",),
-    "ecc.ellswift.encode_var": ("ecc/ellswift_test.py",),
-    "ecc.musig2.partial_sig_verify_": ("ecc/musig2_test.py",),
-    "ecc.ssa.Signer.__init__": ("ecc/ssa_test.py",),
-    "ecc.ssa.Signer.sign_": ("ecc/ssa_test.py",),
+    "ecc.ellswift.create": ("schemes/ellswift_test.py",),
+    "ecc.ellswift.decode_var": ("schemes/ellswift_test.py",),
+    "ecc.ellswift.encode_var": ("schemes/ellswift_test.py",),
+    "ecc.musig2.partial_sig_verify_": ("schemes/musig2_test.py",),
+    "ecc.ssa.Signer.__init__": ("schemes/ssa_test.py",),
+    "ecc.ssa.Signer.sign_": ("schemes/ssa_test.py",),
     "ecc.ssa.assert_as_valid_": (
-        "ecc/dlc_oracle_test.py",
-        "ecc/frost_test.py",
-        "ecc/musig2_test.py",
-        "ecc/ssa_test.py",
+        "schemes/dlc_oracle_test.py",
+        "schemes/frost_test.py",
+        "schemes/musig2_test.py",
+        "schemes/ssa_test.py",
     ),
-    "ecc.ssa.assert_batch_as_valid_": ("ecc/ssa_test.py",),
-    "ecc.ssa.prv_key_tweak_add": ("ecc/ssa_tweak_test.py",),
-    "ecc.ssa.pub_key_tweak_add_var": ("ecc/ssa_tweak_test.py",),
-    "ecc.ssa.sign_": ("ecc/ssa_test.py",),
+    "ecc.ssa.assert_batch_as_valid_": ("schemes/ssa_test.py",),
+    "ecc.ssa.prv_key_tweak_add": ("schemes/ssa_tweak_test.py",),
+    "ecc.ssa.pub_key_tweak_add_var": ("schemes/ssa_tweak_test.py",),
+    "ecc.ssa.sign_": ("schemes/ssa_test.py",),
 }
 
 # the arms the measurement found nothing for, named so that closing one
@@ -252,7 +252,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 #   write rather than a vector to find.
 # - `ecc.dsa.sign_recoverable_`, signing with the recovery id. The only
 #   vector that holds it is Bitcoin Core's, and
-#   `tests/ecc/dsa_sign_recoverable_test.py`, which checks it, is left out
+#   `tests/schemes/dsa_sign_recoverable_test.py`, which checks it, is left out
 #   of `_THIRD_PARTY_VECTORS` for the reason `tests/_data/README.md` gives
 #   in its entry for `bitcoin_core_compact_vectors.json`.
 #   A recoverable signature made by another implementation would close it.

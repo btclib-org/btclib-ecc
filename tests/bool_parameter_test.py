@@ -32,7 +32,7 @@ btclib-org/btclib#884 is the one that asked.
 The two tests below are that line, one each:
 
 - a kind refuses `"no"`, `0`, `1` and (where the annotation does not
-  declare it) `None`, with a `BTClibEccTypeError`
+  declare it) `None`, with an `EccTypeError`
 - a truth **accepts** them, on a fixture the flag's `True` accepts: a
   truth that starts refusing fails here, and the entry has to move
   rather than the test being edited
@@ -55,21 +55,21 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc._libsecp256k1 import INSTALLED
-from btclib_ecc.curves.curve import (
+from ecc._libsecp256k1 import INSTALLED
+from ecc.curves.curve import (
     Curve,
     SEC2v1_params2,
     set_libsecp256k1_serving,
 )
-from btclib_ecc.curves.sec_point import (
+from ecc.curves.sec_point import (
     bytes_from_point,
     bytes_from_prv_key_int,
     point_from_octets_var,
 )
-from btclib_ecc.ecc import dsa, frost, musig2, ssa
-from btclib_ecc.exceptions import BTClibEccTypeError
+from ecc.ecc import dsa, frost, musig2, ssa
+from ecc.exceptions import EccTypeError
 
-_PACKAGE = Path(__file__).parents[1] / "src" / "btclib_ecc"
+_PACKAGE = Path(__file__).parents[1] / "src" / "ecc"
 
 # `check_validity` is the one name the walk subtracts, and this is the
 # reason it may: it is a convention over many signatures rather than a
@@ -130,25 +130,25 @@ class _Case:
 _KINDS = (
     # `compressed` chooses which encoding of the public key is computed
     _Case(
-        "btclib_ecc.curves.sec_point.bytes_from_point",
+        "ecc.curves.sec_point.bytes_from_point",
         "compressed",
         bytes_from_point,
         {"Q": _PUB_KEY},
     ),
     _Case(
-        "btclib_ecc.curves.sec_point.bytes_from_prv_key_int",
+        "ecc.curves.sec_point.bytes_from_prv_key_int",
         "compressed",
         bytes_from_prv_key_int,
         {"prv_key_int": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.recover_sec_",
+        "ecc.ecc.dsa.recover_sec_",
         "compressed",
         dsa.recover_sec_,
         {"key_id": _KEY_ID, "msg_hash": _MSG_HASH, "sig": _RECOVERABLE},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.recover_sec",
+        "ecc.ecc.dsa.recover_sec",
         "compressed",
         dsa.recover_sec,
         {"key_id": _KEY_ID, "msg": _MSG, "sig": _RECOVERABLE},
@@ -156,67 +156,67 @@ _KINDS = (
     # `lower_s` chooses which of the two signatures is returned, `grind`
     # whether the nonce is searched until r is short
     _Case(
-        "btclib_ecc.ecc.dsa.sign_",
+        "ecc.ecc.dsa.sign_",
         "lower_s",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.sign",
+        "ecc.ecc.dsa.sign",
         "lower_s",
         dsa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.sign_recoverable_",
+        "ecc.ecc.dsa.sign_recoverable_",
         "lower_s",
         dsa.sign_recoverable_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.sign_recoverable",
+        "ecc.ecc.dsa.sign_recoverable",
         "lower_s",
         dsa.sign_recoverable,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.anti_exfil_sign",
+        "ecc.ecc.dsa.anti_exfil_sign",
         "lower_s",
         dsa.anti_exfil_sign,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY, "rho": _MSG_HASH},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.sign_",
+        "ecc.ecc.dsa.sign_",
         "grind",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.sign",
+        "ecc.ecc.dsa.sign",
         "grind",
         dsa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.Signer.sign_",
+        "ecc.ecc.dsa.Signer.sign_",
         "grind",
         dsa.Signer(_PRV_KEY).sign_,
         {"msg_hash": _MSG_HASH},
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.Signer.sign",
+        "ecc.ecc.dsa.Signer.sign",
         "grind",
         dsa.Signer(_PRV_KEY).sign,
         {"msg": _MSG},
     ),
     _Case(
-        "btclib_ecc.ecc.musig2.apply_tweak_var",
+        "ecc.ecc.musig2.apply_tweak_var",
         "is_xonly",
         musig2.apply_tweak_var,
         {"key_agg_ctx": _KEY_AGG, "tweak": b"\x01" * 32},
     ),
     _Case(
-        "btclib_ecc.ecc.frost.apply_tweak_var",
+        "ecc.ecc.frost.apply_tweak_var",
         "is_xonly",
         frost.apply_tweak_var,
         {"tweak_ctx": _FROST_TWEAK_CTX, "tweak": b"\x01" * 32},
@@ -228,7 +228,7 @@ _KINDS = (
     # other and calling it the one. `valid=INSTALLED`, so that the call
     # this file makes leaves the state an installation is normally in
     _Case(
-        "btclib_ecc.curves.curve.set_libsecp256k1_serving",
+        "ecc.curves.curve.set_libsecp256k1_serving",
         "serving",
         set_libsecp256k1_serving,
         {},
@@ -239,7 +239,7 @@ _KINDS = (
     # where `required=0` leaves it off. `valid=False`, so that the call
     # this file makes leaves the state an installation is normally in
     _Case(
-        "btclib_ecc.curves.curve.set_libsecp256k1_serving",
+        "ecc.curves.curve.set_libsecp256k1_serving",
         "required",
         set_libsecp256k1_serving,
         {"serving": INSTALLED},
@@ -249,7 +249,7 @@ _KINDS = (
     # is here for the other half of the line: its `True` is the
     # permissive value, the refusal it was written to make, waived
     _Case(
-        "btclib_ecc.curves.sec_point.point_from_octets_var",
+        "ecc.curves.sec_point.point_from_octets_var",
         "hybrid",
         point_from_octets_var,
         {"pub_key": _SEC},
@@ -260,7 +260,7 @@ _KINDS = (
 
 _TRUTHS = (
     _Case(
-        "btclib_ecc.curves.curve.Curve.__init__",
+        "ecc.curves.curve.Curve.__init__",
         "weakness_check",
         Curve,
         _SMALL_CURVE,
@@ -268,14 +268,14 @@ _TRUTHS = (
         " check, and no parameter of the curve built",
     ),
     _Case(
-        "btclib_ecc.curves.curve.Curve.__init__",
+        "ecc.curves.curve.Curve.__init__",
         "order_check",
         Curve,
         _SMALL_CURVE,
         reason="whether n*G is verified to be the point at infinity",
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.Sig.parse",
+        "ecc.ecc.dsa.Sig.parse",
         "strict",
         dsa.Sig.parse,
         {"data": _DER_SIG},
@@ -284,7 +284,7 @@ _TRUTHS = (
         " parsed out of what both readings accept is one signature",
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.sign_",
+        "ecc.ecc.dsa.sign_",
         "verify",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
@@ -293,28 +293,28 @@ _TRUTHS = (
         " verification of what has already been computed",
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.sign",
+        "ecc.ecc.dsa.sign",
         "verify",
         dsa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.Signer.sign_",
+        "ecc.ecc.dsa.Signer.sign_",
         "verify",
         dsa.Signer(_PRV_KEY).sign_,
         {"msg_hash": _MSG_HASH},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "btclib_ecc.ecc.dsa.Signer.sign",
+        "ecc.ecc.dsa.Signer.sign",
         "verify",
         dsa.Signer(_PRV_KEY).sign,
         {"msg": _MSG},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.sign_",
+        "ecc.ecc.ssa.sign_",
         "verify",
         ssa.sign_,
         {"msg": _MSG, "prv_key": _PRV_KEY},
@@ -323,21 +323,21 @@ _TRUTHS = (
         " verification of what has already been computed",
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.sign",
+        "ecc.ecc.ssa.sign",
         "verify",
         ssa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.Signer.sign_",
+        "ecc.ecc.ssa.Signer.sign_",
         "verify",
         ssa.Signer(_PRV_KEY).sign_,
         {"msg": _MSG},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "btclib_ecc.ecc.ssa.Signer.sign",
+        "ecc.ecc.ssa.Signer.sign",
         "verify",
         ssa.Signer(_PRV_KEY).sign,
         {"msg": _MSG},
@@ -415,7 +415,7 @@ def test_a_kind_refuses_a_non_bool(case: _Case) -> None:
     """
     wrong = _WRONG_TYPES if case.optional else (*_WRONG_TYPES, None)
     for value in wrong:
-        with pytest.raises(BTClibEccTypeError, match=f"invalid {case.flag} type"):
+        with pytest.raises(EccTypeError, match=f"invalid {case.flag} type"):
             case.function(**case.args, **{case.flag: value})
 
 
@@ -436,7 +436,7 @@ def test_a_truth_is_read_for_its_truth(case: _Case) -> None:
 def test_every_bool_parameter_is_classified() -> None:
     """No third table: a flag is a kind or a truth, and the walk says so.
 
-    A parameter added anywhere under `src/btclib_ecc/` fails here until
+    A parameter added anywhere under `src/ecc/` fails here until
     somebody decides which of the two it is -- which is the decision this file
     exists to keep from being made by default.
     """
@@ -455,12 +455,12 @@ def test_the_walk_reaches_what_it_claims() -> None:
     """
     found = _bool_parameters()
     # a function, a method, and a method of a class nested in a module
-    assert ("btclib_ecc.ecc.dsa.sign", "lower_s") in found
-    assert ("btclib_ecc.ecc.dsa.Signer.sign", "grind") in found
-    assert ("btclib_ecc.curves.curve.Curve.__init__", "order_check") in found
+    assert ("ecc.ecc.dsa.sign", "lower_s") in found
+    assert ("ecc.ecc.dsa.Signer.sign", "grind") in found
+    assert ("ecc.curves.curve.Curve.__init__", "order_check") in found
 
     # the convention with a file of its own
     assert not [pair for pair in found if pair[1] == "check_validity"]
     # a private function, and a parameter of another type
-    assert ("btclib_ecc.ecc.musig2._flag", "is_xonly") not in found
-    assert ("btclib_ecc.hashes.reduce_to_hlen", "hf") not in found
+    assert ("ecc.ecc.musig2._flag", "is_xonly") not in found
+    assert ("ecc.hashes.reduce_to_hlen", "hf") not in found

@@ -9,7 +9,7 @@ to btclib-org/.github's `reusable-deps-oldest.yml`, which runs it against
 the floor resolution `uv lock --resolution lowest-direct` just wrote,
 before the suite.
 
-`src/btclib_ecc/_libsecp256k1.py` imports the bindings' whole surface
+`src/ecc/_libsecp256k1.py` imports the bindings' whole surface
 in one `try` whose `except ImportError` sets `INSTALLED = False`, so a
 floor release of `btclib_secp256k1` short of one name loses every
 delegation rather than that one, and `tests/conftest.py`'s
@@ -19,13 +19,13 @@ one ratchet that would otherwise notice the shortfall, which is why this
 step runs ahead of it and by name rather than folded into it.
 
 `is_libsecp256k1_serving` and not `INSTALLED`: serving is installed and
-not refused, and nothing here sets `BTCLIB_ECC_NO_LIBSECP256K1`, so
+not refused, and nothing here sets `ECC_NO_LIBSECP256K1`, so
 the two agree, and it is the public reading of the seam.
 """
 
 from __future__ import annotations
 
-from btclib_ecc.curves import is_libsecp256k1_serving
+from ecc.curves import is_libsecp256k1_serving
 
 
 def main() -> int:

@@ -1,7 +1,7 @@
-.. btclib-ecc documentation master file: the root `toctree`.
+.. ecc documentation master file: the root `toctree`.
 
-btclib-ecc documentation
-========================
+ecc documentation
+=================
 
 .. toctree::
    :maxdepth: 1

@@ -1,13 +1,13 @@
 ---
 name: Feature request
-description: Add something to btclib-ecc, or change how it works
+description: Add something to ecc, or change how it works
 type: Feature
 
 body:
   - type: markdown
     attributes:
       value: >
-        btclib-ecc is elliptic curve arithmetic and the signature,
+        ecc is elliptic curve arithmetic and the signature,
         key-agreement and commitment schemes built on it, over any curve in
         short Weierstrass form. What a scheme encodes for a protocol above
         it -- an address, a script, a transaction -- is that protocol's
@@ -35,7 +35,7 @@ body:
   - type: textarea
     id: why
     attributes:
-      label: Why it belongs in btclib-ecc
+      label: Why it belongs in ecc
       description: >
         What cannot be done today with what the package already exposes.
     validations:

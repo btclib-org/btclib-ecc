@@ -23,8 +23,8 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc import number_theory
-from btclib_ecc.curves import (
+from ecc import number_theory
+from ecc.curves import (
     Curve,
     PreparedPoint,
     TweakChain,
@@ -35,10 +35,10 @@ from btclib_ecc.curves import (
     sum_var,
     tweak_add_var,
 )
-from btclib_ecc.curves.curve import CURVES
-from btclib_ecc.curves.curve_group import BOS_COSTER_THRESHOLD
-from btclib_ecc.ecc import dsa, ssa
-from btclib_ecc.exceptions import BTClibEccValueError
+from ecc.curves.curve import CURVES
+from ecc.curves.curve_group import BOS_COSTER_THRESHOLD
+from ecc.ecc import dsa, ssa
+from ecc.exceptions import EccValueError
 from tests.curves.curve_test import no_bindings_anywhere
 
 _SECP256R1 = CURVES["secp256r1"]
@@ -98,7 +98,7 @@ def test_number_theory_admits_an_mpz() -> None:
     }
 
     # and a refusal is the package's own error, as it is for an int
-    with pytest.raises(BTClibEccValueError, match="no inverse mod "):
+    with pytest.raises(EccValueError, match="no inverse mod "):
         number_theory.mod_inv_var(mpz(0), pz)
     # a composite modulus above 2^32, where a blinding factor can be a zero
     # divisor: the blinded inverses answer and refuse as for an int
@@ -109,9 +109,9 @@ def test_number_theory_admits_an_mpz() -> None:
         pow(5, -1, m),
         pow(7, -1, m),
     ]
-    with pytest.raises(BTClibEccValueError, match="no inverse mod "):
+    with pytest.raises(EccValueError, match="no inverse mod "):
         number_theory.mod_inv(mpz(2), mz)
-    with pytest.raises(BTClibEccValueError, match="no inverse mod "):
+    with pytest.raises(EccValueError, match="no inverse mod "):
         number_theory.mod_inv_batch([mpz(5), mpz(2)], mz)
     for prime, root in (
         (p, number_theory.mod_sqrt_var),
@@ -122,10 +122,10 @@ def test_number_theory_admits_an_mpz() -> None:
             for x in range(2, 100)
             if number_theory.legendre_symbol_var(x, prime) == -1
         )
-        with pytest.raises(BTClibEccValueError, match="no root mod "):
+        with pytest.raises(EccValueError, match="no root mod "):
             root(mpz(non_residue), mpz(prime))
     for composite in (9, 33):
-        with pytest.raises(BTClibEccValueError, match="p is not prime: "):
+        with pytest.raises(EccValueError, match="p is not prime: "):
             number_theory.tonelli_var(mpz(4), mpz(composite))
 
 
@@ -185,9 +185,9 @@ sys.meta_path.insert(0, RefuseGmpy2())
 if {implementation!r}:
     sys.implementation.name = {implementation!r}
 
-from btclib_ecc.curves import double_mult_var, mult, secp256k1
-from btclib_ecc.curves.curve import CURVES
-from btclib_ecc.ecc import dsa, ssa
+from ecc.curves import double_mult_var, mult, secp256k1
+from ecc.curves.curve import CURVES
+from ecc.ecc import dsa, ssa
 
 r1 = CURVES["secp256r1"]
 m = {m}
@@ -210,7 +210,7 @@ def _run_child(
     """Run the child with the bindings off and one module refused.
 
     A non-empty implementation is the name the child's interpreter gives
-    itself, `sys.implementation.name`, before `btclib_ecc` is imported.
+    itself, `sys.implementation.name`, before `ecc` is imported.
     """
     source = _CHILD.format(
         refused=refused,
@@ -227,7 +227,7 @@ def _run_child(
         # colour off, as `no_bindings_test._child_env` says why
         env={
             **{k: v for k, v in os.environ.items() if k != "FORCE_COLOR"},
-            "BTCLIB_ECC_NO_LIBSECP256K1": "1",
+            "ECC_NO_LIBSECP256K1": "1",
             "PYTHON_COLORS": "0",
         },
         timeout=120,

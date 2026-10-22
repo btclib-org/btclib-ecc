@@ -24,7 +24,7 @@ from typing import Protocol
 import pytest
 from hypothesis import settings
 
-from btclib_ecc._libsecp256k1 import INSTALLED
+from ecc._libsecp256k1 import INSTALLED
 from tests import ZKP_AVAILABLE, needs_bindings
 from tests.curves.curve_test import no_bindings_anywhere
 

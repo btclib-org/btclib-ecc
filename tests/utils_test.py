@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `btclib_ecc._utils` module."""
+"""Tests for the `ecc._utils` module."""
 
 import array
 import random
@@ -10,7 +10,7 @@ from io import BytesIO
 
 import pytest
 
-from btclib_ecc._utils import (
+from ecc._utils import (
     assert_no_trailing,
     bytes_from_octets,
     hex_string,
@@ -20,8 +20,8 @@ from btclib_ecc._utils import (
     read_exactly,
     str_from_string,
 )
-from btclib_ecc.exceptions import BTClibEccTypeError, BTClibEccValueError
-from btclib_ecc.hashes import reduce_to_hlen
+from ecc.exceptions import EccTypeError, EccValueError
+from ecc.hashes import reduce_to_hlen
 
 random.seed(42)
 
@@ -46,11 +46,11 @@ def test_read_exactly_names_the_field_it_could_not_fill() -> None:
     would be as long as the buffer happened to be.
     """
     err_msg = "not enough data for the sequence: 3 bytes instead of 4"
-    with pytest.raises(BTClibEccValueError, match=err_msg):
+    with pytest.raises(EccValueError, match=err_msg):
         read_exactly(BytesIO(b"123"), 4, "sequence")
 
     err_msg = "not enough data for the tx_id: 0 bytes instead of 32"
-    with pytest.raises(BTClibEccValueError, match=err_msg):
+    with pytest.raises(EccValueError, match=err_msg):
         read_exactly(BytesIO(b""), 32, "tx_id")
 
 
@@ -68,7 +68,7 @@ def test_assert_no_trailing() -> None:
 
     stream = BytesIO(b"12junk")
     stream.read(2)
-    with pytest.raises(BTClibEccValueError, match="4 bytes after the thing"):
+    with pytest.raises(EccValueError, match="4 bytes after the thing"):
         assert_no_trailing(b"12junk", stream, "thing")
 
     # the same four bytes in a stream the caller owns are the caller's,
@@ -104,7 +104,7 @@ def test_int_from_integer_reads_a_str_as_hex() -> None:
     # and an odd number of digits is not a one-digit decimal either
     # (the message is bytes.fromhex's own, which Python 3.14 rephrased,
     # inside the class this library promises)
-    with pytest.raises(BTClibEccValueError, match="invalid hex string: "):
+    with pytest.raises(EccValueError, match="invalid hex string: "):
         int_from_integer("9")
 
 
@@ -122,11 +122,11 @@ def test_hex_string() -> None:
     # invalid hex-string: odd number of hex digits
     # (Python 3.14 rephrased the message bytes.fromhex raises)
     a_str = "1deadbeef00000000"
-    with pytest.raises(BTClibEccValueError, match="invalid hex string: "):
+    with pytest.raises(EccValueError, match="invalid hex string: "):
         hex_string(a_str)
 
     # the refusal says nothing of the value it refuses
-    with pytest.raises(BTClibEccValueError, match="^negative integer$"):
+    with pytest.raises(EccValueError, match="^negative integer$"):
         hex_string(-123456789)
 
     # zero is not negative: `< 0` weakened to `<= 0` would refuse it
@@ -169,23 +169,23 @@ def test_octets_are_bytes_or_the_hex_string_of_bytes_and_nothing_else() -> None:
     assert bytes_from_octets(memoryview(b"\x00\x01")) == b"\x00\x01"
 
     for not_octets in (tuple(range(33)), [1, 2], None, 1.5):
-        with pytest.raises(BTClibEccTypeError, match="invalid octets type: "):
+        with pytest.raises(EccTypeError, match="invalid octets type: "):
             bytes_from_octets(not_octets)  # type: ignore[arg-type]
-        with pytest.raises(BTClibEccTypeError, match="invalid octets type: "):
+        with pytest.raises(EccTypeError, match="invalid octets type: "):
             int_from_integer(not_octets)  # type: ignore[arg-type]
     # an int is an `Integer` and no `Octets`, so the two differ on it
     assert int_from_integer(1) == 1
-    with pytest.raises(BTClibEccTypeError, match="invalid octets type: int"):
+    with pytest.raises(EccTypeError, match="invalid octets type: int"):
         bytes_from_octets(1)  # type: ignore[arg-type]
 
     # the hex string that is not one, in both, with the message
     # `bytes.fromhex` gives: a position, and never the string itself
     for not_hex in ("9", "zz", "not hex at all"):
-        with pytest.raises(BTClibEccValueError, match="invalid hex string: "):
+        with pytest.raises(EccValueError, match="invalid hex string: "):
             bytes_from_octets(not_hex)
-        with pytest.raises(BTClibEccValueError, match="invalid hex string: "):
+        with pytest.raises(EccValueError, match="invalid hex string: "):
             int_from_integer(not_hex)
-    with pytest.raises(BTClibEccValueError) as excinfo:
+    with pytest.raises(EccValueError) as excinfo:
         int_from_integer("0xzz")
     assert str(excinfo.value) == _NOT_HEX_DIGITS
 
@@ -220,10 +220,10 @@ def test_int_from_integer_reads_ascii_hex_after_0x() -> None:
         "-0x10" + chr(0x2028),
         "0x10" + chr(0x1C),
     ):
-        with pytest.raises(BTClibEccValueError) as excinfo:
+        with pytest.raises(EccValueError) as excinfo:
             int_from_integer(not_hex)
         assert str(excinfo.value) == _NOT_HEX_DIGITS
-        with pytest.raises(BTClibEccValueError) as excinfo:
+        with pytest.raises(EccValueError) as excinfo:
             hex_string(not_hex)
         assert str(excinfo.value) == _NOT_HEX_DIGITS
 
@@ -234,7 +234,7 @@ def test_int_from_integer_reads_ascii_hex_after_0x() -> None:
         for padded in (f"{pad}0x10{pad}", f"{pad}deadbeef{pad}"):
             with pytest.raises(ValueError) as fromhex:
                 bytes.fromhex(padded.lower())
-            with pytest.raises(BTClibEccValueError) as excinfo:
+            with pytest.raises(EccValueError) as excinfo:
                 int_from_integer(padded)
             assert str(excinfo.value) == f"invalid hex string: {fromhex.value}"
 
@@ -281,9 +281,9 @@ def test_a_non_contiguous_memoryview_is_refused_at_the_coercion() -> None:
     strided = memoryview(raw)[::2]
     assert not strided.c_contiguous
 
-    with pytest.raises(BTClibEccValueError, match="invalid octets: non-contiguous"):
+    with pytest.raises(EccValueError, match="invalid octets: non-contiguous"):
         bytes_from_octets(strided)
-    with pytest.raises(BTClibEccValueError, match="invalid octets: non-contiguous"):
+    with pytest.raises(EccValueError, match="invalid octets: non-contiguous"):
         reduce_to_hlen(strided)
 
     # a contiguous slice is taken, same as any other buffer
@@ -308,9 +308,9 @@ def test_a_memoryview_of_the_wrong_format_is_refused_at_the_coercion() -> None:
     assert len(wide) == 2
     assert wide.nbytes == 8
 
-    with pytest.raises(BTClibEccValueError, match="invalid octets: memoryview format"):
+    with pytest.raises(EccValueError, match="invalid octets: memoryview format"):
         bytes_from_octets(wide)
-    with pytest.raises(BTClibEccValueError, match="invalid octets: memoryview format"):
+    with pytest.raises(EccValueError, match="invalid octets: memoryview format"):
         reduce_to_hlen(wide)
 
     # a plain memoryview, and one cast back to unsigned bytes, are format
@@ -339,7 +339,7 @@ def test_is_octets_answers_one_octets_not_a_sequence_of_them() -> None:
 def test_a_string_is_ascii_or_refused() -> None:
     """Bytes outside ascii are refused, naming what they were read as."""
     assert str_from_string(b"abc", "armor") == "abc"
-    with pytest.raises(BTClibEccValueError, match="non-ascii character in armor"):
+    with pytest.raises(EccValueError, match="non-ascii character in armor"):
         str_from_string(b"\xe0", "armor")
 
 
@@ -349,7 +349,7 @@ def test_the_non_ascii_refusal_names_the_position_and_nothing_of_the_input() -> 
     The input may be secret; the `UnicodeDecodeError` that finds the byte
     names it and holds the whole input, so it must not be chained.
     """
-    with pytest.raises(BTClibEccValueError) as refusal:
+    with pytest.raises(EccValueError) as refusal:
         str_from_string(b"ab\xe0\xe1cd", "armor")
     assert str(refusal.value) == "non-ascii character in armor at position 2"
     for text in (str(refusal.value), repr(refusal.value)):

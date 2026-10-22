@@ -4,7 +4,7 @@
 
 """The package with btclib_secp256k1 not installed, which is a subprocess.
 
-`btclib_ecc._libsecp256k1` asks for the bindings once, at import, and
+`ecc._libsecp256k1` asks for the bindings once, at import, and
 `curves.curve._libsecp256k1_available` is that answer; so the question
 this file asks -- does the package import and answer without them --
 can only be asked of an interpreter that has not imported it yet. A
@@ -14,7 +14,7 @@ its answer is bound.
 Uninstalling them is not an option either, the suite being one
 environment. So the bindings are put out of reach by a meta path finder
 that refuses the name, in a child interpreter, and the package is
-imported after that -- which is what `import btclib_ecc` does on a
+imported after that -- which is what `import ecc` does on a
 machine that never had them.
 
 This is not `test.yml`'s `no-bindings` job and does not replace it: a finder
@@ -38,12 +38,12 @@ them with.
 `test_an_installed_but_too_old_package_is_not_read_as_absent` asks a
 different question: not "is the package findable at all", but "is a name
 this module asks of a *found* package missing". issue
-btclib-org/btclib-ecc#25 is that the two used to answer the same way.
+btclib-org/ecc#25 is that the two used to answer the same way.
 The meta path finder above cannot build that case -- it refuses to find
 `btclib_secp256k1` in the first place -- so that child stubs the package
 directly into `sys.modules`, present and one name short, and asserts that
 what is raised says which version is installed and what to install instead
-(issue btclib-org/btclib-ecc#56).
+(issue btclib-org/ecc#56).
 """
 
 from __future__ import annotations
@@ -60,9 +60,10 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc import _libsecp256k1
-from btclib_ecc._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
-from btclib_ecc.curves import (
+import ecc
+from ecc import _libsecp256k1
+from ecc._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
+from ecc.curves import (
     bytes_from_point,
     curve,
     is_libsecp256k1_serving,
@@ -71,9 +72,9 @@ from btclib_ecc.curves import (
     secp256k1,
     set_libsecp256k1_serving,
 )
-from btclib_ecc.curves.curve import CURVES
-from btclib_ecc.ecc import dsa, ssa
-from btclib_ecc.exceptions import BTClibEccException, BTClibEccValueError
+from ecc.curves.curve import CURVES
+from ecc.ecc import dsa, ssa
+from ecc.exceptions import EccException, EccValueError
 from tests import needs_bindings
 
 # the key and message the child works from: constants, because the two
@@ -114,18 +115,18 @@ class RefuseTheBindings:
             # `btclib_secp256k1` raises with no finder in the way at all,
             # and what `_libsecp256k1`'s own except clause reads to tell
             # this apart from an installed package too old for a name it
-            # asks for (btclib-org/btclib-ecc#25)
+            # asks for (btclib-org/ecc#25)
             raise ModuleNotFoundError(f"{{name}} is out of reach", name=name)
         return None
 
 
 sys.meta_path.insert(0, RefuseTheBindings())
 
-import btclib_ecc
-from btclib_ecc._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
-from btclib_ecc.curves import curve, mult
-from btclib_ecc.ecc import dh, dsa, ellswift, ssa
-from btclib_ecc.exceptions import BTClibEccValueError
+import ecc
+from ecc._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
+from ecc.curves import curve, mult
+from ecc.ecc import dh, dsa, ellswift, ssa
+from ecc.exceptions import EccValueError
 
 assert "btclib_secp256k1" not in sys.modules, "the finder let the bindings in"
 
@@ -180,10 +181,10 @@ def test_the_package_answers_with_the_bindings_out_of_reach() -> None:
     costs to run.
 
     The child imports guarded modules beyond the ones it then calls:
-    `src/btclib_ecc/__init__.py` imports nothing eagerly, so `import
-    btclib_ecc` is the metadata lookup and no module at all, and a
-    guard nothing imports is a guard nothing checks. `ecc.dh` and
-    `ecc.ellswift` are the two the calls below would not reach on their
+    `src/ecc/__init__.py` imports nothing eagerly, so `import
+    ecc` is the metadata lookup and no module at all, and a
+    guard nothing imports is a guard nothing checks. `ecc.ecc.dh` and
+    `ecc.ecc.ellswift` are the two the calls below would not reach on their
     own.
     """
     # the same question this process answers with the bindings serving
@@ -206,12 +207,12 @@ def test_the_package_answers_with_the_bindings_out_of_reach() -> None:
 
 @needs_bindings
 def test_the_environment_variable_refuses_the_installed_bindings() -> None:
-    """`BTCLIB_ECC_NO_LIBSECP256K1` settles the question before import.
+    """`ECC_NO_LIBSECP256K1` settles the question before import.
 
     A public function cannot do this job on its own:
-    `btclib_ecc._libsecp256k1` answers at import, so a caller that wants the
+    `ecc._libsecp256k1` answers at import, so a caller that wants the
     Python arithmetic from the first call has to say so before the interpreter
-    reaches `import btclib_ecc`. A test runner is exactly that caller, which
+    reaches `import ecc`. A test runner is exactly that caller, which
     is why the variable exists beside `set_libsecp256k1_serving` rather than
     instead of it.
 
@@ -219,8 +220,8 @@ def test_the_environment_variable_refuses_the_installed_bindings() -> None:
     two -- so the assertion is the same as the child above makes.
     """
     probe = (
-        "from btclib_ecc._libsecp256k1 import ENABLED, INSTALLED;"
-        "from btclib_ecc.curves import is_libsecp256k1_serving;"
+        "from ecc._libsecp256k1 import ENABLED, INSTALLED;"
+        "from ecc.curves import is_libsecp256k1_serving;"
         "print(INSTALLED, ENABLED, is_libsecp256k1_serving())"
     )
     answered = subprocess.run(  # noqa: S603
@@ -245,17 +246,17 @@ def test_the_environment_variable_refuses_the_installed_bindings() -> None:
 
 @needs_bindings
 def test_the_environment_variable_is_an_initial_state_not_a_lock() -> None:
-    """The setter reverses `BTCLIB_ECC_NO_LIBSECP256K1`, and a sign follows it.
+    """The setter reverses `ECC_NO_LIBSECP256K1`, and a sign follows it.
 
-    Issue btclib-org/btclib-ecc#226: SECURITY.md and the setter's docstring
+    Issue btclib-org/ecc#226: SECURITY.md and the setter's docstring
     say the variable sets the initial state only. The child starts with it
     set, turns the bindings on, and signs; the bindings' `sign` is wrapped to
     record that the call reached them.
     """
     probe = (
-        "from btclib_ecc._libsecp256k1 import dsa as bindings;"
-        "from btclib_ecc.ecc import dsa;"
-        "from btclib_ecc.curves import is_libsecp256k1_serving as serving,"
+        "from ecc._libsecp256k1 import dsa as bindings;"
+        "from ecc.ecc import dsa;"
+        "from ecc.curves import is_libsecp256k1_serving as serving,"
         " set_libsecp256k1_serving as setter;"
         "calls = [];"
         "real = bindings.sign;"
@@ -320,7 +321,7 @@ _version = metadata.version
 metadata.version = lambda name: "0.8.0.6" if name == "btclib-secp256k1" else _version(name)
 
 try:
-    import btclib_ecc._libsecp256k1
+    import ecc._libsecp256k1
 except ImportError as exc:
     print("raised", type(exc).__name__)
     print(str(exc))
@@ -342,7 +343,7 @@ def _declared_floor() -> str:
 def test_an_installed_but_too_old_package_is_not_read_as_absent() -> None:
     """A name missing from a *found* package raises, rather than reading absent.
 
-    issue btclib-org/btclib-ecc#25: catching every `ImportError` the
+    issue btclib-org/ecc#25: catching every `ImportError` the
     bindings' own import could raise, absent or merely too old, answered
     `INSTALLED = False` for both -- `btclib-secp256k1` 0.8.0.6 lacking
     `ecdh.shared_point` fell back to the Python arithmetic exactly as an
@@ -368,7 +369,7 @@ def test_an_installed_but_too_old_package_is_not_read_as_absent() -> None:
     assert "btclib-secp256k1 is installed, version 0.8.0.6," in message
     assert "cannot import name 'shared_point'" in message
     assert f"requires btclib-secp256k1{_declared_floor()}" in message
-    assert "btclib-ecc[secp256k1]" in message
+    assert f"{ecc.name}[secp256k1]" in message
     assert "pip install --upgrade btclib-secp256k1" in message
 
 
@@ -442,8 +443,8 @@ def test_the_message_survives_metadata_that_cannot_be_read(
     assert mismatch.name == "btclib_secp256k1.ecdh"
     message = str(mismatch)
     assert "installed, a version it could not read," in message
-    assert "requires the release the `secp256k1` extra of btclib-ecc names" in message
-    assert "btclib-ecc[secp256k1]" in message
+    assert f"requires the release the `secp256k1` extra of {ecc.name} names" in message
+    assert f"{ecc.name}[secp256k1]" in message
 
 
 @pytest.mark.parametrize(
@@ -483,7 +484,7 @@ class BrokenDependency:
 
 sys.meta_path.insert(0, BrokenDependency())
 
-import btclib_ecc._libsecp256k1
+import ecc._libsecp256k1
 """
 
 
@@ -517,7 +518,7 @@ def test_the_switch_refuses_to_promise_bindings_that_are_not_there(
     impossible.
     """
     monkeypatch.setattr(curve, "_bindings_installed", False)
-    with pytest.raises(BTClibEccValueError, match="btclib_secp256k1 is not installed"):
+    with pytest.raises(EccValueError, match="btclib_secp256k1 is not installed"):
         set_libsecp256k1_serving(serving=True)
 
     # try/finally and not a monkeypatch for the restore: monkeypatch puts
@@ -605,17 +606,17 @@ class RefuseTheBindings:
             # `btclib_secp256k1` raises with no finder in the way at all,
             # and what `_libsecp256k1`'s own except clause reads to tell
             # this apart from an installed package too old for a name it
-            # asks for (btclib-org/btclib-ecc#25)
+            # asks for (btclib-org/ecc#25)
             raise ModuleNotFoundError(f"{{name}} is out of reach", name=name)
         return None
 
 
 sys.meta_path.insert(0, RefuseTheBindings())
 
-from btclib_ecc._libsecp256k1 import INSTALLED
-from btclib_ecc.curves import curve, point_from_octets_var
-from btclib_ecc.ecc import dsa
-from btclib_ecc.exceptions import BTClibEccException
+from ecc._libsecp256k1 import INSTALLED
+from ecc.curves import curve, point_from_octets_var
+from ecc.ecc import dsa
+from ecc.exceptions import EccException
 
 assert "btclib_secp256k1" not in sys.modules, "the finder let the bindings in"
 
@@ -623,7 +624,7 @@ assert "btclib_secp256k1" not in sys.modules, "the finder let the bindings in"
 def refused(call):
     try:
         call()
-    except BTClibEccException as e:
+    except EccException as e:
         return [type(e).__name__, str(e)]
     return None  # a call this table names but does not refuse is the finding
 
@@ -662,7 +663,7 @@ def _refusal_child_answers() -> dict[str, Any]:
 
 def _locally_refused(call: Callable[[], object]) -> tuple[str, str]:
     """Run call with the bindings in reach and return what it raised."""
-    with pytest.raises(BTClibEccException) as excinfo:
+    with pytest.raises(EccException) as excinfo:
         call()
     return type(excinfo.value).__name__, str(excinfo.value)
 

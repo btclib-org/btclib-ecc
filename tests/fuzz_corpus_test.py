@@ -21,7 +21,7 @@ a regex would still have to answer which import a bare name resolves to.
 `test_every_seed_is_accepted` and `test_accepted_seed_round_trips` are
 the corpus half: every seed is tried against every one of its harness's
 declared entry points, and passes if at least one accepts it without
-raising `BTClibEccException`. Where the accepting object serializes
+raising `EccException`. Where the accepting object serializes
 -- `.serialize()`, or `.b64encode()` behind a `.b64decode()` entry point
 -- the reserialization has to reproduce the seed's own bytes.
 
@@ -49,7 +49,7 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc.exceptions import BTClibEccException
+from ecc.exceptions import EccException
 
 _FUZZ = Path(__file__).parent.parent / "fuzz"
 _CORPUS = _FUZZ / "corpus"
@@ -100,9 +100,9 @@ def _import_bindings(tree: ast.Module) -> dict[str, tuple[str, str]]:
 def _canonical_spec(module: str, remote: str, attr: str) -> str:
     """Return "module:Qual.name", telling a submodule bind from a class one.
 
-    `from btclib_ecc import kdf; kdf.parse(...)` would bind a module,
+    `from ecc import kdf; kdf.parse(...)` would bind a module,
     where `parse` is that module's own function; `from
-    btclib_ecc.ecc.ecies import Envelope; Envelope.b64decode(...)`
+    ecc.ecc.ecies import Envelope; Envelope.b64decode(...)`
     binds a class, where `b64decode` is a method on it. Trying the
     submodule import is what tells the two apart, both being an ordinary
     `from X import Y` to the AST alone.
@@ -168,7 +168,7 @@ def _accept(spec: str, data: bytes) -> tuple[bool, bool | None]:
     entry_point = _resolve(spec)
     try:
         obj = entry_point(data)
-    except BTClibEccException:
+    except EccException:
         return False, None
     return True, _round_trip(spec, obj, data)
 
@@ -355,15 +355,15 @@ def test_round_trip_is_unchecked_when_b64decode_has_no_b64encode() -> None:
     counterpart today -- Envelope carries one -- so this is exercised on a
     bare object rather than on any seed.
     """
-    assert _round_trip("btclib_ecc.ecc.ecies:Envelope.b64decode", object(), b"") is None
+    assert _round_trip("ecc.ecc.ecies:Envelope.b64decode", object(), b"") is None
 
 
 def test_canonical_spec_tells_a_submodule_from_a_class() -> None:
     """Both harnesses here bind a class, so the module side is asked here."""
-    assert _canonical_spec("btclib_ecc", "kdf", "parse") == "btclib_ecc.kdf:parse"
+    assert _canonical_spec("ecc", "kdf", "parse") == "ecc.kdf:parse"
     assert (
-        _canonical_spec("btclib_ecc.ecc.ecies", "Envelope", "parse")
-        == "btclib_ecc.ecc.ecies:Envelope.parse"
+        _canonical_spec("ecc.ecc.ecies", "Envelope", "parse")
+        == "ecc.ecc.ecies:Envelope.parse"
     )
 
 
@@ -373,4 +373,4 @@ def test_round_trip_is_unchecked_when_parse_returns_no_serializer() -> None:
     Every object the harnesses here parse into serializes, so this is
     exercised on a bare object rather than on any seed.
     """
-    assert _round_trip("btclib_ecc.ecc.dsa:Sig.parse", object(), b"") is None
+    assert _round_trip("ecc.ecc.dsa:Sig.parse", object(), b"") is None

@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""The btclib_ecc test suite, and the code its modules share.
+"""The ecc test suite, and the code its modules share.
 
 The vector files are the BIPs', Wycheproof's and a few other projects':
 read them here and hand them to `pytest.mark.parametrize`, so that a
@@ -37,14 +37,14 @@ from typing import Any, NamedTuple
 
 import pytest
 
-import btclib_ecc
+import ecc
 from tests.secret_free import assert_secret_free
 
 _TESTS_DIR = Path(__file__).parent
 
 
 def module_names() -> list[str]:
-    """Return every module of the installed btclib_ecc, the root included.
+    """Return every module of the installed ecc, the root included.
 
     Here rather than at each site that walks the package, for the reason
     `public_classes_with` below gives. What the walk covers -- a second
@@ -53,11 +53,8 @@ def module_names() -> list[str]:
     nowhere: each site asserts against whatever its own walk found.
     """
     return [
-        "btclib_ecc",
-        *(
-            module.name
-            for module in pkgutil.walk_packages(btclib_ecc.__path__, "btclib_ecc.")
-        ),
+        "ecc",
+        *(module.name for module in pkgutil.walk_packages(ecc.__path__, "ecc.")),
     ]
 
 
@@ -83,7 +80,8 @@ def public_classes_with(method_name: str) -> set[str]:
         for obj in vars(module).values():
             if not isinstance(obj, type):
                 continue
-            if not getattr(obj, "__module__", "").startswith("btclib_ecc"):
+            defined_in = getattr(obj, "__module__", "")
+            if not (defined_in == "ecc" or defined_in.startswith("ecc.")):
                 continue
             if obj.__qualname__.startswith("_"):
                 continue
@@ -154,22 +152,23 @@ def replace_unchecked(instance: Any, **changes: Any) -> Any:
 
 
 # --------------------------------------------------------------------------
-# One key pair's spellings, shared by `ecc/dsa_test.py` and `hashes_test.py`.
+# One key pair's spellings, shared by `schemes/dsa_test.py` and
+# `hashes_test.py`.
 #
 # Built inside a function rather than at module scope: this package is
 # imported by every test module before that module's own body runs, so a
 # value computed here at import time would run inside every module's own
 # measured reach. `key_pair_spellings` below is not called until
-# `ecc/dsa_test.py` or `hashes_test.py` calls it, so a module that asks no
-# question about a key pair never reaches the curve arithmetic that builds
-# one (issue btclib-org/btclib#2120).
+# `schemes/dsa_test.py` or `hashes_test.py` calls it, so a module that asks
+# no question about a key pair never reaches the curve arithmetic that
+# builds one (issue btclib-org/btclib#2120).
 # --------------------------------------------------------------------------
 
 
 class KeyPairSpellings(NamedTuple):
-    """One key pair, in every spelling ecc/dsa_test.py and hashes_test.py read.
+    """One key pair, in every spelling dsa_test.py and hashes_test.py read.
 
-    The WIF and the xprv are here for the refusals alone: `ecc` takes a
+    The WIF and the xprv are here for the refusals alone: `ecc.ecc` takes a
     scalar and a point, and a spelling that carries a network is read by
     whatever defines its format (issue btclib-org/btclib#1188). Each is
     written out as the Base58Check of its serialization, `b58encode`
@@ -191,12 +190,12 @@ class KeyPairSpellings(NamedTuple):
 def key_pair_spellings() -> KeyPairSpellings:
     """Build one `KeyPairSpellings`, computed on call rather than at import.
 
-    `btclib_ecc.curves` is imported inside this function rather than
+    `ecc.curves` is imported inside this function rather than
     at the top of the module, for the reason the block comment above
     gives: a top-level import would run at collection, the same moment
     `Q = mult(q)` would.
     """
-    from btclib_ecc.curves import mult  # noqa: PLC0415
+    from ecc.curves import mult  # noqa: PLC0415
 
     q = 12
     q_bytes = q.to_bytes(32, byteorder="big", signed=False)
@@ -440,7 +439,7 @@ def assert_repr_secret_free(
 # subclass of `ImportError`, so one `except` covers both without a
 # tuple.
 #
-# Here rather than beside `INSTALLED` in `src/btclib_ecc/_libsecp256k1.py`:
+# Here rather than beside `INSTALLED` in `src/ecc/_libsecp256k1.py`:
 # that module answers what the package's own run-time asks of libsecp256k1, and
 # nothing in the package delegates to secp256k1-zkp -- issue
 # btclib-org/btclib#1679 asks only for the comparison this suite makes to be
@@ -546,12 +545,12 @@ class AllOnesHash:
 
 
 # --------------------------------------------------------------------------
-# AES-128, for `ecc/ecies_test.py`'s CBC vectors.
+# AES-128, for `schemes/ecies_test.py`'s CBC vectors.
 #
 # **Why a test writes its own block cipher.** This package takes no
 # cryptographic dependency and ships no cipher: hashlib and the
-# secp256k1 bindings are the whole of it, `ecc.ecies`'s module docstring
-# has the argument in full, and `ecc.dsa`/`ecc.ssa` inherit it -- a
+# secp256k1 bindings are the whole of it, `ecc.ecc.ecies`'s module docstring
+# has the argument in full, and `ecc.ecc.dsa`/`ecc.ecc.ssa` inherit it -- a
 # table-driven AES leaks its key through cache timing, and a
 # timing-vulnerable cipher is a worse thing to ship than none. None of
 # that reaches this file: the wheel and the sdist carry no tests, so
@@ -564,7 +563,7 @@ class AllOnesHash:
 #
 # It is written for the vectors, not for use: correct, small enough to
 # read against FIPS-197, and slow. Do not import it from anywhere but
-# `ecc/ecies_test.py`.
+# `schemes/ecies_test.py`.
 # --------------------------------------------------------------------------
 
 _AES_BLOCK_SIZE = 16

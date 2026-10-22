@@ -29,7 +29,7 @@ from pathlib import Path
 
 import pytest
 
-_LIBRARY = Path(__file__).parents[1] / "src" / "btclib_ecc"
+_LIBRARY = Path(__file__).parents[1] / "src" / "ecc"
 
 # what each prefix promises the return type is. `verify` is matched anywhere in
 # the name and not only at the front: `batch_verify_`, `partial_sig_verify` and
@@ -117,9 +117,9 @@ _AN_ACTION = frozenset({"wipe"})
 # HashObject, and the other three are reads and stay properties
 _MIRRORS_HASHLIB = frozenset(
     {
-        "btclib_ecc.alias.HashObject.copy",
-        "btclib_ecc.alias.HashObject.digest",
-        "btclib_ecc.alias.HashObject.hexdigest",
+        "ecc.alias.HashObject.copy",
+        "ecc.alias.HashObject.digest",
+        "ecc.alias.HashObject.hexdigest",
     }
 )
 
@@ -212,18 +212,18 @@ def test_the_walk_reaches_what_it_claims() -> None:
 
     A walk that found nothing would pass the test above.
     """
-    assert _NAMED["btclib_ecc.curves.curve_group.is_on_curve"] == "bool"
-    assert _NAMED["btclib_ecc.ecc.dsa.verify_"] == "bool"
-    assert _NAMED["btclib_ecc.ecc.ssa.batch_verify"] == "bool"
-    assert _NAMED["btclib_ecc.ecc.dsa.assert_as_valid"] == "None"
+    assert _NAMED["ecc.curves.curve_group.is_on_curve"] == "bool"
+    assert _NAMED["ecc.ecc.dsa.verify_"] == "bool"
+    assert _NAMED["ecc.ecc.ssa.batch_verify"] == "bool"
+    assert _NAMED["ecc.ecc.dsa.assert_as_valid"] == "None"
     # `TypeIs` read as the bool it answers
-    assert _NAMED["btclib_ecc._utils.is_octets"] == "bool"
+    assert _NAMED["ecc._utils.is_octets"] == "bool"
     # a method
-    assert _NAMED["btclib_ecc.ecc.dsa.assert_valid"] == "None"
+    assert _NAMED["ecc.ecc.dsa.assert_valid"] == "None"
 
     # a private name, and a name that promises nothing
-    assert "btclib_ecc.hashes._assert_valid_hf" not in _NAMED
-    assert "btclib_ecc._utils.bytes_from_octets" not in _NAMED
+    assert "ecc.hashes._assert_valid_hf" not in _NAMED
+    assert "ecc._utils.bytes_from_octets" not in _NAMED
 
 
 def test_check_says_one_thing() -> None:
@@ -276,10 +276,10 @@ def test_an_argument_less_member_is_read_not_called(dotted: str) -> None:
 
 def test_the_walk_reaches_every_shape_of_member() -> None:
     """One of each, so neither branch above is running over nothing."""
-    assert _CLASS_MEMBERS["btclib_ecc.ecc.rangeproof.RangeProof.max_value"] is True
+    assert _CLASS_MEMBERS["ecc.ecc.rangeproof.RangeProof.max_value"] is True
     # and the three of HashObject that hashlib spells as attributes
-    assert _CLASS_MEMBERS["btclib_ecc.alias.HashObject.digest_size"] is True
+    assert _CLASS_MEMBERS["ecc.alias.HashObject.digest_size"] is True
     # and the shapes that are not a read
-    assert _CLASS_MEMBERS["btclib_ecc.ecc.dsa.Sig.assert_valid"] is False
-    assert _CLASS_MEMBERS["btclib_ecc.ecc.dsa.Signer.wipe"] is False
-    assert _CLASS_MEMBERS["btclib_ecc.alias.HashObject.digest"] is False
+    assert _CLASS_MEMBERS["ecc.ecc.dsa.Sig.assert_valid"] is False
+    assert _CLASS_MEMBERS["ecc.ecc.dsa.Signer.wipe"] is False
+    assert _CLASS_MEMBERS["ecc.alias.HashObject.digest"] is False

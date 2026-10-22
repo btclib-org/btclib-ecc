@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""The known-answer check of the bindings `btclib_ecc._libsecp256k1` selects."""
+"""The known-answer check of the bindings `ecc._libsecp256k1` selects."""
 
 import runpy
 from collections.abc import Callable
@@ -10,14 +10,14 @@ from typing import Any
 
 import pytest
 
-from btclib_ecc import _libsecp256k1
-from btclib_ecc._libsecp256k1 import NO_LIBSECP256K1
-from btclib_ecc.curves import (
+from ecc import _libsecp256k1
+from ecc._libsecp256k1 import NO_LIBSECP256K1
+from ecc.curves import (
     curve,
     is_libsecp256k1_serving,
     set_libsecp256k1_serving,
 )
-from btclib_ecc.exceptions import BTClibEccRuntimeError
+from ecc.exceptions import EccRuntimeError
 from tests import needs_bindings
 
 pytestmark = needs_bindings
@@ -63,20 +63,20 @@ def test_each_wrong_answer_raises(
 ) -> None:
     """A backend that answers one of the checks wrongly raises."""
     monkeypatch.setattr(_libsecp256k1, name, wrong)
-    with pytest.raises(BTClibEccRuntimeError, match=message):
+    with pytest.raises(EccRuntimeError, match=message):
         _libsecp256k1._check_bindings(setter=False)
 
 
 def _execute_afresh() -> dict[str, Any]:
     """Execute the module's file in a new namespace, as an import does.
 
-    The run name is inside the package: coverage matches `btclib_ecc` by
+    The run name is inside the package: coverage matches `ecc` by
     module name and caches the answer per file, so a name outside it
     would stop the file being measured for the rest of the worker.
     """
     path = _libsecp256k1.__file__
     assert path is not None
-    return runpy.run_path(path, run_name="btclib_ecc._libsecp256k1_fresh")
+    return runpy.run_path(path, run_name="ecc._libsecp256k1_fresh")
 
 
 def test_import_refuses_a_wrong_backend(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -84,7 +84,7 @@ def test_import_refuses_a_wrong_backend(monkeypatch: pytest.MonkeyPatch) -> None
 
     The first execution shows that it is silent on the real bindings; the
     wrong one is then refused when the bindings are enabled and let through
-    when `BTCLIB_ECC_NO_LIBSECP256K1` refuses them: they are checked when
+    when `ECC_NO_LIBSECP256K1` refuses them: they are checked when
     first selected, which `test_the_setter_checks_the_bindings` covers.
     """
     monkeypatch.delenv(_libsecp256k1.NO_LIBSECP256K1, raising=False)
@@ -92,7 +92,7 @@ def test_import_refuses_a_wrong_backend(monkeypatch: pytest.MonkeyPatch) -> None
 
     monkeypatch.setattr(_libsecp256k1.keys, "pubkey_from_prvkey", lambda *_: bytes(33))
     with pytest.raises(
-        BTClibEccRuntimeError, match=f"wrong public key.*set {NO_LIBSECP256K1} to"
+        EccRuntimeError, match=f"wrong public key.*set {NO_LIBSECP256K1} to"
     ):
         _execute_afresh()
 
@@ -103,14 +103,14 @@ def test_import_refuses_a_wrong_backend(monkeypatch: pytest.MonkeyPatch) -> None
 def test_the_setter_checks_the_bindings(monkeypatch: pytest.MonkeyPatch) -> None:
     """Selecting bindings not yet checked checks them, once, before serving.
 
-    The seam starts off, the state `BTCLIB_ECC_NO_LIBSECP256K1` leaves.
+    The seam starts off, the state `ECC_NO_LIBSECP256K1` leaves.
     """
     monkeypatch.setattr(curve, "_libsecp256k1_available", False)
     monkeypatch.setattr(_libsecp256k1, "_checked", False)
     with monkeypatch.context() as wrong:
         wrong.setattr(_libsecp256k1, "pubkey_from_prvkey", lambda *_: bytes(33))
         with pytest.raises(
-            BTClibEccRuntimeError, match="wrong public key.*keep `serving=False`"
+            EccRuntimeError, match="wrong public key.*keep `serving=False`"
         ):
             set_libsecp256k1_serving(serving=True)
     assert not is_libsecp256k1_serving()
