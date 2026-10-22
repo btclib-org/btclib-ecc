@@ -45,7 +45,7 @@ body:
         print(version('btclib-secp256k1'))"`. On secp256k1 the bindings
         answer where they are installed and the Python arithmetic where
         they are not, so which one ran is part of the report.
-      placeholder: "0.8.0.8"
+      placeholder: "0.8.0.12"
 
   - type: input
     id: platform

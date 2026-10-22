@@ -40,8 +40,7 @@ from tests import (
 from tests.secret_free import assert_secret_free
 
 # guarded module scope, the same shape `ecc._libsecp256k1` uses: this
-# file is collected in every job, including the no-bindings one and the one
-# at the floor, whose `btclib_secp256k1` has no `zkp.ecdsa_adaptor`, and
+# file is collected in every job, the no-bindings one included, and
 # pytest imports every module it collects before `needs_zkp` can skip
 # anything in it
 try:

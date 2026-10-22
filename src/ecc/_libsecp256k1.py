@@ -43,11 +43,11 @@ predicate in front of every delegation -- which is a rule about the
 package rather than about this file, and is what `tests/no_bindings_test.py`
 checks by importing this package with the bindings out of reach.
 
-Absent and installed-but-too-old are different failures, and only the
+Absent and installed-but-missing-a-name are different failures, and only the
 first one is this fallback (btclib-org/ecc#25). `btclib_secp256k1`
 itself failing to import is `ModuleNotFoundError` with its `name` naming
 the top-level package -- nothing else is. A name this module asks for that
-an installed, too-old package does not have raises a plain `ImportError`
+an installed release does not have raises a plain `ImportError`
 instead (the package is found; the attribute inside it is not), or a
 `ModuleNotFoundError` naming a submodule rather than the top-level package
 (an old package missing a whole submodule this floor needs). Reading
