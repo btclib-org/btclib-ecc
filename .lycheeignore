@@ -1,0 +1,15 @@
+# what links.yml is told not to check, each line a regex and each with
+# the measurement that put it here.
+
+# gmplib.org answers a developer machine and times out for a runner.
+# From a workstation this answers 200 in about a second, at most:
+#   curl -sS -o /dev/null -w '%{http_code} %{time_total}\n' \
+#     https://gmplib.org/manual/Low_002dlevel-Functions
+# From the runner, the weekly run 39018754822 (2026-10-17) and the dispatch
+# 39298170565 (2026-10-19) each ended with this one [TIMEOUT] in
+# SECURITY.md, past the retries and timeout reusable-links.yml gives lychee;
+# the 2026-10-11 run, the last before SECURITY.md cited the page, was
+# green. The citation stays: it is the GMP manual's list of the functions
+# written for side-channel resistance, which SECURITY.md's gmpy2 paragraph
+# rests on, and only the check is skipped.
+^https://gmplib\.org/manual/Low_002dlevel-Functions$
