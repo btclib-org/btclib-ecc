@@ -23,6 +23,29 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.10.23
+
+### The `secp256k1` extra asks for `btclib-secp256k1>=0.8.0.12`
+
+The extra and the `bindings` group were `>=0.8.0.8`, below 0.8.0.10, which
+fixes GHSA-8h6f-34jj-7p6c (closes #343).
+
+### `uv.lock` takes `certifi` 2026.10.19, virtualenv 21.14.12 and GitPython 3.2.1
+
+They are past the advisories `uv audit` refuses (issue
+btclib-org/.github#1824, issue btclib-org/.github#1835).
+
+### The dev tooling and the pinned hooks move
+
+hypothesis, pre-commit, ruff and uv-build move, and the `uv_build` ceiling
+is below 0.14. astral-sh/setup-uv is 10.3.0, and the pre-commit hook
+revisions follow.
+
+### `claude-review.yml` declines zizmor's dangerous-triggers
+
+The `issue_comment` trigger stays, with the ignore on its line and the reason
+above it (issue btclib-org/.github#1813).
+
 ## v2026.10.20
 
 ### The package is `ecc`

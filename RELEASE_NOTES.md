@@ -9,6 +9,12 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.10.23
+
+No breaking changes. The `secp256k1` extra asks for `btclib-secp256k1` at
+0.8.0.12 or later, past GHSA-8h6f-34jj-7p6c: upgrade `btclib-secp256k1`, or
+install `ecc[secp256k1]`.
+
 ## v2026.10.20
 
 - **The package is `ecc`, on PyPI and on import, with no alias**
