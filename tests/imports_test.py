@@ -282,6 +282,10 @@ _MAY_IMPORT: dict[str, frozenset[str]] = {
 }
 
 
+# what a bare `import ecc` reaches; no table entry allows it
+_ANY = "ecc.*"
+
+
 def _unit(module_name: str) -> str:
     """Return the root, or the first module below it, a dotted name falls in."""
     return ".".join(module_name.split(".")[:2])
@@ -294,21 +298,21 @@ def _package_imports(
 
     `from ecc import kdf` reaches `ecc.kdf` when that is a module, and the
     root when it is a name the root holds, as `from ecc import name` is.
-    A relative import is resolved against the module that makes it.
+    A bare `import ecc` reaches `_ANY`: the root loads any public module
+    on attribute access, so the statement can reach every unit. A relative
+    import is resolved against the module that makes it.
     """
     parts = module_name.split(".")
     package = parts if is_package else parts[:-1]
     targets: list[str] = []
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):
-            targets.extend(alias.name for alias in node.names)
+            targets.extend(_ANY if a.name == "ecc" else a.name for a in node.names)
         elif isinstance(node, ast.ImportFrom):
-            base = ".".join(
-                [*package[: len(package) - max(node.level - 1, 0)]]
-                + ([node.module] if node.module else [])
-                if node.level
-                else [node.module or ""]
-            )
+            base = node.module or ""
+            if node.level:
+                kept = package[: len(package) - (node.level - 1)]
+                base = ".".join([*kept, *([node.module] if node.module else [])])
             targets.extend(
                 f"{base}.{alias.name}" if f"{base}.{alias.name}" in known else base
                 for alias in node.names
@@ -344,12 +348,10 @@ def _package_sources(root: Path) -> dict[str, tuple[bool, str]]:
 
 
 def test_the_layers_import_only_downwards() -> None:
-    """No module imports a unit its layer does not allow.
+    """Hold the rule ARCHITECTURE.md states.
 
-    The rule ARCHITECTURE.md states: each unit imports only the units
-    below it, `ecc.curves` imports neither `ecc.hashes` nor `ecc.kdf`, and
-    nothing below `ecc.ecc` imports it. Read statically, so an import
-    inside a function or behind `TYPE_CHECKING` counts.
+    Read statically, so an import inside a function or behind
+    `TYPE_CHECKING` counts.
     """
     sources = _package_sources(Path(ecc.__path__[0]))
     assert {_unit(name) for name in sources} == set(_MAY_IMPORT)
@@ -365,6 +367,10 @@ def test_the_layer_scan_finds_a_planted_import() -> None:
         "ecc",
         "ecc.ecc",
     }
+    assert _package_imports("ecc._utils", False, "import ecc\n", known) == {_ANY}
+    assert _package_imports("ecc._utils", False, "import ecc.kdf\n", known) == {
+        "ecc.kdf"
+    }
     relative = "from .. import hashes\nfrom ..kdf import x\n"
     assert _package_imports("ecc.curves.curve", False, relative, known) == {
         "ecc.hashes",
@@ -375,9 +381,11 @@ def test_the_layer_scan_finds_a_planted_import() -> None:
         "ecc.hashes": (False, "from ecc import kdf\n"),
         "ecc.kdf": (False, "from ecc.hashes import tagged_hash\n"),
         "ecc.curves": (True, "from ecc.kdf import hkdf\n"),
+        "ecc.exceptions": (False, "import ecc\n"),
         "ecc.ecc": (True, "from ecc import hashes\n"),
     }
     assert _imports_the_rule_refuses(planted) == {
         "ecc.curves": ["ecc.kdf"],
+        "ecc.exceptions": [_ANY],
         "ecc.hashes": ["ecc.kdf"],
     }
