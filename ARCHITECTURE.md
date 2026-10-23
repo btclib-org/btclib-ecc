@@ -17,7 +17,7 @@ optional libsecp256k1 bindings and imports `exceptions` and the root
 `number_theory` and `_libsecp256k1` and not `hashes` or `kdf`. Inside it
 `curve_group` comes first, `curve_group_2` and `curve_group_f` build on it,
 `curve` on `curve_group` and `curve_group_2`, and `sec_point` on `curve`.
-Only the package's `__init__` imports `curve_group_f`.
+Only `curves/__init__.py` imports `curve_group_f`.
 
 `ecc` is the top layer: the schemes and the modules they share, one file
 each. It may import every lower layer, and none of them imports it. Within
