@@ -153,8 +153,7 @@ delegation off.
 
 ## Secure design principles
 
-Saltzer and Schroeder's principles, and the layering CLAUDE.md
-describes beside them.
+Saltzer and Schroeder's principles.
 
 - **Economy of mechanism.** One predicate decides the delegation, as
   above, where a copy per call site could drift. Every error the package
